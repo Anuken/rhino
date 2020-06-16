@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import java.io.IOException;
@@ -71,14 +65,6 @@ import org.mozilla.javascript.ast.VariableDeclaration;
 import org.mozilla.javascript.ast.VariableInitializer;
 import org.mozilla.javascript.ast.WhileLoop;
 import org.mozilla.javascript.ast.WithStatement;
-import org.mozilla.javascript.ast.XmlDotQuery;
-import org.mozilla.javascript.ast.XmlElemRef;
-import org.mozilla.javascript.ast.XmlExpression;
-import org.mozilla.javascript.ast.XmlLiteral;
-import org.mozilla.javascript.ast.XmlMemberGet;
-import org.mozilla.javascript.ast.XmlPropRef;
-import org.mozilla.javascript.ast.XmlRef;
-import org.mozilla.javascript.ast.XmlString;
 import org.mozilla.javascript.ast.Yield;
 
 /**
@@ -492,12 +478,6 @@ public class Parser
         }
         reportError(msgId, pos, len);
         return false;
-    }
-
-    private void mustHaveXML() {
-        if (!compilerEnv.isXmlAvailable()) {
-            reportError("msg.XML.not.available");
-        }
     }
 
     public boolean eof() {
@@ -1256,10 +1236,6 @@ public class Parser
               consumeToken();
               return function(FunctionNode.FUNCTION_EXPRESSION_STATEMENT);
 
-          case Token.DEFAULT :
-              pn = defaultXmlNamespace();
-              break;
-
           case Token.NAME:
               pn = nameOrLabel();
               if (pn instanceof ExpressionStatement)
@@ -2011,35 +1987,6 @@ public class Parser
         }
     }
 
-    private AstNode defaultXmlNamespace()
-        throws IOException
-    {
-        if (currentToken != Token.DEFAULT) codeBug();
-        consumeToken();
-        mustHaveXML();
-        setRequiresActivation();
-        int lineno = ts.lineno, pos = ts.tokenBeg;
-
-        if (!(matchToken(Token.NAME, true) && "xml".equals(ts.getString()))) {
-            reportError("msg.bad.namespace");
-        }
-        if (!(matchToken(Token.NAME, true) && "namespace".equals(ts.getString()))) {
-            reportError("msg.bad.namespace");
-        }
-        if (!matchToken(Token.ASSIGN, true)) {
-            reportError("msg.bad.namespace");
-        }
-
-        AstNode e = expr();
-        UnaryExpression dxmln = new UnaryExpression(pos, getNodeEnd(e) - pos);
-        dxmln.setOperator(Token.DEFAULTNAMESPACE);
-        dxmln.setOperand(e);
-        dxmln.setLineno(lineno);
-
-        ExpressionStatement es = new ExpressionStatement(dxmln, true);
-        return es;
-    }
-
     private void recordLabel(Label label, LabeledStatement bundle)
         throws IOException
     {
@@ -2645,10 +2592,6 @@ public class Parser
               return makeErrorNode();
           case Token.LT:
               // XML stream encountered in expression.
-              if (compilerEnv.isXmlAvailable()) {
-                  consumeToken();
-                  return memberExprTail(true, xmlInitializer());
-              }
               // Fall thru to the default handling of RELOP
               // fall through
 
@@ -2665,46 +2608,6 @@ public class Parser
               uexpr.setLineno(line);
               checkBadIncDec(uexpr);
               return uexpr;
-        }
-    }
-
-    private AstNode xmlInitializer()
-        throws IOException
-    {
-        if (currentToken != Token.LT) codeBug();
-        int pos = ts.tokenBeg, tt = ts.getFirstXMLToken();
-        if (tt != Token.XML && tt != Token.XMLEND) {
-            reportError("msg.syntax");
-            return makeErrorNode();
-        }
-
-        XmlLiteral pn = new XmlLiteral(pos);
-        pn.setLineno(ts.lineno);
-
-        for (;;tt = ts.getNextXMLToken()) {
-            switch (tt) {
-              case Token.XML:
-                  pn.addFragment(new XmlString(ts.tokenBeg, ts.getString()));
-                  mustMatchToken(Token.LC, "msg.syntax", true);
-                  int beg = ts.tokenBeg;
-                  AstNode expr = (peekToken() == Token.RC)
-                                 ? new EmptyExpression(beg, ts.tokenEnd - beg)
-                                 : expr();
-                  mustMatchToken(Token.RC, "msg.syntax", true);
-                  XmlExpression xexpr = new XmlExpression(beg, expr);
-                  xexpr.setIsXmlAttribute(ts.isXMLAttribute());
-                  xexpr.setLength(ts.tokenEnd - beg);
-                  pn.addFragment(xexpr);
-                  break;
-
-              case Token.XMLEND:
-                  pn.addFragment(new XmlString(ts.tokenBeg, ts.getString()));
-                  return pn;
-
-              default:
-                  reportError("msg.syntax");
-                  return makeErrorNode();
-            }
         }
     }
 
@@ -2818,31 +2721,9 @@ public class Parser
             int tt = peekToken();
             switch (tt) {
               case Token.DOT:
-              case Token.DOTDOT:
                   lineno = ts.lineno;
                   pn = propertyAccess(tt, pn);
                   pn.setLineno(lineno);
-                  break;
-
-              case Token.DOTQUERY:
-                  consumeToken();
-                  int opPos = ts.tokenBeg, rp = -1;
-                  lineno = ts.lineno;
-                  mustHaveXML();
-                  setRequiresActivation();
-                  AstNode filter = expr();
-                  int end = getNodeEnd(filter);
-                  if (mustMatchToken(Token.RP, "msg.no.paren", true)) {
-                      rp = ts.tokenBeg;
-                      end = ts.tokenEnd;
-                  }
-                  XmlDotQuery q = new XmlDotQuery(pos, end - pos);
-                  q.setLeft(pn);
-                  q.setRight(filter);
-                  q.setOperatorPosition(opPos);
-                  q.setRp(rp - pos);
-                  q.setLineno(lineno);
-                  pn = q;
                   break;
 
               case Token.LB:
@@ -2850,7 +2731,7 @@ public class Parser
                   int lb = ts.tokenBeg, rb = -1;
                   lineno = ts.lineno;
                   AstNode expr = expr();
-                  end = getNodeEnd(expr);
+                  int end = getNodeEnd(expr);
                   if (mustMatchToken(Token.RB, "msg.no.bracket.index", true)) {
                       rb = ts.tokenBeg;
                       end = ts.tokenEnd;
@@ -2909,11 +2790,6 @@ public class Parser
         int memberTypeFlags = 0, lineno = ts.lineno, dotPos = ts.tokenBeg;
         consumeToken();
 
-        if (tt == Token.DOTDOT) {
-            mustHaveXML();
-            memberTypeFlags = Node.DESCENDANTS_FLAG;
-        }
-
         if (!compilerEnv.isXmlAvailable()) {
             int maybeName = nextToken();
             if (maybeName != Token.NAME
@@ -2949,12 +2825,6 @@ public class Parser
               ref = propertyName(-1, memberTypeFlags);
               break;
 
-          case Token.XMLATTR:
-              // handles: '@attr', '@ns::attr', '@ns::*', '@ns::*',
-              //          '@::attr', '@::*', '@*', '@*::attr', '@*::*'
-              ref = attributeAccess();
-              break;
-
           case Token.RESERVED: {
               String name = ts.getString();
               saveNameTokenData(ts.tokenBeg, name, ts.lineno);
@@ -2976,10 +2846,7 @@ public class Parser
               return makeErrorNode();
         }
 
-        boolean xml = ref instanceof XmlRef;
-        InfixExpression result = xml ? new XmlMemberGet() : new PropertyGet();
-        if (xml && tt == Token.DOT)
-            result.setType(Token.DOT);
+        InfixExpression result = new PropertyGet();
         int pos = pn.getPosition();
         result.setPosition(pos);
         result.setLength(getNodeEnd(ref) - pos);
@@ -2991,44 +2858,10 @@ public class Parser
     }
 
     /**
-     * Xml attribute expression:<p>
-     *   {@code @attr}, {@code @ns::attr}, {@code @ns::*}, {@code @ns::*},
-     *   {@code @*}, {@code @*::attr}, {@code @*::*}, {@code @ns::[expr]},
-     *   {@code @*::[expr]}, {@code @[expr]} <p>
-     * Called if we peeked an '@' token.
-     */
-    private AstNode attributeAccess()
-        throws IOException
-    {
-        int tt = nextToken(), atPos = ts.tokenBeg;
-
-        switch (tt) {
-          // handles: @name, @ns::name, @ns::*, @ns::[expr]
-          case Token.NAME:
-              return propertyName(atPos, 0);
-
-          // handles: @*, @*::name, @*::*, @*::[expr]
-          case Token.MUL:
-              saveNameTokenData(ts.tokenBeg, "*", ts.lineno);
-              return propertyName(atPos, 0);
-
-          // handles @[expr]
-          case Token.LB:
-              return xmlElemRef(atPos, null, -1);
-
-          default:
-              reportError("msg.no.name.after.xmlAttr");
-              return makeErrorNode();
-        }
-    }
-
-    /**
      * Check if :: follows name in which case it becomes a qualified name.
      *
      * @param atPos a natural number if we just read an '@' token, else -1
      *
-     * @param s the name or string that was matched (an identifier, "throw" or
-     * "*").
      *
      * @param memberTypeFlags flags tracking whether we're a '.' or '..' child
      *
@@ -3045,66 +2878,11 @@ public class Parser
         Name name = createNameNode(true, currentToken);
         Name ns = null;
 
-        if (matchToken(Token.COLONCOLON, true)) {
-            ns = name;
-            colonPos = ts.tokenBeg;
-
-            switch (nextToken()) {
-              // handles name::name
-              case Token.NAME:
-                  name = createNameNode();
-                  break;
-
-              // handles name::*
-              case Token.MUL:
-                  saveNameTokenData(ts.tokenBeg, "*", ts.lineno);
-                  name = createNameNode(false, -1);
-                  break;
-
-              // handles name::[expr] or *::[expr]
-              case Token.LB:
-                  return xmlElemRef(atPos, ns, colonPos);
-
-              default:
-                  reportError("msg.no.name.after.coloncolon");
-                  return makeErrorNode();
-            }
-        }
-
         if (ns == null && memberTypeFlags == 0 && atPos == -1) {
             return name;
+        }else{
+            throw new IllegalArgumentException("one of us has done something horribly wrong ");
         }
-
-        XmlPropRef ref = new XmlPropRef(pos, getNodeEnd(name) - pos);
-        ref.setAtPos(atPos);
-        ref.setNamespace(ns);
-        ref.setColonPos(colonPos);
-        ref.setPropName(name);
-        ref.setLineno(lineno);
-        return ref;
-    }
-
-    /**
-     * Parse the [expr] portion of an xml element reference, e.g.
-     * @[expr], @*::[expr], or ns::[expr].
-     */
-    private XmlElemRef xmlElemRef(int atPos, Name namespace, int colonPos)
-        throws IOException
-    {
-        int lb = ts.tokenBeg, rb = -1, pos = atPos != -1 ? atPos : lb;
-        AstNode expr = expr();
-        int end = getNodeEnd(expr);
-        if (mustMatchToken(Token.RB, "msg.no.bracket.index", true)) {
-            rb = ts.tokenBeg;
-            end = ts.tokenEnd;
-        }
-        XmlElemRef ref = new XmlElemRef(pos, end - pos);
-        ref.setNamespace(namespace);
-        ref.setColonPos(colonPos);
-        ref.setAtPos(atPos);
-        ref.setExpression(expr);
-        ref.setBrackets(lb, rb);
-        return ref;
     }
 
     private AstNode destructuringPrimaryExpr()
@@ -3144,11 +2922,6 @@ public class Parser
           case Token.LP:
               consumeToken();
               return parenExpr();
-
-          case Token.XMLATTR:
-              consumeToken();
-              mustHaveXML();
-              return attributeAccess();
 
           case Token.NAME:
               consumeToken();

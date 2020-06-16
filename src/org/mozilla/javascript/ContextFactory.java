@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 // API class
 
 package org.mozilla.javascript;
@@ -317,34 +311,6 @@ public class ContextFactory
         } catch (NoSuchMethodException e) {
             return false;
         }
-    }
-
-    /**
-     * Provides a default
-     * {@link org.mozilla.javascript.xml.XMLLib.Factory XMLLib.Factory}
-     * to be used by the <code>Context</code> instances produced by this
-     * factory. See {@link Context#getE4xImplementationFactory} for details.
-     *
-     * May return null, in which case E4X functionality is not supported in
-     * Rhino.
-     *
-     * The default implementation now prefers the DOM3 E4X implementation.
-     */
-    protected org.mozilla.javascript.xml.XMLLib.Factory
-        getE4xImplementationFactory()
-    {
-        // Must provide default implementation, rather than abstract method,
-        // so that past implementors of ContextFactory do not fail at runtime
-        // upon invocation of this method.
-        // Note that the default implementation returns null if we
-        // neither have XMLBeans nor a DOM3 implementation present.
-
-        if (isDom3Present()) {
-            return org.mozilla.javascript.xml.XMLLib.Factory.create(
-                "org.mozilla.javascript.xmlimpl.XMLLibImpl"
-            );
-        }
-        return null;
     }
 
 

@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import static org.mozilla.javascript.ScriptableObject.DONTENUM;
@@ -12,9 +6,8 @@ import static org.mozilla.javascript.ScriptableObject.READONLY;
 
 import java.io.Serializable;
 
-import org.mozilla.javascript.xml.XMLLib;
-
 /**
+ *
  * This class implements the global native object (function and value
  * properties only).
  *
@@ -168,14 +161,6 @@ public class NativeGlobal implements Serializable, IdFunctionCall
                         result = Double.isNaN(d);
                     }
                     return ScriptRuntime.wrapBoolean(result);
-                }
-
-                case Id_isXMLName: {
-                    Object name = (args.length == 0)
-                                  ? Undefined.instance : args[0];
-                    XMLLib xmlLib = XMLLib.extractFromScope(scope);
-                    return ScriptRuntime.wrapBoolean(
-                        xmlLib.isXMLName(cx, name));
                 }
 
                 case Id_parseFloat:

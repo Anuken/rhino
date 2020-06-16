@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 /**
@@ -117,18 +111,16 @@ public class Token
         YIELD          = 73,  // JS 1.7 yield pseudo keyword
         STRICT_SETNAME = 74,
 
+
         // For XML support:
-        DEFAULTNAMESPACE = 75, // default xml namespace =
-        ESCXMLATTR     = 76,
-        ESCXMLTEXT     = 77,
-        REF_MEMBER     = 78, // Reference for x.@y, x..y etc.
-        REF_NS_MEMBER  = 79, // Reference for x.ns::y, x..ns::y etc.
-        REF_NAME       = 80, // Reference for @y, @[y] etc.
-        REF_NS_NAME    = 81; // Reference for ns::y, @ns::y@[y] etc.
+        REF_MEMBER     = 75, // Reference for x.@y, x..y etc.
+        REF_NS_MEMBER  = 76, // Reference for x.ns::y, x..ns::y etc.
+        REF_NAME       = 77, // Reference for @y, @[y] etc.
+        REF_NS_NAME    = 78; // Reference for ns::y, @ns::y@[y] etc.
 
         // End of interpreter bytecodes
     public final static int
-        LAST_BYTECODE_TOKEN    = REF_NS_NAME,
+        LAST_BYTECODE_TOKEN    = 79,
 
         TRY            = 82,
         SEMI           = 83,  // semicolon
@@ -204,14 +196,6 @@ public class Token
         SETELEM_OP     = 141, // x[y] op= something
         LOCAL_BLOCK    = 142,
         SET_REF_OP     = 143, // *reference op= something
-
-        // For XML support:
-        DOTDOT         = 144,  // member operator (..)
-        COLONCOLON     = 145,  // namespace::name
-        XML            = 146,  // XML type
-        DOTQUERY       = 147,  // .() -- e.g., x.emps.emp.(name == "terry")
-        XMLATTR        = 148,  // @
-        XMLEND         = 149,
 
         // Optimizer-only-tokens
         TO_OBJECT      = 150,
@@ -330,13 +314,13 @@ public class Token
           case DEL_REF:         return "DEL_REF";
           case REF_CALL:        return "REF_CALL";
           case REF_SPECIAL:     return "REF_SPECIAL";
-          case DEFAULTNAMESPACE:return "DEFAULTNAMESPACE";
-          case ESCXMLTEXT:      return "ESCXMLTEXT";
-          case ESCXMLATTR:      return "ESCXMLATTR";
-          case REF_MEMBER:      return "REF_MEMBER";
-          case REF_NS_MEMBER:   return "REF_NS_MEMBER";
-          case REF_NAME:        return "REF_NAME";
-          case REF_NS_NAME:     return "REF_NS_NAME";
+          //case DEFAULTNAMESPACE:return "DEFAULTNAMESPACE";
+          //case ESCXMLTEXT:      return "ESCXMLTEXT";
+          //case ESCXMLATTR:      return "ESCXMLATTR";
+          //case REF_MEMBER:      return "REF_MEMBER";
+          //case REF_NS_MEMBER:   return "REF_NS_MEMBER";
+          //case REF_NAME:        return "REF_NAME";
+          //case REF_NS_NAME:     return "REF_NS_NAME";
           case TRY:             return "TRY";
           case SEMI:            return "SEMI";
           case LB:              return "LB";
@@ -399,12 +383,6 @@ public class Token
           case SETELEM_OP:      return "SETELEM_OP";
           case LOCAL_BLOCK:     return "LOCAL_BLOCK";
           case SET_REF_OP:      return "SET_REF_OP";
-          case DOTDOT:          return "DOTDOT";
-          case COLONCOLON:      return "COLONCOLON";
-          case XML:             return "XML";
-          case DOTQUERY:        return "DOTQUERY";
-          case XMLATTR:         return "XMLATTR";
-          case XMLEND:          return "XMLEND";
           case TO_OBJECT:       return "TO_OBJECT";
           case TO_DOUBLE:       return "TO_DOUBLE";
           case GET:             return "GET";

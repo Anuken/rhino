@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 // API class
 
 package org.mozilla.javascript;
@@ -17,7 +11,7 @@ through the LiveConnect, should implement this interface.
 @author Norris Boyd
 */
 
- public interface ClassShutter {
+public interface ClassShutter {
 
     /**
      * Return true iff the Java class with the given name should be exposed
@@ -52,5 +46,5 @@ through the LiveConnect, should implement this interface.
      *                      standard string class is "java.lang.String"
      * @return whether or not to reveal this class to scripts
      */
-    public boolean visibleToScripts(String fullClassName);
+    boolean visibleToScripts(String fullClassName);
 }

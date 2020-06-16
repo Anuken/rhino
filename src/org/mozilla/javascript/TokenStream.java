@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import java.io.IOException;
@@ -482,8 +476,6 @@ class TokenStream
             tokenBeg = cursor - 1;
             tokenEnd = cursor;
 
-            if (c == '@') return Token.XMLATTR;
-
             // identifier/keyword/instanceof?
             // watch out for starting with a <backslash>
             boolean identifierStart;
@@ -826,19 +818,9 @@ class TokenStream
             case ',': return Token.COMMA;
             case '?': return Token.HOOK;
             case ':':
-                if (matchChar(':')) {
-                    return Token.COLONCOLON;
-                }
                 return Token.COLON;
             case '.':
-                if (matchChar('.')) {
-                    return Token.DOTDOT;
-                } else if (matchChar('(')) {
-                    return Token.DOTQUERY;
-                } else {
-                    return Token.DOT;
-                }
-
+                return Token.DOT;
             case '|':
                 if (matchChar('|')) {
                     return Token.OR;
@@ -1172,10 +1154,6 @@ class TokenStream
                         xmlOpenTagsCount--;
                     }
                     break;
-                case '{':
-                    ungetChar(c);
-                    this.string = getStringFromBuffer();
-                    return Token.XML;
                 case '\'':
                 case '"':
                     addToString(c);
@@ -1195,11 +1173,6 @@ class TokenStream
                     addToString(c);
                     xmlIsAttribute = false;
                     break;
-                }
-
-                if (!xmlIsTagContent && xmlOpenTagsCount == 0) {
-                    this.string = getStringFromBuffer();
-                    return Token.XMLEND;
                 }
             } else {
                 switch (c) {
@@ -1284,10 +1257,6 @@ class TokenStream
                         break;
                     }
                     break;
-                case '{':
-                    ungetChar(c);
-                    this.string = getStringFromBuffer();
-                    return Token.XML;
                 default:
                     addToString(c);
                     break;

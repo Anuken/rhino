@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import java.util.ArrayList;
@@ -60,15 +54,6 @@ import org.mozilla.javascript.ast.VariableDeclaration;
 import org.mozilla.javascript.ast.VariableInitializer;
 import org.mozilla.javascript.ast.WhileLoop;
 import org.mozilla.javascript.ast.WithStatement;
-import org.mozilla.javascript.ast.XmlDotQuery;
-import org.mozilla.javascript.ast.XmlElemRef;
-import org.mozilla.javascript.ast.XmlExpression;
-import org.mozilla.javascript.ast.XmlFragment;
-import org.mozilla.javascript.ast.XmlLiteral;
-import org.mozilla.javascript.ast.XmlMemberGet;
-import org.mozilla.javascript.ast.XmlPropRef;
-import org.mozilla.javascript.ast.XmlRef;
-import org.mozilla.javascript.ast.XmlString;
 import org.mozilla.javascript.ast.Yield;
 
 /**
@@ -214,9 +199,6 @@ public final class IRFactory extends Parser
               if (node instanceof UnaryExpression) {
                   return transformUnary((UnaryExpression)node);
               }
-              if (node instanceof XmlMemberGet) {
-                  return transformXmlMemberGet((XmlMemberGet)node);
-              }
               if (node instanceof InfixExpression) {
                   return transformInfix((InfixExpression)node);
               }
@@ -231,12 +213,6 @@ public final class IRFactory extends Parser
               }
               if (node instanceof LetNode) {
                   return transformLetNode((LetNode)node);
-              }
-              if (node instanceof XmlRef) {
-                  return transformXmlRef((XmlRef)node);
-              }
-              if (node instanceof XmlLiteral) {
-                  return transformXmlLiteral((XmlLiteral)node);
               }
               throw new IllegalArgumentException("Can't transform: " + node);
         }
@@ -812,9 +788,6 @@ public final class IRFactory extends Parser
         Node left = transform(node.getLeft());
         decompiler.addToken(node.getType());
         Node right = transform(node.getRight());
-        if (node instanceof XmlDotQuery) {
-            decompiler.addToken(Token.RP);
-        }
         return createBinary(node.getType(), left, right);
     }
 
@@ -1181,9 +1154,6 @@ public final class IRFactory extends Parser
 
     private Node transformUnary(UnaryExpression node) {
         int type = node.getType();
-        if (type == Token.DEFAULTNAMESPACE) {
-            return transformDefaultXmlNamepace(node);
-        }
         if (node.isPrefix()) {
             decompiler.addToken(type);
         }
@@ -1287,107 +1257,6 @@ public final class IRFactory extends Parser
         if (kid != null)
             return new Node(node.getType(), kid, node.getLineno());
         return new Node(node.getType(), node.getLineno());
-    }
-
-    private Node transformXmlLiteral(XmlLiteral node) {
-        // a literal like <foo>{bar}</foo> is rewritten as
-        //   new XML("<foo>" + bar + "</foo>");
-
-        Node pnXML = new Node(Token.NEW, node.getLineno());
-        List<XmlFragment> frags = node.getFragments();
-
-        XmlString first = (XmlString)frags.get(0);
-        boolean anon = first.getXml().trim().startsWith("<>");
-        pnXML.addChildToBack(createName(anon ? "XMLList" : "XML"));
-
-        Node pn = null;
-        for (XmlFragment frag : frags) {
-            if (frag instanceof XmlString) {
-                String xml = ((XmlString)frag).getXml();
-                decompiler.addName(xml);
-                if (pn == null) {
-                    pn = createString(xml);
-                } else {
-                    pn = createBinary(Token.ADD, pn, createString(xml));
-                }
-            } else {
-                XmlExpression xexpr = (XmlExpression)frag;
-                boolean isXmlAttr = xexpr.isXmlAttribute();
-                Node expr;
-                decompiler.addToken(Token.LC);
-                if (xexpr.getExpression() instanceof EmptyExpression) {
-                    expr = createString("");
-                } else {
-                    expr = transform(xexpr.getExpression());
-                }
-                decompiler.addToken(Token.RC);
-                if (isXmlAttr) {
-                    // Need to put the result in double quotes
-                    expr = createUnary(Token.ESCXMLATTR, expr);
-                    Node prepend = createBinary(Token.ADD,
-                                                createString("\""),
-                                                expr);
-                    expr = createBinary(Token.ADD,
-                                        prepend,
-                                        createString("\""));
-                } else {
-                    expr = createUnary(Token.ESCXMLTEXT, expr);
-                }
-                pn = createBinary(Token.ADD, pn, expr);
-            }
-        }
-
-        pnXML.addChildToBack(pn);
-        return pnXML;
-    }
-
-    private Node transformXmlMemberGet(XmlMemberGet node) {
-        XmlRef ref = node.getMemberRef();
-        Node pn = transform(node.getLeft());
-        int flags = ref.isAttributeAccess() ? Node.ATTRIBUTE_FLAG : 0;
-        if (node.getType() == Token.DOTDOT) {
-            flags |= Node.DESCENDANTS_FLAG;
-            decompiler.addToken(Token.DOTDOT);
-        } else {
-            decompiler.addToken(Token.DOT);
-        }
-        return transformXmlRef(pn, ref, flags);
-    }
-
-    // We get here if we weren't a child of a . or .. infix node
-    private Node transformXmlRef(XmlRef node) {
-        int memberTypeFlags = node.isAttributeAccess()
-            ? Node.ATTRIBUTE_FLAG : 0;
-        return transformXmlRef(null, node, memberTypeFlags);
-    }
-
-    private Node transformXmlRef(Node pn, XmlRef node, int memberTypeFlags) {
-        if ((memberTypeFlags & Node.ATTRIBUTE_FLAG) != 0)
-            decompiler.addToken(Token.XMLATTR);
-        Name namespace = node.getNamespace();
-        String ns = namespace != null ? namespace.getIdentifier() : null;
-        if (ns != null) {
-            decompiler.addName(ns);
-            decompiler.addToken(Token.COLONCOLON);
-        }
-        if (node instanceof XmlPropRef) {
-            String name = ((XmlPropRef)node).getPropName().getIdentifier();
-            decompiler.addName(name);
-            return createPropertyGet(pn, ns, name, memberTypeFlags);
-        }
-        decompiler.addToken(Token.LB);
-        Node expr = transform(((XmlElemRef)node).getExpression());
-        decompiler.addToken(Token.RB);
-        return createElementGet(pn, ns, expr, memberTypeFlags);
-    }
-
-    private Node transformDefaultXmlNamepace(UnaryExpression node) {
-        decompiler.addToken(Token.DEFAULT);
-        decompiler.addName(" xml");
-        decompiler.addName(" namespace");
-        decompiler.addToken(Token.ASSIGN);
-        Node child = transform(node.getOperand());
-        return createUnary(Token.DEFAULTNAMESPACE, child);
     }
 
     /**

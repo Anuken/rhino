@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 // API class
 
 package org.mozilla.javascript;
@@ -33,7 +27,6 @@ import org.mozilla.javascript.ast.AstRoot;
 import org.mozilla.javascript.ast.ScriptNode;
 import org.mozilla.javascript.debug.DebuggableScript;
 import org.mozilla.javascript.debug.Debugger;
-import org.mozilla.javascript.xml.XMLLib;
 
 /**
  * This class represents the runtime context of an executing script.
@@ -561,45 +554,6 @@ public class Context
         finally {
             exit();
         }
-    }
-
-    /**
-     * @deprecated
-     * @see ContextFactory#addListener(org.mozilla.javascript.ContextFactory.Listener)
-     * @see ContextFactory#getGlobal()
-     */
-    @Deprecated
-    public static void addContextListener(ContextListener listener)
-    {
-        // Special workaround for the debugger
-        String DBG = "org.mozilla.javascript.tools.debugger.Main";
-        if (DBG.equals(listener.getClass().getName())) {
-            Class<?> cl = listener.getClass();
-            Class<?> factoryClass = Kit.classOrNull(
-                "org.mozilla.javascript.ContextFactory");
-            Class<?>[] sig = { factoryClass };
-            Object[] args = { ContextFactory.getGlobal() };
-            try {
-                Method m = cl.getMethod("attachTo", sig);
-                m.invoke(listener, args);
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-            return;
-        }
-
-        ContextFactory.getGlobal().addListener(listener);
-    }
-
-    /**
-     * @deprecated
-     * @see ContextFactory#removeListener(org.mozilla.javascript.ContextFactory.Listener)
-     * @see ContextFactory#getGlobal()
-     */
-    @Deprecated
-    public static void removeContextListener(ContextListener listener)
-    {
-        ContextFactory.getGlobal().addListener(listener);
     }
 
     /**
@@ -2330,21 +2284,6 @@ public class Context
     }
 
     /**
-     * Returns an object which specifies an E4X implementation to use within
-     * this <code>Context</code>. Note that the XMLLib.Factory interface should
-     * be considered experimental.
-     *
-     * The default implementation uses the implementation provided by this
-     * <code>Context</code>'s {@link ContextFactory}.
-     *
-     * @return An XMLLib.Factory. Should not return <code>null</code> if
-     *         {@link #FEATURE_E4X} is enabled. See {@link #hasFeature}.
-     */
-    public XMLLib.Factory getE4xImplementationFactory() {
-        return getFactory().getE4xImplementationFactory();
-    }
-
-    /**
      * Get threshold of executed instructions counter that triggers call to
      * <code>observeInstructionCount()</code>.
      * When the threshold is zero, instruction counting is disabled,
@@ -2733,7 +2672,6 @@ public class Context
     Scriptable topCallScope;
     boolean isContinuationsTopCall;
     NativeCall currentActivationCall;
-    XMLLib cachedXMLLib;
     BaseFunction typeErrorThrower;
 
     // for Objects, Arrays to tag themselves as being printed out,

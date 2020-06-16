@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import static org.mozilla.javascript.UniqueTag.DOUBLE_MARK;
@@ -1893,29 +1887,6 @@ switch (op) {
                                                    cx, frame.scope);
         continue Loop;
     }
-    case Token.REF_MEMBER: {
-        //indexReg: flags
-        stackTop = doRefMember(cx, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
-    case Token.REF_NS_MEMBER: {
-        //indexReg: flags
-        stackTop = doRefNsMember(cx, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
-    case Token.REF_NAME: {
-        //indexReg: flags
-        Object name = stack[stackTop];
-        if (name == DBL_MRK) name = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.nameRef(name, cx, frame.scope,
-                                                indexReg);
-        continue Loop;
-    }
-    case Token.REF_NS_NAME: {
-        //indexReg: flags
-        stackTop = doRefNsName(cx, frame, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
     case Icode_SCOPE_LOAD :
         indexReg += frame.localShift;
         frame.scope = (Scriptable)stack[indexReg];
@@ -1998,13 +1969,6 @@ switch (op) {
         stack[stackTop] = val;
         continue Loop;
     }
-    case Icode_ENTERDQ : {
-        Object lhs = stack[stackTop];
-        if (lhs == DBL_MRK) lhs = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        frame.scope = ScriptRuntime.enterDotQuery(lhs, frame.scope);
-        continue Loop;
-    }
     case Icode_LEAVEDQ : {
         boolean valBln = stack_boolean(frame, stackTop);
         Object x = ScriptRuntime.updateDotQuery(valBln, frame.scope);
@@ -2017,26 +1981,6 @@ switch (op) {
         // reset stack and PC to code after ENTERDQ
         --stackTop;
         break jumplessRun;
-    }
-    case Token.DEFAULTNAMESPACE : {
-        Object value = stack[stackTop];
-        if (value == DBL_MRK) value = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.setDefaultNamespace(value, cx);
-        continue Loop;
-    }
-    case Token.ESCXMLATTR : {
-        Object value = stack[stackTop];
-        if (value != DBL_MRK) {
-            stack[stackTop] = ScriptRuntime.escapeAttributeValue(value, cx);
-        }
-        continue Loop;
-    }
-    case Token.ESCXMLTEXT : {
-        Object value = stack[stackTop];
-        if (value != DBL_MRK) {
-            stack[stackTop] = ScriptRuntime.escapeTextValue(value, cx);
-        }
-        continue Loop;
     }
     case Icode_DEBUGGER:
         if (frame.debuggerFrame != null) {
@@ -2615,43 +2559,6 @@ switch (op) {
                                                          cx, incrDecrMask);
         }
         ++frame.pc;
-        return stackTop;
-    }
-
-    private static int doRefMember(Context cx, Object[] stack, double[] sDbl,
-                                   int stackTop, int flags) {
-        Object elem = stack[stackTop];
-        if (elem == DOUBLE_MARK) elem = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object obj = stack[stackTop];
-        if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.memberRef(obj, elem, cx, flags);
-        return stackTop;
-    }
-
-    private static int doRefNsMember(Context cx, Object[] stack, double[] sDbl,
-                                     int stackTop, int flags) {
-        Object elem = stack[stackTop];
-        if (elem == DOUBLE_MARK) elem = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object ns = stack[stackTop];
-        if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object obj = stack[stackTop];
-        if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.memberRef(obj, ns, elem, cx, flags);
-        return stackTop;
-    }
-
-    private static int doRefNsName(Context cx, CallFrame frame,
-                                   Object[] stack, double[] sDbl,
-                                   int stackTop, int flags) {
-        Object name = stack[stackTop];
-        if (name == DOUBLE_MARK) name = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object ns = stack[stackTop];
-        if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.nameRef(ns, name, cx, frame.scope, flags);
         return stackTop;
     }
 

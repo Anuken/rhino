@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import java.io.Serializable;
@@ -15,8 +9,6 @@ import java.util.ResourceBundle;
 import org.mozilla.javascript.ast.FunctionNode;
 import org.mozilla.javascript.v8dtoa.DoubleConversion;
 import org.mozilla.javascript.v8dtoa.FastDtoa;
-import org.mozilla.javascript.xml.XMLLib;
-import org.mozilla.javascript.xml.XMLObject;
 
 /**
  * This is the class that implements the runtime.
@@ -198,22 +190,11 @@ public class ScriptRuntime {
         NativeArrayIterator.init(scope, sealed);
         NativeStringIterator.init(scope, sealed);
 
-        boolean withXml = cx.hasFeature(Context.FEATURE_E4X) &&
-                          cx.getE4xImplementationFactory() != null;
-
         // define lazy-loaded properties using their class name
         new LazilyLoadedCtor(scope, "RegExp",
                 "org.mozilla.javascript.regexp.NativeRegExp", sealed, true);
         new LazilyLoadedCtor(scope, "Continuation",
                 "org.mozilla.javascript.NativeContinuation", sealed, true);
-
-        if (withXml) {
-            String xmlImpl = cx.getE4xImplementationFactory().getImplementationClassName();
-            new LazilyLoadedCtor(scope, "XML", xmlImpl, sealed, true);
-            new LazilyLoadedCtor(scope, "XMLList", xmlImpl, sealed, true);
-            new LazilyLoadedCtor(scope, "Namespace", xmlImpl, sealed, true);
-            new LazilyLoadedCtor(scope, "QName", xmlImpl, sealed, true);
-        }
 
         if (((cx.getLanguageVersion() >= Context.VERSION_1_8) &&
              cx.hasFeature(Context.FEATURE_V8_EXTENSIONS)) ||
@@ -1277,29 +1258,6 @@ public class ScriptRuntime {
     // properly and separates namespace form Scriptable.get etc.
     private static final String DEFAULT_NS_TAG = "__default_namespace__";
 
-    public static Object setDefaultNamespace(Object namespace, Context cx)
-    {
-        Scriptable scope = cx.currentActivationCall;
-        if (scope == null) {
-            scope = getTopCallScope(cx);
-        }
-
-        XMLLib xmlLib = currentXMLLib(cx);
-        Object ns = xmlLib.toDefaultXmlNamespace(cx, namespace);
-
-        // XXX : this should be in separated namesapce from Scriptable.get/put
-        if (!scope.has(DEFAULT_NS_TAG, scope)) {
-            // XXX: this is racy of cause
-            ScriptableObject.defineProperty(scope, DEFAULT_NS_TAG, ns,
-                                            ScriptableObject.PERMANENT
-                                            | ScriptableObject.DONTENUM);
-        } else {
-            scope.put(DEFAULT_NS_TAG, scope, ns);
-        }
-
-        return Undefined.instance;
-    }
-
     public static Object searchDefaultNamespace(Context cx)
     {
         Scriptable scope = cx.currentActivationCall;
@@ -1543,9 +1501,7 @@ public class ScriptRuntime {
 
         Object result;
 
-        if (obj instanceof XMLObject) {
-            result = ((XMLObject)obj).get(cx, elem);
-        } else if (isSymbol(elem)) {
+        if (isSymbol(elem)) {
             result = ScriptableObject.getProperty(obj, (Symbol)elem);
         } else {
             StringIdOrIndex s = toStringIdOrIndex(cx, elem);
@@ -1703,9 +1659,7 @@ public class ScriptRuntime {
     public static Object setObjectElem(Scriptable obj, Object elem,
                                        Object value, Context cx)
     {
-        if (obj instanceof XMLObject) {
-            ((XMLObject)obj).put(cx, elem, value);
-        } else if (isSymbol(elem)) {
+        if (isSymbol(elem)) {
             ScriptableObject.putProperty(obj, (Symbol)elem, value);
         } else {
             StringIdOrIndex s = toStringIdOrIndex(cx, elem);
@@ -1960,28 +1914,15 @@ public class ScriptRuntime {
         Object result;
         Scriptable thisObj = scope; // It is used only if asFunctionCall==true.
 
-        XMLObject firstXMLObject = null;
         for (;;) {
             if (scope instanceof NativeWith) {
                 Scriptable withObj = scope.getPrototype();
-                if (withObj instanceof XMLObject) {
-                    XMLObject xmlObj = (XMLObject)withObj;
-                    if (xmlObj.has(name, xmlObj)) {
-                        // function this should be the target object of with
-                        thisObj = xmlObj;
-                        result = xmlObj.get(name, xmlObj);
-                        break;
-                    }
-                    if (firstXMLObject == null) {
-                        firstXMLObject = xmlObj;
-                    }
-                } else {
-                    result = ScriptableObject.getProperty(withObj, name);
-                    if (result != Scriptable.NOT_FOUND) {
-                        // function this should be the target object of with
-                        thisObj = withObj;
-                        break;
-                    }
+
+                result = ScriptableObject.getProperty(withObj, name);
+                if (result != Scriptable.NOT_FOUND) {
+                    // function this should be the target object of with
+                    thisObj = withObj;
+                    break;
                 }
             } else if (scope instanceof NativeCall) {
                 // NativeCall does not prototype chain and Scriptable.get
@@ -2010,14 +1951,7 @@ public class ScriptRuntime {
             if (parentScope == null) {
                 result = topScopeName(cx, scope, name);
                 if (result == Scriptable.NOT_FOUND) {
-                    if (firstXMLObject == null || asFunctionCall) {
-                        throw notFoundError(scope, name);
-                    }
-                    // The name was not found, but we did find an XML
-                    // object in the scope chain and we are looking for name,
-                    // not function. The result should be an empty XMLList
-                    // in name context.
-                    result = firstXMLObject.get(name, firstXMLObject);
+                    throw notFoundError(scope, name);
                 }
                 // For top scope thisObj for functions is always scope itself.
                 thisObj = scope;
@@ -2066,18 +2000,8 @@ public class ScriptRuntime {
             // Check for possibly nested "with" scopes first
             while (scope instanceof NativeWith) {
                 Scriptable withObj = scope.getPrototype();
-                if (withObj instanceof XMLObject) {
-                    XMLObject xmlObject = (XMLObject)withObj;
-                    if (xmlObject.has(cx, id)) {
-                        return xmlObject;
-                    }
-                    if (firstXMLObject == null) {
-                        firstXMLObject = xmlObject;
-                    }
-                } else {
-                    if (ScriptableObject.hasProperty(withObj, id)) {
-                        return withObj;
-                    }
+                if (ScriptableObject.hasProperty(withObj, id)) {
+                    return withObj;
                 }
                 scope = parent;
                 parent = parent.getParentScope();
@@ -2157,11 +2081,7 @@ public class ScriptRuntime {
     public static Object setConst(Scriptable bound, Object value,
                                  Context cx, String id)
     {
-        if (bound instanceof XMLObject) {
-            bound.put(id, bound, value);
-        } else {
-            ScriptableObject.putConstProperty(bound, id, value);
-        }
+        ScriptableObject.putConstProperty(bound, id, value);
         return value;
     }
 
@@ -2938,18 +2858,6 @@ public class ScriptRuntime {
             return wrapNumber(((Number)val1).doubleValue() +
                               ((Number)val2).doubleValue());
         }
-        if (val1 instanceof XMLObject) {
-            Object test = ((XMLObject)val1).addValues(cx, true, val2);
-            if (test != Scriptable.NOT_FOUND) {
-                return test;
-            }
-        }
-        if (val2 instanceof XMLObject) {
-            Object test = ((XMLObject)val2).addValues(cx, false, val1);
-            if (test != Scriptable.NOT_FOUND) {
-                return test;
-            }
-        }
         if ((val1 instanceof Symbol) || (val2 instanceof Symbol)) {
             throw typeError0("msg.not.a.number");
         }
@@ -2998,10 +2906,6 @@ public class ScriptRuntime {
                 }
                 target = scopeChain;
                 do {
-                    if (target instanceof NativeWith &&
-                            target.getPrototype() instanceof XMLObject) {
-                        break;
-                    }
                     value = target.get(id, scopeChain);
                     if (value != Scriptable.NOT_FOUND) {
                         break search;
@@ -3581,7 +3485,6 @@ public class ScriptRuntime {
         } finally {
             cx.topCallScope = null;
             // Cleanup cached references
-            cx.cachedXMLLib = null;
             cx.isTopLevelStrict = previousTopLevelStrict;
 
             if (cx.currentActivationCall != null) {
@@ -3925,10 +3828,6 @@ public class ScriptRuntime {
         if (sobj == null) {
             throw typeError1("msg.undef.with", toString(obj));
         }
-        if (sobj instanceof XMLObject) {
-            XMLObject xmlObject = (XMLObject)sobj;
-            return xmlObject.enterWith(scope);
-        }
         return new NativeWith(scope, sobj);
     }
 
@@ -3936,15 +3835,6 @@ public class ScriptRuntime {
     {
         NativeWith nw = (NativeWith)scope;
         return nw.getParentScope();
-    }
-
-    public static Scriptable enterDotQuery(Object value, Scriptable scope)
-    {
-        if (!(value instanceof XMLObject)) {
-            throw notXmlError(value);
-        }
-        XMLObject object = (XMLObject)value;
-        return object.enterDotQuery(scope);
     }
 
     public static Object updateDotQuery(boolean value, Scriptable scope)
@@ -4427,81 +4317,6 @@ public class ScriptRuntime {
     public static Scriptable wrapRegExp(Context cx, Scriptable scope,
                                         Object compiled) {
         return cx.getRegExpProxy().wrapRegExp(cx, scope, compiled);
-    }
-
-    private static XMLLib currentXMLLib(Context cx)
-    {
-        // Scripts should be running to access this
-        if (cx.topCallScope == null)
-            throw new IllegalStateException();
-
-        XMLLib xmlLib = cx.cachedXMLLib;
-        if (xmlLib == null) {
-            xmlLib = XMLLib.extractFromScope(cx.topCallScope);
-            if (xmlLib == null)
-                throw new IllegalStateException();
-            cx.cachedXMLLib = xmlLib;
-        }
-
-        return xmlLib;
-    }
-
-    /**
-     * Escapes the reserved characters in a value of an attribute
-     *
-     * @param value Unescaped text
-     * @return The escaped text
-     */
-    public static String escapeAttributeValue(Object value, Context cx)
-    {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.escapeAttributeValue(value);
-    }
-
-    /**
-     * Escapes the reserved characters in a value of a text node
-     *
-     * @param value Unescaped text
-     * @return The escaped text
-     */
-    public static String escapeTextValue(Object value, Context cx)
-    {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.escapeTextValue(value);
-    }
-
-    public static Ref memberRef(Object obj, Object elem,
-                                Context cx, int memberTypeFlags)
-    {
-        if (!(obj instanceof XMLObject)) {
-            throw notXmlError(obj);
-        }
-        XMLObject xmlObject = (XMLObject)obj;
-        return xmlObject.memberRef(cx, elem, memberTypeFlags);
-    }
-
-    public static Ref memberRef(Object obj, Object namespace, Object elem,
-                                Context cx, int memberTypeFlags)
-    {
-        if (!(obj instanceof XMLObject)) {
-            throw notXmlError(obj);
-        }
-        XMLObject xmlObject = (XMLObject)obj;
-        return xmlObject.memberRef(cx, namespace, elem, memberTypeFlags);
-    }
-
-    public static Ref nameRef(Object name, Context cx,
-                              Scriptable scope, int memberTypeFlags)
-    {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.nameRef(cx, name, scope, memberTypeFlags);
-    }
-
-    public static Ref nameRef(Object namespace, Object name, Context cx,
-                              Scriptable scope, int memberTypeFlags)
-    {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.nameRef(cx, namespace, name, scope, memberTypeFlags);
     }
 
     public static void storeUint32Result(Context cx, long value)

@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript;
 
 import org.mozilla.javascript.ast.AstNode;
@@ -933,44 +927,6 @@ class CodeGenerator extends Icode {
           case Token.REF_SPECIAL:
             visitExpression(child, 0);
             addStringOp(type, (String)node.getProp(Node.NAME_PROP));
-            break;
-
-          case Token.REF_MEMBER:
-          case Token.REF_NS_MEMBER:
-          case Token.REF_NAME:
-          case Token.REF_NS_NAME:
-            {
-                int memberTypeFlags = node.getIntProp(Node.MEMBER_TYPE_PROP, 0);
-                // generate possible target, possible namespace and member
-                int childCount = 0;
-                do {
-                    visitExpression(child, 0);
-                    ++childCount;
-                    child = child.getNext();
-                } while (child != null);
-                addIndexOp(type, memberTypeFlags);
-                stackChange(1 - childCount);
-            }
-            break;
-
-          case Token.DOTQUERY:
-            {
-                int queryPC;
-                updateLineNumber(node);
-                visitExpression(child, 0);
-                addIcode(Icode_ENTERDQ);
-                stackChange(-1);
-                queryPC = iCodeTop;
-                visitExpression(child.getNext(), 0);
-                addBackwardGoto(Icode_LEAVEDQ, queryPC);
-            }
-            break;
-
-          case Token.DEFAULTNAMESPACE :
-          case Token.ESCXMLATTR :
-          case Token.ESCXMLTEXT :
-            visitExpression(child, 0);
-            addToken(type);
             break;
 
           case Token.YIELD:

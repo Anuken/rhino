@@ -1,9 +1,3 @@
-/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 package org.mozilla.javascript.optimizer;
 
 import static org.mozilla.classfile.ClassFileWriter.ACC_FINAL;
@@ -2799,37 +2793,6 @@ class BodyCodegen
                     cfw.addPush(memberTypeFlags);
                     addScriptRuntimeInvoke(methodName, signature);
                 }
-                break;
-
-              case Token.DOTQUERY:
-                visitDotQuery(node, child);
-                break;
-
-              case Token.ESCXMLATTR:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke("escapeAttributeValue",
-                                       "(Ljava/lang/Object;"
-                                       +"Lorg/mozilla/javascript/Context;"
-                                       +")Ljava/lang/String;");
-                break;
-
-              case Token.ESCXMLTEXT:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke("escapeTextValue",
-                                       "(Ljava/lang/Object;"
-                                       +"Lorg/mozilla/javascript/Context;"
-                                       +")Ljava/lang/String;");
-                break;
-
-              case Token.DEFAULTNAMESPACE:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke("setDefaultNamespace",
-                                       "(Ljava/lang/Object;"
-                                       +"Lorg/mozilla/javascript/Context;"
-                                       +")Ljava/lang/Object;");
                 break;
 
               case Token.YIELD:
