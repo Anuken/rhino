@@ -2,11 +2,10 @@
 
 package rhino;
 
-import rhino.classfile.ClassFileWriter.*;
 import rhino.ast.*;
+import rhino.classfile.ClassFileWriter.*;
 import rhino.debug.*;
 
-import java.beans.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
@@ -605,12 +604,6 @@ public class Context{
     public void setLanguageVersion(int version){
         if(sealed) onSealedMutation();
         checkLanguageVersion(version);
-        Object listeners = propertyListeners;
-        if(listeners != null && version != this.version){
-            firePropertyChangeImpl(listeners, languageVersionProperty,
-            this.version,
-            version);
-        }
         this.version = version;
     }
 
@@ -714,11 +707,6 @@ public class Context{
         if(reporter == old){
             return old;
         }
-        Object listeners = propertyListeners;
-        if(listeners != null){
-            firePropertyChangeImpl(listeners, errorReporterProperty,
-            old, reporter);
-        }
         this.errorReporter = reporter;
         return old;
     }
@@ -744,62 +732,6 @@ public class Context{
         Locale result = locale;
         locale = loc;
         return result;
-    }
-
-    /**
-     * Register an object to receive notifications when a bound property
-     * has changed
-     * @param l the listener
-     * @see java.beans.PropertyChangeEvent
-     * @see #removePropertyChangeListener(java.beans.PropertyChangeListener)
-     */
-    public final void addPropertyChangeListener(PropertyChangeListener l){
-        if(sealed) onSealedMutation();
-        propertyListeners = Kit.addListener(propertyListeners, l);
-    }
-
-    /**
-     * Remove an object from the list of objects registered to receive
-     * notification of changes to a bounded property
-     * @param l the listener
-     * @see java.beans.PropertyChangeEvent
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     */
-    public final void removePropertyChangeListener(PropertyChangeListener l){
-        if(sealed) onSealedMutation();
-        propertyListeners = Kit.removeListener(propertyListeners, l);
-    }
-
-    /**
-     * Notify any registered listeners that a bounded property has changed
-     * @param property the bound property
-     * @param oldValue the old value
-     * @param newValue the new value
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     * @see #removePropertyChangeListener(java.beans.PropertyChangeListener)
-     * @see java.beans.PropertyChangeListener
-     * @see java.beans.PropertyChangeEvent
-     */
-    final void firePropertyChange(String property, Object oldValue,
-                                  Object newValue){
-        Object listeners = propertyListeners;
-        if(listeners != null){
-            firePropertyChangeImpl(listeners, property, oldValue, newValue);
-        }
-    }
-
-    private void firePropertyChangeImpl(Object listeners, String property,
-                                        Object oldValue, Object newValue){
-        for(int i = 0; ; ++i){
-            Object l = Kit.getListener(listeners, i);
-            if(l == null)
-                break;
-            if(l instanceof PropertyChangeListener){
-                PropertyChangeListener pcl = (PropertyChangeListener)l;
-                pcl.propertyChange(new PropertyChangeEvent(
-                this, property, oldValue, newValue));
-            }
-        }
     }
 
     /**
@@ -2507,7 +2439,6 @@ public class Context{
     Debugger debugger;
     private Object debuggerData;
     private int enterCount;
-    private Object propertyListeners;
     private Map<Object, Object> threadLocalMap;
     private ClassLoader applicationClassLoader;
 

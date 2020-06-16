@@ -24,8 +24,8 @@ class JavaMembers{
                 throw Context.reportRuntimeError1("msg.access.prohibited",
                 cl.getName());
             }
-            this.members = new HashMap<String, Object>();
-            this.staticMembers = new HashMap<String, Object>();
+            this.members = new HashMap<>();
+            this.staticMembers = new HashMap<>();
             this.cl = cl;
             boolean includePrivate = cx.hasFeature(
             Context.FEATURE_ENHANCED_JAVA_ACCESS);
@@ -457,16 +457,14 @@ class JavaMembers{
                 boolean isStatic = Modifier.isStatic(mods);
                 Map<String, Object> ht = isStatic ? staticMembers : members;
                 Object member = ht.get(name);
-                if(member == null){
+                if(member == null || (member instanceof NativeJavaMethod && !Modifier.isPrivate(mods))){ //change: fields will always mask methods
                     ht.put(name, field);
                 }else if(member instanceof NativeJavaMethod){
                     NativeJavaMethod method = (NativeJavaMethod)member;
-                    FieldAndMethods fam
-                    = new FieldAndMethods(scope, method.methods, field);
-                    Map<String, FieldAndMethods> fmht = isStatic ? staticFieldAndMethods
-                    : fieldAndMethods;
+                    FieldAndMethods fam = new FieldAndMethods(scope, method.methods, field);
+                    Map<String, FieldAndMethods> fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
                     if(fmht == null){
-                        fmht = new HashMap<String, FieldAndMethods>();
+                        fmht = new HashMap<>();
                         if(isStatic){
                             staticFieldAndMethods = fmht;
                         }else{
@@ -483,8 +481,7 @@ class JavaMembers{
                     // reflected.
                     // For now, the first field found wins, unless another field
                     // explicitly shadows it.
-                    if(oldField.getDeclaringClass().
-                    isAssignableFrom(field.getDeclaringClass())){
+                    if(oldField.getDeclaringClass().isAssignableFrom(field.getDeclaringClass())){
                         ht.put(name, field);
                     }
                 }else{
@@ -585,8 +582,7 @@ class JavaMembers{
                         }
                     }
                     // Make the property.
-                    BeanProperty bp = new BeanProperty(getter, setter,
-                    setters);
+                    BeanProperty bp = new BeanProperty(getter, setter, setters);
                     toAdd.put(beanPropertyName, bp);
                 }
             }
@@ -831,6 +827,7 @@ class BeanProperty{
 }
 
 class FieldAndMethods extends NativeJavaMethod{
+
     FieldAndMethods(Scriptable scope, MemberBox[] methods, Field field){
         super(methods);
         this.field = field;
@@ -840,8 +837,7 @@ class FieldAndMethods extends NativeJavaMethod{
 
     @Override
     public Object getDefaultValue(Class<?> hint){
-        if(hint == ScriptRuntime.FunctionClass)
-            return this;
+        if(hint == ScriptRuntime.FunctionClass) return this;
         Object rval;
         Class<?> type;
         try{

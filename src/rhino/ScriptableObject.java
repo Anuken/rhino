@@ -24,10 +24,7 @@ import java.util.*;
  * @see Scriptable
  */
 
-public abstract class ScriptableObject implements Scriptable,
-SymbolScriptable,
-DebuggableObject,
-ConstProperties{
+public abstract class ScriptableObject implements Scriptable, SymbolScriptable, DebuggableObject, ConstProperties{
 
     /**
      * The empty property attribute.
