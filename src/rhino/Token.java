@@ -108,7 +108,6 @@ public class Token{
     YIELD = 73,  // JS 1.7 yield pseudo keyword
     STRICT_SETNAME = 74,
 
-
     REF_MEMBER = 78, // Reference for x.@y, x..y etc.
     REF_NS_MEMBER = 79, // Reference for x.ns::y, x..ns::y etc.
     REF_NAME = 80, // Reference for @y, @[y] etc.
