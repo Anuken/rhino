@@ -1,0 +1,92 @@
+package rhino.ast;
+
+import rhino.*;
+
+/**
+ * New expression. Node type is {@link Token#NEW}.
+ *
+ * <pre><i>NewExpression</i> :
+ *      MemberExpression
+ *      <b>new</b> NewExpression</pre>
+ * <p>
+ * This node is a subtype of {@link FunctionCall}, mostly for internal code
+ * sharing.  Structurally a {@code NewExpression} node is very similar to a
+ * {@code FunctionCall}, so it made a certain amount of sense.
+ */
+public class NewExpression extends FunctionCall{
+
+    private ObjectLiteral initializer;
+
+    {
+        type = Token.NEW;
+    }
+
+    public NewExpression(){
+    }
+
+    public NewExpression(int pos){
+        super(pos);
+    }
+
+    public NewExpression(int pos, int len){
+        super(pos, len);
+    }
+
+    /**
+     * Returns initializer object, if any.
+     * @return extra initializer object-literal expression, or {@code null} if
+     * not specified.
+     */
+    public ObjectLiteral getInitializer(){
+        return initializer;
+    }
+
+    /**
+     * Sets initializer object.  Rhino supports an experimental syntax
+     * of the form {@code new expr [ ( arglist ) ] [initializer]},
+     * in which initializer is an object literal that is used to set
+     * additional properties on the newly-created {@code expr} object.
+     * @param initializer extra initializer object.
+     * Can be {@code null}.
+     */
+    public void setInitializer(ObjectLiteral initializer){
+        this.initializer = initializer;
+        if(initializer != null)
+            initializer.setParent(this);
+    }
+
+    @Override
+    public String toSource(int depth){
+        StringBuilder sb = new StringBuilder();
+        sb.append(makeIndent(depth));
+        sb.append("new ");
+        sb.append(target.toSource(0));
+        sb.append("(");
+        if(arguments != null){
+            printList(arguments, sb);
+        }
+        sb.append(")");
+        if(initializer != null){
+            sb.append(" ");
+            sb.append(initializer.toSource(0));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Visits this node, the target, and each argument.  If there is
+     * a trailing initializer node, visits that last.
+     */
+    @Override
+    public void visit(NodeVisitor v){
+        if(v.visit(this)){
+            target.visit(v);
+            for(AstNode arg : getArguments()){
+                arg.visit(v);
+            }
+            if(initializer != null){
+                initializer.visit(v);
+            }
+        }
+    }
+}

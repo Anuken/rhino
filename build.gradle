@@ -1,6 +1,9 @@
 plugins{
     id 'java'
+    id 'maven'
 }
+
+group = 'com.github.Anuken'
 
 tasks.withType(JavaCompile){
     sourceCompatibility = 1.8
@@ -8,15 +11,7 @@ tasks.withType(JavaCompile){
     options.encoding = "UTF-8"
 }
 
-repositories{
-    mavenCentral()
-}
-
 sourceSets.main.java.srcDirs = ["src"]
-
-jar{
-
-}
 
 task sourceJar(type: Jar){
     from sourceSets.main.allJava
