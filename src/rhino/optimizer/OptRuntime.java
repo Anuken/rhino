@@ -272,7 +272,7 @@ public final class OptRuntime extends ScriptRuntime{
         public Scriptable thisObj;
         static final String thisObj_NAME = "thisObj";
         static final String thisObj_TYPE =
-        "Lorg/mozilla/javascript/Scriptable;";
+        "Lrhino/Scriptable;";
 
         Object[] stackState;
         Object[] localsState;

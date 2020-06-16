@@ -245,7 +245,7 @@ public class Codegen implements Evaluator{
         }
 
         if(hasScript){
-            cfw.addInterface("org/mozilla/javascript/Script");
+            cfw.addInterface("rhino/Script");
             generateScriptCtor(cfw);
             generateMain(cfw);
             generateExecute(cfw);
@@ -308,11 +308,11 @@ public class Codegen implements Evaluator{
         cfw.addALoad(1); // cx
         cfw.addALoad(2); // scope
         cfw.addInvoke(ByteCode.INVOKEVIRTUAL,
-        "org/mozilla/javascript/BaseFunction",
+        "rhino/BaseFunction",
         "createObject",
-        "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + ")Lrhino/Scriptable;");
         cfw.addAStore(firstLocal);
 
         cfw.addALoad(0);
@@ -330,10 +330,10 @@ public class Codegen implements Evaluator{
         getBodyMethodSignature(ofn.fnode));
         int exitLabel = cfw.acquireLabel();
         cfw.add(ByteCode.DUP); // make a copy of direct call result
-        cfw.add(ByteCode.INSTANCEOF, "org/mozilla/javascript/Scriptable");
+        cfw.add(ByteCode.INSTANCEOF, "rhino/Scriptable");
         cfw.add(ByteCode.IFEQ, exitLabel);
         // cast direct call result
-        cfw.add(ByteCode.CHECKCAST, "org/mozilla/javascript/Scriptable");
+        cfw.add(ByteCode.CHECKCAST, "rhino/Scriptable");
         cfw.add(ByteCode.ARETURN);
         cfw.markLabel(exitLabel);
 
@@ -373,8 +373,8 @@ public class Codegen implements Evaluator{
             return;
 
         cfw.startMethod("resumeGenerator",
-        "(Lorg/mozilla/javascript/Context;" +
-        "Lorg/mozilla/javascript/Scriptable;" +
+        "(Lrhino/Context;" +
+        "Lrhino/Scriptable;" +
         "ILjava/lang/Object;" +
         "Ljava/lang/Object;)Ljava/lang/Object;",
         (short)(ACC_PUBLIC | ACC_FINAL));
@@ -400,8 +400,8 @@ public class Codegen implements Evaluator{
             if(isGenerator(n)){
                 String type = "(" +
                 mainClassSignature +
-                "Lorg/mozilla/javascript/Context;" +
-                "Lorg/mozilla/javascript/Scriptable;" +
+                "Lrhino/Context;" +
+                "Lrhino/Scriptable;" +
                 "Ljava/lang/Object;" +
                 "Ljava/lang/Object;I)Ljava/lang/Object;";
                 cfw.addInvoke(ByteCode.INVOKESTATIC,
@@ -425,9 +425,9 @@ public class Codegen implements Evaluator{
 
     private void generateCallMethod(ClassFileWriter cfw, boolean isStrictMode){
         cfw.startMethod("call",
-        "(Lorg/mozilla/javascript/Context;" +
-        "Lorg/mozilla/javascript/Scriptable;" +
-        "Lorg/mozilla/javascript/Scriptable;" +
+        "(Lrhino/Context;" +
+        "Lrhino/Scriptable;" +
+        "Lrhino/Scriptable;" +
         "[Ljava/lang/Object;)Ljava/lang/Object;",
         (short)(ACC_PUBLIC | ACC_FINAL));
 
@@ -439,9 +439,9 @@ public class Codegen implements Evaluator{
         int nonTopCallLabel = cfw.acquireLabel();
         cfw.addALoad(1); //cx
         cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "org/mozilla/javascript/ScriptRuntime",
+        "rhino/ScriptRuntime",
         "hasTopCall",
-        "(Lorg/mozilla/javascript/Context;"
+        "(Lrhino/Context;"
         + ")Z");
         cfw.add(ByteCode.IFNE, nonTopCallLabel);
         cfw.addALoad(0);
@@ -451,12 +451,12 @@ public class Codegen implements Evaluator{
         cfw.addALoad(4);
         cfw.addPush(isStrictMode);
         cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "org/mozilla/javascript/ScriptRuntime",
+        "rhino/ScriptRuntime",
         "doTopCall",
-        "(Lorg/mozilla/javascript/Callable;"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Callable;"
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
         + "Z"
         + ")Ljava/lang/Object;");
@@ -549,7 +549,7 @@ public class Codegen implements Evaluator{
         cfw.addInvoke(ByteCode.INVOKESTATIC,
         mainMethodClass,
         "main",
-        "(Lorg/mozilla/javascript/Script;[Ljava/lang/String;)V");
+        "(Lrhino/Script;[Ljava/lang/String;)V");
         cfw.add(ByteCode.RETURN);
         // 1 = String[] args
         cfw.stopMethod((short)1);
@@ -557,8 +557,8 @@ public class Codegen implements Evaluator{
 
     private void generateExecute(ClassFileWriter cfw){
         cfw.startMethod("exec",
-        "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + ")Ljava/lang/Object;",
         (short)(ACC_PUBLIC | ACC_FINAL));
 
@@ -573,9 +573,9 @@ public class Codegen implements Evaluator{
         cfw.addInvoke(ByteCode.INVOKEVIRTUAL,
         cfw.getClassName(),
         "call",
-        "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
         + ")Ljava/lang/Object;");
 
@@ -667,10 +667,10 @@ public class Codegen implements Evaluator{
         cfw.addALoad(CONTEXT_ARG);
         cfw.addALoad(SCOPE_ARG);
         cfw.addInvoke(ByteCode.INVOKEVIRTUAL,
-        "org/mozilla/javascript/NativeFunction",
+        "rhino/NativeFunction",
         "initScriptFunction",
-        "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + ")V");
 
         // precompile all regexp literals
@@ -943,10 +943,10 @@ public class Codegen implements Evaluator{
         // get regexp proxy and store it in local slot 1
         cfw.addALoad(0); // context
         cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "org/mozilla/javascript/ScriptRuntime",
+        "rhino/ScriptRuntime",
         "checkRegExpProxy",
-        "(Lorg/mozilla/javascript/Context;"
-        + ")Lorg/mozilla/javascript/RegExpProxy;");
+        "(Lrhino/Context;"
+        + ")Lrhino/RegExpProxy;");
         cfw.addAStore(1); // proxy
 
         // We could apply double-checked locking here but concurrency
@@ -970,9 +970,9 @@ public class Codegen implements Evaluator{
                     cfw.addPush(reFlags);
                 }
                 cfw.addInvoke(ByteCode.INVOKEINTERFACE,
-                "org/mozilla/javascript/RegExpProxy",
+                "rhino/RegExpProxy",
                 "compileRegExp",
-                "(Lorg/mozilla/javascript/Context;"
+                "(Lrhino/Context;"
                 + "Ljava/lang/String;Ljava/lang/String;"
                 + ")Ljava/lang/Object;");
                 cfw.add(ByteCode.PUTSTATIC, mainClassName,
@@ -1041,7 +1041,7 @@ public class Codegen implements Evaluator{
 
         }else if(Double.isNaN(num)){
             cfw.add(ByteCode.GETSTATIC,
-            "org/mozilla/javascript/ScriptRuntime",
+            "rhino/ScriptRuntime",
             "NaNobj", "Ljava/lang/Double;");
 
         }else if(itsConstantListSize >= 2000){
@@ -1094,7 +1094,7 @@ public class Codegen implements Evaluator{
     }
 
     static void pushUndefined(ClassFileWriter cfw){
-        cfw.add(ByteCode.GETSTATIC, "org/mozilla/javascript/Undefined",
+        cfw.add(ByteCode.GETSTATIC, "rhino/Undefined",
         "instance", "Ljava/lang/Object;");
     }
 
@@ -1132,9 +1132,9 @@ public class Codegen implements Evaluator{
         StringBuilder sb = new StringBuilder();
         sb.append('(');
         sb.append(mainClassSignature);
-        sb.append("Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;");
+        sb.append("Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;");
         if(n.getType() == Token.FUNCTION){
             OptFunctionNode ofn = OptFunctionNode.get(n);
             if(ofn.isTargetOfDirectCall()){
@@ -1174,16 +1174,16 @@ public class Codegen implements Evaluator{
 
     static final String REGEXP_INIT_METHOD_NAME = "_reInit";
     static final String REGEXP_INIT_METHOD_SIGNATURE
-    = "(Lorg/mozilla/javascript/Context;)V";
+    = "(Lrhino/Context;)V";
 
     static final String FUNCTION_INIT_SIGNATURE
-    = "(Lorg/mozilla/javascript/Context;"
-    + "Lorg/mozilla/javascript/Scriptable;"
+    = "(Lrhino/Context;"
+    + "Lrhino/Scriptable;"
     + ")V";
 
     static final String FUNCTION_CONSTRUCTOR_SIGNATURE
-    = "(Lorg/mozilla/javascript/Scriptable;"
-    + "Lorg/mozilla/javascript/Context;I)V";
+    = "(Lrhino/Scriptable;"
+    + "Lrhino/Context;I)V";
 
     private static final Object globalLock = new Object();
     private static int globalSerialClassCounter;
@@ -1216,8 +1216,8 @@ class BodyCodegen{
             // generator has a unique prefix followed by _gen
             String type = "(" +
             codegen.mainClassSignature +
-            "Lorg/mozilla/javascript/Context;" +
-            "Lorg/mozilla/javascript/Scriptable;" +
+            "Lrhino/Context;" +
+            "Lrhino/Scriptable;" +
             "Ljava/lang/Object;" +
             "Ljava/lang/Object;I)Ljava/lang/Object;";
             cfw.startMethod(codegen.getBodyMethodName(scriptOrFn) + "_gen",
@@ -1284,9 +1284,9 @@ class BodyCodegen{
             // of the function as our variable object.
             cfw.addALoad(funObjLocal);
             cfw.addInvoke(ByteCode.INVOKEINTERFACE,
-            "org/mozilla/javascript/Scriptable",
+            "rhino/Scriptable",
             "getParentScope",
-            "()Lorg/mozilla/javascript/Scriptable;");
+            "()Lrhino/Scriptable;");
             cfw.addAStore(variableObjectLocal);
         }
 
@@ -1296,11 +1296,11 @@ class BodyCodegen{
         cfw.addALoad(argsLocal);
         cfw.addPush(scriptOrFn.isInStrictMode());
         addScriptRuntimeInvoke("createFunctionActivation",
-        "(Lorg/mozilla/javascript/NativeFunction;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/NativeFunction;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
         + "Z"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        + ")Lrhino/Scriptable;");
         cfw.addAStore(variableObjectLocal);
 
         // create a function object
@@ -1321,10 +1321,10 @@ class BodyCodegen{
         cfw.addLoadConstant(maxLocals);
         cfw.addLoadConstant(maxStack);
         addOptRuntimeInvoke("createNativeGenerator",
-        "(Lorg/mozilla/javascript/NativeFunction;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;II"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        "(Lrhino/NativeFunction;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;II"
+        + ")Lrhino/Scriptable;");
 
         cfw.add(ByteCode.ARETURN);
         cfw.stopMethod((short)(localsMax + 1));
@@ -1418,9 +1418,9 @@ class BodyCodegen{
             // Use the enclosing scope of the function as our variable object.
             cfw.addALoad(funObjLocal);
             cfw.addInvoke(ByteCode.INVOKEINTERFACE,
-            "org/mozilla/javascript/Scriptable",
+            "rhino/Scriptable",
             "getParentScope",
-            "()Lorg/mozilla/javascript/Scriptable;");
+            "()Lrhino/Scriptable;");
             cfw.addAStore(variableObjectLocal);
         }
 
@@ -1574,17 +1574,17 @@ class BodyCodegen{
             String methodName = isArrow ? "createArrowFunctionActivation" : "createFunctionActivation";
             cfw.addPush(scriptOrFn.isInStrictMode());
             addScriptRuntimeInvoke(methodName,
-            "(Lorg/mozilla/javascript/NativeFunction;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/NativeFunction;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
             + "Z"
-            + ")Lorg/mozilla/javascript/Scriptable;");
+            + ")Lrhino/Scriptable;");
             cfw.addAStore(variableObjectLocal);
             cfw.addALoad(contextLocal);
             cfw.addALoad(variableObjectLocal);
             addScriptRuntimeInvoke("enterActivationFunction",
-            "(Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")V");
         }else{
             debugVariableName = "global";
@@ -1594,10 +1594,10 @@ class BodyCodegen{
             cfw.addALoad(variableObjectLocal);
             cfw.addPush(0); // false to indicate it is not eval script
             addScriptRuntimeInvoke("initScript",
-            "(Lorg/mozilla/javascript/NativeFunction;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/NativeFunction;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + "Z"
             + ")V");
         }
@@ -1611,7 +1611,7 @@ class BodyCodegen{
         // default is to generate debug info
         if(compilerEnv.isGenerateDebugInfo()){
             cfw.addVariableDescriptor(debugVariableName,
-            "Lorg/mozilla/javascript/Scriptable;",
+            "Lrhino/Scriptable;",
             cfw.getCurrentCodeOffset(), variableObjectLocal);
         }
 
@@ -1629,7 +1629,7 @@ class BodyCodegen{
             if(fnCurrent.itsContainsCalls0){
                 itsZeroArgArray = getNewWordLocal();
                 cfw.add(ByteCode.GETSTATIC,
-                "org/mozilla/javascript/ScriptRuntime",
+                "rhino/ScriptRuntime",
                 "emptyArgs", "[Ljava/lang/Object;");
                 cfw.addAStore(itsZeroArgArray);
             }
@@ -1789,7 +1789,7 @@ class BodyCodegen{
         if(fnCurrent == null || hasVarsInRegs) throw Kit.codeBug();
         cfw.addALoad(contextLocal);
         addScriptRuntimeInvoke("exitActivationFunction",
-        "(Lorg/mozilla/javascript/Context;)V");
+        "(Lrhino/Context;)V");
     }
 
     private void generateStatement(Node node){
@@ -1876,11 +1876,11 @@ class BodyCodegen{
                 addScriptRuntimeInvoke(
                 "newCatchScope",
                 "(Ljava/lang/Throwable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
-                + ")Lorg/mozilla/javascript/Scriptable;");
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
+                + ")Lrhino/Scriptable;");
                 cfw.addAStore(local);
             }
             break;
@@ -1936,9 +1936,9 @@ class BodyCodegen{
                 addScriptRuntimeInvoke(
                 "enterWith",
                 "(Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
-                + ")Lorg/mozilla/javascript/Scriptable;");
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
+                + ")Lrhino/Scriptable;");
                 cfw.addAStore(variableObjectLocal);
                 incReferenceWordLocal(variableObjectLocal);
                 break;
@@ -1947,8 +1947,8 @@ class BodyCodegen{
                 cfw.addALoad(variableObjectLocal);
                 addScriptRuntimeInvoke(
                 "leaveWith",
-                "(Lorg/mozilla/javascript/Scriptable;"
-                + ")Lorg/mozilla/javascript/Scriptable;");
+                "(Lrhino/Scriptable;"
+                + ")Lrhino/Scriptable;");
                 cfw.addAStore(variableObjectLocal);
                 decReferenceWordLocal(variableObjectLocal);
                 break;
@@ -1970,8 +1970,8 @@ class BodyCodegen{
                 cfw.addPush(enumType);
                 addScriptRuntimeInvoke("enumInit",
                 "(Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "I"
                 + ")Ljava/lang/Object;");
                 cfw.addAStore(getLocalBlockRegister(node));
@@ -2093,14 +2093,14 @@ class BodyCodegen{
 
     private void generateThrowJavaScriptException(){
         cfw.add(ByteCode.NEW,
-        "org/mozilla/javascript/JavaScriptException");
+        "rhino/JavaScriptException");
         cfw.add(ByteCode.DUP_X1);
         cfw.add(ByteCode.SWAP);
         cfw.addPush(scriptOrFn.getSourceName());
         cfw.addPush(itsLineNumber);
         cfw.addInvoke(
         ByteCode.INVOKESPECIAL,
-        "org/mozilla/javascript/JavaScriptException",
+        "rhino/JavaScriptException",
         "<init>",
         "(Ljava/lang/Object;Ljava/lang/String;I)V");
         cfw.add(ByteCode.ATHROW);
@@ -2139,8 +2139,8 @@ class BodyCodegen{
                 cfw.addPush(node.getString());
                 addScriptRuntimeInvoke(
                 "name",
-                "(Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/String;"
                 + ")Ljava/lang/Object;");
             }
@@ -2176,11 +2176,11 @@ class BodyCodegen{
                 cfw.addALoad(contextLocal);
                 addScriptRuntimeInvoke(
                 "callRef",
-                "(Lorg/mozilla/javascript/Callable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Callable;"
+                + "Lrhino/Scriptable;"
                 + "[Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + ")Lorg/mozilla/javascript/Ref;");
+                + "Lrhino/Context;"
+                + ")Lrhino/Ref;");
                 break;
 
             case Token.NUMBER:{
@@ -2228,12 +2228,12 @@ class BodyCodegen{
                 codegen.getCompiledRegexpName(scriptOrFn, i),
                 "Ljava/lang/Object;");
                 cfw.addInvoke(ByteCode.INVOKESTATIC,
-                "org/mozilla/javascript/ScriptRuntime",
+                "rhino/ScriptRuntime",
                 "wrapRegExp",
-                "(Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/Object;"
-                + ")Lorg/mozilla/javascript/Scriptable;");
+                + ")Lrhino/Scriptable;");
             }
             break;
 
@@ -2260,7 +2260,7 @@ class BodyCodegen{
                     cfw.addALoad(contextLocal);
                     addScriptRuntimeInvoke("enumId",
                     "(Ljava/lang/Object;"
-                    + "Lorg/mozilla/javascript/Context;"
+                    + "Lrhino/Context;"
                     + ")Ljava/lang/Object;");
                 }
                 break;
@@ -2389,7 +2389,7 @@ class BodyCodegen{
                             addScriptRuntimeInvoke("add",
                             "(Ljava/lang/Object;"
                             + "Ljava/lang/Object;"
-                            + "Lorg/mozilla/javascript/Context;"
+                            + "Lrhino/Context;"
                             + ")Ljava/lang/Object;");
                         }
                 }
@@ -2490,7 +2490,7 @@ class BodyCodegen{
                     addScriptRuntimeInvoke(
                     "getObjectIndex",
                     "(Ljava/lang/Object;D"
-                    + "Lorg/mozilla/javascript/Context;"
+                    + "Lrhino/Context;"
                     + ")Ljava/lang/Object;");
                 }else{
                     cfw.addALoad(variableObjectLocal);
@@ -2498,8 +2498,8 @@ class BodyCodegen{
                     "getObjectElem",
                     "(Ljava/lang/Object;"
                     + "Ljava/lang/Object;"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
+                    + "Lrhino/Context;"
+                    + "Lrhino/Scriptable;"
                     + ")Ljava/lang/Object;");
                 }
                 break;
@@ -2509,8 +2509,8 @@ class BodyCodegen{
                 cfw.addALoad(contextLocal);
                 addScriptRuntimeInvoke(
                 "refGet",
-                "(Lorg/mozilla/javascript/Ref;"
-                + "Lorg/mozilla/javascript/Context;"
+                "(Lrhino/Ref;"
+                + "Lrhino/Context;"
                 + ")Ljava/lang/Object;");
                 break;
 
@@ -2557,8 +2557,8 @@ class BodyCodegen{
                     cfw.addALoad(contextLocal);
                     addScriptRuntimeInvoke(
                     "refGet",
-                    "(Lorg/mozilla/javascript/Ref;"
-                    + "Lorg/mozilla/javascript/Context;"
+                    "(Lrhino/Ref;"
+                    + "Lrhino/Context;"
                     + ")Ljava/lang/Object;");
                 }
                 generateExpression(child, node);
@@ -2566,10 +2566,10 @@ class BodyCodegen{
                 cfw.addALoad(variableObjectLocal);
                 addScriptRuntimeInvoke(
                 "refSet",
-                "(Lorg/mozilla/javascript/Ref;"
+                "(Lrhino/Ref;"
                 + "Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;");
             }
             break;
@@ -2578,8 +2578,8 @@ class BodyCodegen{
                 generateExpression(child, node);
                 cfw.addALoad(contextLocal);
                 addScriptRuntimeInvoke("refDel",
-                "(Lorg/mozilla/javascript/Ref;"
-                + "Lorg/mozilla/javascript/Context;"
+                "(Lrhino/Ref;"
+                + "Lrhino/Context;"
                 + ")Ljava/lang/Object;");
                 break;
 
@@ -2593,7 +2593,7 @@ class BodyCodegen{
                 addScriptRuntimeInvoke("delete",
                 "(Ljava/lang/Object;"
                 + "Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
+                + "Lrhino/Context;"
                 + "Z)Ljava/lang/Object;");
                 break;
 
@@ -2608,10 +2608,10 @@ class BodyCodegen{
                 cfw.addPush(node.getString());
                 addScriptRuntimeInvoke(
                 "bind",
-                "(Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/String;"
-                + ")Lorg/mozilla/javascript/Scriptable;");
+                + ")Lrhino/Scriptable;");
             }
             break;
 
@@ -2629,9 +2629,9 @@ class BodyCodegen{
                 "specialRef",
                 "(Ljava/lang/Object;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
-                + ")Lorg/mozilla/javascript/Ref;");
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
+                + ")Lrhino/Ref;");
             }
             break;
 
@@ -2653,36 +2653,36 @@ class BodyCodegen{
                         methodName = "memberRef";
                         signature = "(Ljava/lang/Object;"
                         + "Ljava/lang/Object;"
-                        + "Lorg/mozilla/javascript/Context;"
+                        + "Lrhino/Context;"
                         + "I"
-                        + ")Lorg/mozilla/javascript/Ref;";
+                        + ")Lrhino/Ref;";
                         break;
                     case Token.REF_NS_MEMBER:
                         methodName = "memberRef";
                         signature = "(Ljava/lang/Object;"
                         + "Ljava/lang/Object;"
                         + "Ljava/lang/Object;"
-                        + "Lorg/mozilla/javascript/Context;"
+                        + "Lrhino/Context;"
                         + "I"
-                        + ")Lorg/mozilla/javascript/Ref;";
+                        + ")Lrhino/Ref;";
                         break;
                     case Token.REF_NAME:
                         methodName = "nameRef";
                         signature = "(Ljava/lang/Object;"
-                        + "Lorg/mozilla/javascript/Context;"
-                        + "Lorg/mozilla/javascript/Scriptable;"
+                        + "Lrhino/Context;"
+                        + "Lrhino/Scriptable;"
                         + "I"
-                        + ")Lorg/mozilla/javascript/Ref;";
+                        + ")Lrhino/Ref;";
                         cfw.addALoad(variableObjectLocal);
                         break;
                     case Token.REF_NS_NAME:
                         methodName = "nameRef";
                         signature = "(Ljava/lang/Object;"
                         + "Ljava/lang/Object;"
-                        + "Lorg/mozilla/javascript/Context;"
-                        + "Lorg/mozilla/javascript/Scriptable;"
+                        + "Lrhino/Context;"
+                        + "Lrhino/Scriptable;"
                         + "I"
-                        + ")Lorg/mozilla/javascript/Ref;";
+                        + ")Lrhino/Ref;";
                         cfw.addALoad(variableObjectLocal);
                         break;
                     default:
@@ -2748,8 +2748,8 @@ class BodyCodegen{
                 cfw.addALoad(contextLocal);
                 cfw.addALoad(variableObjectLocal);
                 addScriptRuntimeInvoke("getObjectPropNoWarn",
-                "(Ljava/lang/Object;Ljava/lang/String;Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;)Ljava/lang/Object;");
+                "(Ljava/lang/Object;Ljava/lang/String;Lrhino/Context;"
+                + "Lrhino/Scriptable;)Ljava/lang/Object;");
             }
             return;
         }
@@ -2772,8 +2772,8 @@ class BodyCodegen{
             cfw.addALoad(contextLocal);
 
             addScriptRuntimeInvoke("setObjectProp",
-            "(Lorg/mozilla/javascript/Scriptable;Ljava/lang/String;Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Context;)Ljava/lang/Object;");
+            "(Lrhino/Scriptable;Ljava/lang/String;Ljava/lang/Object;"
+            + "Lrhino/Context;)Ljava/lang/Object;");
             cfw.add(ByteCode.POP);
 
             unnestedYields.put(nestedYield, nn);
@@ -2812,10 +2812,10 @@ class BodyCodegen{
 
         if(node.getType() == Token.YIELD_STAR){
             // We will replace the result with one that signifies we should have a generator
-            cfw.add(ByteCode.NEW, "org/mozilla/javascript/ES6Generator$YieldStarResult");
+            cfw.add(ByteCode.NEW, "rhino/ES6Generator$YieldStarResult");
             cfw.add(ByteCode.DUP_X1);
             cfw.add(ByteCode.SWAP);
-            cfw.addInvoke(ByteCode.INVOKESPECIAL, "org/mozilla/javascript/ES6Generator$YieldStarResult",
+            cfw.addInvoke(ByteCode.INVOKESPECIAL, "rhino/ES6Generator$YieldStarResult",
             "<init>", "(Ljava/lang/Object;)V");
         }
 
@@ -2950,11 +2950,11 @@ class BodyCodegen{
             cfw.addALoad(variableObjectLocal);
             cfw.addALoad(thisObjLocal);
             addOptRuntimeInvoke("bindThis",
-            "(Lorg/mozilla/javascript/NativeFunction;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + ")Lorg/mozilla/javascript/Function;");
+            "(Lrhino/NativeFunction;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
+            + ")Lrhino/Function;");
         }
 
         if(functionType == FunctionNode.FUNCTION_EXPRESSION ||
@@ -2967,10 +2967,10 @@ class BodyCodegen{
         cfw.addALoad(variableObjectLocal);
         cfw.addALoad(contextLocal);           // load 'cx'
         addOptRuntimeInvoke("initFunction",
-        "(Lorg/mozilla/javascript/NativeFunction;"
+        "(Lrhino/NativeFunction;"
         + "I"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Context;"
         + ")V");
     }
 
@@ -3024,11 +3024,11 @@ class BodyCodegen{
         initBodyGeneration();
         argsLocal = firstFreeLocal++;
         localsMax = firstFreeLocal;
-        cfw.startMethod(methodName, "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        cfw.startMethod(methodName, "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
-        + ")Lorg/mozilla/javascript/Scriptable;",
+        + ")Lrhino/Scriptable;",
         ACC_PRIVATE);
         visitArrayLiteral(node, node.getFirstChild(), true);
         cfw.add(ByteCode.ARETURN);
@@ -3040,11 +3040,11 @@ class BodyCodegen{
         initBodyGeneration();
         argsLocal = firstFreeLocal++;
         localsMax = firstFreeLocal;
-        cfw.startMethod(methodName, "(Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        cfw.startMethod(methodName, "(Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
-        + ")Lorg/mozilla/javascript/Scriptable;",
+        + ")Lrhino/Scriptable;",
         ACC_PRIVATE);
         visitObjectLiteral(node, node.getFirstChild(), true);
         cfw.add(ByteCode.ARETURN);
@@ -3072,11 +3072,11 @@ class BodyCodegen{
             cfw.addALoad(thisObjLocal);
             cfw.addALoad(argsLocal);
             cfw.addInvoke(ByteCode.INVOKEVIRTUAL, codegen.mainClassName, methodName,
-            "(Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/Context;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
-            + ")Lorg/mozilla/javascript/Scriptable;");
+            + ")Lrhino/Scriptable;");
             return;
         }
 
@@ -3120,9 +3120,9 @@ class BodyCodegen{
         "([Ljava/lang/Object;"
         + "Ljava/lang/String;"
         + "I"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + ")Lrhino/Scriptable;");
     }
 
     /** load array with property ids */
@@ -3199,11 +3199,11 @@ class BodyCodegen{
             cfw.addALoad(thisObjLocal);
             cfw.addALoad(argsLocal);
             cfw.addInvoke(ByteCode.INVOKEVIRTUAL, codegen.mainClassName, methodName,
-            "(Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/Context;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
-            + ")Lorg/mozilla/javascript/Scriptable;");
+            + ")Lrhino/Scriptable;");
             return;
         }
 
@@ -3259,9 +3259,9 @@ class BodyCodegen{
         "([Ljava/lang/Object;"
         + "[Ljava/lang/Object;"
         + "[I"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
+        + ")Lrhino/Scriptable;");
     }
 
     private void visitSpecialCall(Node node, int type, int specialType,
@@ -3284,11 +3284,11 @@ class BodyCodegen{
 
         if(type == Token.NEW){
             methodName = "newObjectSpecial";
-            callSignature = "(Lorg/mozilla/javascript/Context;"
+            callSignature = "(Lrhino/Context;"
             + "Ljava/lang/Object;"
             + "[Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
             + "I" // call type
             + ")Ljava/lang/Object;";
             cfw.addALoad(variableObjectLocal);
@@ -3296,12 +3296,12 @@ class BodyCodegen{
             cfw.addPush(specialType);
         }else{
             methodName = "callSpecial";
-            callSignature = "(Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Callable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            callSignature = "(Lrhino/Context;"
+            + "Lrhino/Callable;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
             + "I" // call type
             + "Ljava/lang/String;I"  // filename, linenumber
             + ")Ljava/lang/Object;";
@@ -3332,8 +3332,8 @@ class BodyCodegen{
                 cfw.addPush(name);
                 methodName = "callName0";
                 signature = "(Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }else if(childType == Token.GETPROP){
                 // x.name() call
@@ -3345,18 +3345,18 @@ class BodyCodegen{
                 methodName = "callProp0";
                 signature = "(Ljava/lang/Object;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }else if(childType == Token.GETPROPNOWARN){
                 throw Kit.codeBug();
             }else{
                 generateFunctionAndThisObj(child, node);
                 methodName = "call0";
-                signature = "(Lorg/mozilla/javascript/Callable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                signature = "(Lrhino/Callable;"
+                + "Lrhino/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }
 
@@ -3371,8 +3371,8 @@ class BodyCodegen{
             methodName = "callName";
             signature = "([Ljava/lang/Object;"
             + "Ljava/lang/String;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")Ljava/lang/Object;";
         }else{
             int argCount = 0;
@@ -3384,31 +3384,31 @@ class BodyCodegen{
             if(argCount == 1){
                 generateExpression(firstArgChild, node);
                 methodName = "call1";
-                signature = "(Lorg/mozilla/javascript/Callable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                signature = "(Lrhino/Callable;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }else if(argCount == 2){
                 generateExpression(firstArgChild, node);
                 generateExpression(firstArgChild.getNext(), node);
                 methodName = "call2";
-                signature = "(Lorg/mozilla/javascript/Callable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                signature = "(Lrhino/Callable;"
+                + "Lrhino/Scriptable;"
                 + "Ljava/lang/Object;"
                 + "Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }else{
                 generateCallArgArray(node, firstArgChild, false);
                 methodName = "callN";
-                signature = "(Lorg/mozilla/javascript/Callable;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                signature = "(Lrhino/Callable;"
+                + "Lrhino/Scriptable;"
                 + "[Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;";
             }
         }
@@ -3432,10 +3432,10 @@ class BodyCodegen{
         addScriptRuntimeInvoke(
         "newObject",
         "(Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + "[Ljava/lang/Object;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        + ")Lrhino/Scriptable;");
     }
 
     private void visitOptimizedCall(Node node, OptFunctionNode target,
@@ -3504,7 +3504,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         }
 
         cfw.add(ByteCode.GETSTATIC,
-        "org/mozilla/javascript/ScriptRuntime",
+        "rhino/ScriptRuntime",
         "emptyArgs", "[Ljava/lang/Object;");
         cfw.addInvoke(ByteCode.INVOKESTATIC,
         codegen.mainClassName,
@@ -3533,17 +3533,17 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             addScriptRuntimeInvoke(
             "newObject",
             "(Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
-            + ")Lorg/mozilla/javascript/Scriptable;");
+            + ")Lrhino/Scriptable;");
         }else{
             cfw.addInvoke(ByteCode.INVOKEINTERFACE,
-            "org/mozilla/javascript/Callable",
+            "rhino/Callable",
             "call",
-            "(Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/Context;"
+            + "Lrhino/Scriptable;"
+            + "Lrhino/Scriptable;"
             + "[Ljava/lang/Object;"
             + ")Ljava/lang/Object;");
         }
@@ -3633,9 +3633,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                     "getPropFunctionAndThis",
                     "(Ljava/lang/Object;"
                     + "Ljava/lang/String;"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
-                    + ")Lorg/mozilla/javascript/Callable;");
+                    + "Lrhino/Context;"
+                    + "Lrhino/Scriptable;"
+                    + ")Lrhino/Callable;");
                 }else{
                     generateExpression(id, node);  // id
                     if(node.getIntProp(Node.ISNUMBER_PROP, -1) != -1)
@@ -3646,9 +3646,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                     "getElemFunctionAndThis",
                     "(Ljava/lang/Object;"
                     + "Ljava/lang/Object;"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
-                    + ")Lorg/mozilla/javascript/Callable;");
+                    + "Lrhino/Context;"
+                    + "Lrhino/Scriptable;"
+                    + ")Lrhino/Callable;");
                 }
                 break;
             }
@@ -3661,9 +3661,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 addScriptRuntimeInvoke(
                 "getNameFunctionAndThis",
                 "(Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
-                + ")Lorg/mozilla/javascript/Callable;");
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
+                + ")Lrhino/Callable;");
                 break;
             }
 
@@ -3673,16 +3673,16 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 addScriptRuntimeInvoke(
                 "getValueFunctionAndThis",
                 "(Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + ")Lorg/mozilla/javascript/Callable;");
+                + "Lrhino/Context;"
+                + ")Lrhino/Callable;");
                 break;
         }
         // Get thisObj prepared by get(Name|Prop|Elem|Value)FunctionAndThis
         cfw.addALoad(contextLocal);
         addScriptRuntimeInvoke(
         "lastStoredScriptable",
-        "(Lorg/mozilla/javascript/Context;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        "(Lrhino/Context;"
+        + ")Lrhino/Scriptable;");
     }
 
     private void updateLineNumber(Node node){
@@ -3886,11 +3886,11 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
 
     private String exceptionTypeToName(int exceptionType){
         if(exceptionType == JAVASCRIPT_EXCEPTION){
-            return "org/mozilla/javascript/JavaScriptException";
+            return "rhino/JavaScriptException";
         }else if(exceptionType == EVALUATOR_EXCEPTION){
-            return "org/mozilla/javascript/EvaluatorException";
+            return "rhino/EvaluatorException";
         }else if(exceptionType == ECMAERROR_EXCEPTION){
-            return "org/mozilla/javascript/EcmaError";
+            return "rhino/EcmaError";
         }else if(exceptionType == THROWABLE_EXCEPTION){
             return "java/lang/Throwable";
         }else if(exceptionType == FINALLY_EXCEPTION){
@@ -4281,7 +4281,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addALoad(variableObjectLocal);
         cfw.addPush(node.getString());
         addScriptRuntimeInvoke("typeofName",
-        "(Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Scriptable;"
         + "Ljava/lang/String;"
         + ")Ljava/lang/String;");
     }
@@ -4321,7 +4321,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addALoad(contextLocal);
         cfw.addPush(count);
         addScriptRuntimeInvoke("addInstructionCount",
-        "(Lorg/mozilla/javascript/Context;"
+        "(Lrhino/Context;"
         + "I)V");
     }
 
@@ -4418,9 +4418,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 cfw.addALoad(contextLocal);
                 cfw.addPush(incrDecrMask);
                 addScriptRuntimeInvoke("nameIncrDecr",
-                "(Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Scriptable;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
+                + "Lrhino/Context;"
                 + "I)Ljava/lang/Object;");
                 break;
             case Token.GETPROPNOWARN:
@@ -4435,8 +4435,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 addScriptRuntimeInvoke("propIncrDecr",
                 "(Ljava/lang/Object;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "I)Ljava/lang/Object;");
                 break;
             }
@@ -4451,16 +4451,16 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                     addOptRuntimeInvoke("elemIncrDecr",
                     "(Ljava/lang/Object;"
                     + "D"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
+                    + "Lrhino/Context;"
+                    + "Lrhino/Scriptable;"
                     + "I"
                     + ")Ljava/lang/Object;");
                 }else{
                     addScriptRuntimeInvoke("elemIncrDecr",
                     "(Ljava/lang/Object;"
                     + "Ljava/lang/Object;"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
+                    + "Lrhino/Context;"
+                    + "Lrhino/Scriptable;"
                     + "I"
                     + ")Ljava/lang/Object;");
                 }
@@ -4474,9 +4474,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 cfw.addPush(incrDecrMask);
                 addScriptRuntimeInvoke(
                 "refIncrDecr",
-                "(Lorg/mozilla/javascript/Ref;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Ref;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + "I)Ljava/lang/Object;");
                 break;
             }
@@ -4625,7 +4625,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             (type == Token.INSTANCEOF) ? "instanceOf" : "in",
             "(Ljava/lang/Object;"
             + "Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Context;"
+            + "Lrhino/Context;"
             + ")Z");
             cfw.add(ByteCode.IFNE, trueGOTO);
             cfw.add(ByteCode.GOTO, falseGOTO);
@@ -4825,10 +4825,10 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addPush(name);
         addScriptRuntimeInvoke(
         "setName",
-        "(Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Scriptable;"
         + "Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + "Ljava/lang/String;"
         + ")Ljava/lang/Object;");
     }
@@ -4844,10 +4844,10 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addPush(name);
         addScriptRuntimeInvoke(
         "strictSetName",
-        "(Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Scriptable;"
         + "Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + "Ljava/lang/String;"
         + ")Ljava/lang/Object;");
     }
@@ -4862,9 +4862,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addPush(name);
         addScriptRuntimeInvoke(
         "setConst",
-        "(Lorg/mozilla/javascript/Scriptable;"
+        "(Lrhino/Scriptable;"
         + "Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Context;"
+        + "Lrhino/Context;"
         + "Ljava/lang/String;"
         + ")Ljava/lang/Object;");
     }
@@ -5000,8 +5000,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             "getObjectPropNoWarn",
             "(Ljava/lang/Object;"
             + "Ljava/lang/String;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")Ljava/lang/Object;");
             return;
         }
@@ -5014,9 +5014,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             cfw.addALoad(contextLocal);
             addScriptRuntimeInvoke(
             "getObjectProp",
-            "(Lorg/mozilla/javascript/Scriptable;"
+            "(Lrhino/Scriptable;"
             + "Ljava/lang/String;"
-            + "Lorg/mozilla/javascript/Context;"
+            + "Lrhino/Context;"
             + ")Ljava/lang/Object;");
         }else{
             cfw.addALoad(contextLocal);
@@ -5025,8 +5025,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             "getObjectProp",
             "(Ljava/lang/Object;"
             + "Ljava/lang/String;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")Ljava/lang/Object;");
         }
     }
@@ -5051,9 +5051,9 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 cfw.addALoad(contextLocal);
                 addScriptRuntimeInvoke(
                 "getObjectProp",
-                "(Lorg/mozilla/javascript/Scriptable;"
+                "(Lrhino/Scriptable;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
+                + "Lrhino/Context;"
                 + ")Ljava/lang/Object;");
             }else{
                 cfw.addALoad(contextLocal);
@@ -5062,8 +5062,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 "getObjectProp",
                 "(Ljava/lang/Object;"
                 + "Ljava/lang/String;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;");
             }
         }
@@ -5075,8 +5075,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         "(Ljava/lang/Object;"
         + "Ljava/lang/String;"
         + "Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Context;"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        + "Lrhino/Context;"
+        + "Lrhino/Scriptable;"
         + ")Ljava/lang/Object;");
     }
 
@@ -5099,8 +5099,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 addScriptRuntimeInvoke(
                 "getObjectIndex",
                 "(Ljava/lang/Object;D"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;");
             }else{
                 // stack: ... object object indexObject
@@ -5112,8 +5112,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 "getObjectElem",
                 "(Ljava/lang/Object;"
                 + "Ljava/lang/Object;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+                + "Lrhino/Context;"
+                + "Lrhino/Scriptable;"
                 + ")Ljava/lang/Object;");
             }
         }
@@ -5126,8 +5126,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             "(Ljava/lang/Object;"
             + "D"
             + "Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")Ljava/lang/Object;");
         }else{
             addScriptRuntimeInvoke(
@@ -5135,8 +5135,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             "(Ljava/lang/Object;"
             + "Ljava/lang/Object;"
             + "Ljava/lang/Object;"
-            + "Lorg/mozilla/javascript/Context;"
-            + "Lorg/mozilla/javascript/Scriptable;"
+            + "Lrhino/Context;"
+            + "Lrhino/Scriptable;"
             + ")Ljava/lang/Object;");
         }
     }
@@ -5147,8 +5147,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addALoad(variableObjectLocal);
         addScriptRuntimeInvoke("enterDotQuery",
         "(Ljava/lang/Object;"
-        + "Lorg/mozilla/javascript/Scriptable;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        + "Lrhino/Scriptable;"
+        + ")Lrhino/Scriptable;");
         cfw.addAStore(variableObjectLocal);
 
         // add push null/pop with label in between to simplify code for loop
@@ -5164,15 +5164,15 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         cfw.addALoad(variableObjectLocal);
         addScriptRuntimeInvoke("updateDotQuery",
         "(Z"
-        + "Lorg/mozilla/javascript/Scriptable;"
+        + "Lrhino/Scriptable;"
         + ")Ljava/lang/Object;");
         cfw.add(ByteCode.DUP);
         cfw.add(ByteCode.IFNULL, queryLoopStart);
         // stack: ... non_null_result_of_updateDotQuery
         cfw.addALoad(variableObjectLocal);
         addScriptRuntimeInvoke("leaveDotQuery",
-        "(Lorg/mozilla/javascript/Scriptable;"
-        + ")Lorg/mozilla/javascript/Scriptable;");
+        "(Lrhino/Scriptable;"
+        + ")Lrhino/Scriptable;");
         cfw.addAStore(variableObjectLocal);
     }
 
@@ -5233,7 +5233,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 cfw.addALoad(itsZeroArgArray);
             }else{
                 cfw.add(ByteCode.GETSTATIC,
-                "org/mozilla/javascript/ScriptRuntime",
+                "rhino/ScriptRuntime",
                 "emptyArgs", "[Ljava/lang/Object;");
             }
         }else{
