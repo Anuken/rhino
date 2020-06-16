@@ -109,15 +109,14 @@ public class Token{
     STRICT_SETNAME = 74,
 
 
-    // For XML support:
-    REF_MEMBER = 75, // Reference for x.@y, x..y etc.
-    REF_NS_MEMBER = 76, // Reference for x.ns::y, x..ns::y etc.
-    REF_NAME = 77, // Reference for @y, @[y] etc.
-    REF_NS_NAME = 78; // Reference for ns::y, @ns::y@[y] etc.
+    REF_MEMBER = 78, // Reference for x.@y, x..y etc.
+    REF_NS_MEMBER = 79, // Reference for x.ns::y, x..ns::y etc.
+    REF_NAME = 80, // Reference for @y, @[y] etc.
+    REF_NS_NAME = 81; // Reference for ns::y, @ns::y@[y] etc.
 
     // End of interpreter bytecodes
     public final static int
-    LAST_BYTECODE_TOKEN = 79,
+    LAST_BYTECODE_TOKEN = REF_NS_NAME,
 
     TRY = 82,
     SEMI = 83,  // semicolon
