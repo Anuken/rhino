@@ -12,6 +12,8 @@ tasks.withType(JavaCompile){
 }
 
 sourceSets.main.java.srcDirs = ["src"]
+sourceSets.main.resources.srcDirs = ["src"]
+//sourceSets.main.resources.exclude{ '**/*.java' }
 
 task sourceJar(type: Jar){
     from sourceSets.main.allJava
