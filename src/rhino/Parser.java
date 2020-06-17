@@ -530,7 +530,7 @@ public class Parser{
         }
 
         try{
-            for(; ; ){
+            while(true){
                 int tt = peekToken();
                 if(tt <= Token.EOF){
                     break;
@@ -633,7 +633,7 @@ public class Parser{
                 pn.addStatement(n);
             }else{
                 bodyLoop:
-                for(; ; ){
+                while(true){
                     AstNode n;
                     int tt = peekToken();
                     switch(tt){
@@ -1042,7 +1042,7 @@ public class Parser{
 
         // error:  skip ahead to a probable statement boundary
         guessingStatementEnd:
-        for(; ; ){
+        while(true){
             int tt = peekTokenOrEOL();
             consumeToken();
             switch(tt){
@@ -1059,8 +1059,7 @@ public class Parser{
         return new EmptyStatement(pos, ts.tokenBeg - pos);
     }
 
-    private AstNode statementHelper()
-    throws IOException{
+    private AstNode statementHelper() throws IOException{
         // If the statement is set, then it's been told its label by now.
         if(currentLabel != null && currentLabel.getStatement() != null)
             currentLabel = null;
@@ -1115,8 +1114,7 @@ public class Parser{
 
             case Token.LET:
                 pn = letStatement();
-                if(pn instanceof VariableDeclaration
-                && peekToken() == Token.SEMI)
+                if(pn instanceof VariableDeclaration && peekToken() == Token.SEMI)
                     break;
                 return pn;
 
@@ -1251,7 +1249,7 @@ public class Parser{
             boolean hasDefault = false;
             int tt;
             switchLoop:
-            for(; ; ){
+            while(true){
                 tt = nextToken();
                 int casePos = ts.tokenBeg;
                 int caseLineno = ts.lineno;
@@ -1765,8 +1763,7 @@ public class Parser{
         return pn;
     }
 
-    private AstNode letStatement()
-    throws IOException{
+    private AstNode letStatement() throws IOException{
         if(currentToken != Token.LET) codeBug();
         consumeToken();
         int lineno = ts.lineno, pos = ts.tokenBeg;
@@ -1990,8 +1987,7 @@ public class Parser{
      * token in the first variable declaration.
      * @return the parsed variable list
      */
-    private VariableDeclaration variables(int declType, int pos, boolean isStatement)
-    throws IOException{
+    private VariableDeclaration variables(int declType, int pos, boolean isStatement) throws IOException{
         int end;
         VariableDeclaration pn = new VariableDeclaration(pos);
         pn.setType(declType);
@@ -2003,7 +1999,7 @@ public class Parser{
         // Example:
         // var foo = {a: 1, b: 2}, bar = [3, 4];
         // var {b: s2, a: s1} = foo, x = 6, y, [s3, s4] = bar;
-        for(; ; ){
+        while(true){
             AstNode destructuring = null;
             Name name = null;
             int tt = peekToken(), kidPos = ts.tokenBeg;
@@ -2055,8 +2051,7 @@ public class Parser{
             vi.setLineno(lineno);
             pn.addVariable(vi);
 
-            if(!matchToken(Token.COMMA, true))
-                break;
+            if(!matchToken(Token.COMMA, true)) break;
         }
         pn.setLength(end - pos);
         pn.setIsStatement(isStatement);
@@ -2135,6 +2130,7 @@ public class Parser{
         }
         switch(declType){
             case Token.LET:
+            case Token.CONST:
                 if(!ignoreNotInBlock &&
                 ((currentScope.getType() == Token.IF) ||
                 currentScope instanceof Loop)){
@@ -2145,7 +2141,6 @@ public class Parser{
                 return;
 
             case Token.VAR:
-            case Token.CONST:
             case Token.FUNCTION:
                 if(symbol != null){
                     if(symDeclType == Token.VAR)
@@ -2323,7 +2318,7 @@ public class Parser{
     private AstNode eqExpr()
     throws IOException{
         AstNode pn = relExpr();
-        for(; ; ){
+        while(true){
             int tt = peekToken(), opPos = ts.tokenBeg;
             switch(tt){
                 case Token.EQ:
@@ -2350,7 +2345,7 @@ public class Parser{
     private AstNode relExpr()
     throws IOException{
         AstNode pn = shiftExpr();
-        for(; ; ){
+        while(true){
             int tt = peekToken(), opPos = ts.tokenBeg;
             switch(tt){
                 case Token.IN:
@@ -2374,7 +2369,7 @@ public class Parser{
     private AstNode shiftExpr()
     throws IOException{
         AstNode pn = addExpr();
-        for(; ; ){
+        while(true){
             int tt = peekToken(), opPos = ts.tokenBeg;
             switch(tt){
                 case Token.LSH:
@@ -2392,7 +2387,7 @@ public class Parser{
     private AstNode addExpr()
     throws IOException{
         AstNode pn = mulExpr();
-        for(; ; ){
+        while(true){
             int tt = peekToken(), opPos = ts.tokenBeg;
             if(tt == Token.ADD || tt == Token.SUB){
                 consumeToken();
@@ -2407,7 +2402,7 @@ public class Parser{
     private AstNode mulExpr()
     throws IOException{
         AstNode pn = unaryExpr();
-        for(; ; ){
+        while(true){
             int tt = peekToken(), opPos = ts.tokenBeg;
             switch(tt){
                 case Token.MUL:
@@ -2592,7 +2587,7 @@ public class Parser{
         int pos = pn.getPosition();
         int lineno;
         tailLoop:
-        for(; ; ){
+        while(true){
             int tt = peekToken();
             switch(tt){
                 case Token.DOT:
@@ -2931,7 +2926,7 @@ public class Parser{
         boolean after_lb_or_comma = true;
         int afterComma = -1;
         int skipCount = 0;
-        for(; ; ){
+        while(true){
             int tt = peekToken();
             if(tt == Token.COMMA){
                 consumeToken();
@@ -3197,7 +3192,7 @@ public class Parser{
         Comment objJsdocNode = getAndResetJsDoc();
 
         commaLoop:
-        for(; ; ){
+        while(true){
             String propertyName = null;
             int entryKind = PROP_ENTRY;
             int tt = peekToken();

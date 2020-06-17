@@ -307,7 +307,7 @@ public class ScriptNode extends Scope{
     public void visit(NodeVisitor v){
         if(v.visit(this)){
             for(Node kid : this){
-                ((AstNode)kid).visit(v);
+                if(kid instanceof AstNode) ((AstNode)kid).visit(v);
             }
         }
     }

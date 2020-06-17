@@ -874,10 +874,9 @@ class TokenStream{
     final int getToken() throws IOException{
         int c;
 
-        retry:
-        for(; ; ){
+        while(true){
             // Eat whitespace, possibly sensitive to newlines.
-            for(; ; ){
+            while(true){
                 c = getChar();
                 if(c == EOF_CHAR){
                     tokenBeg = cursor - 1;
@@ -925,7 +924,7 @@ class TokenStream{
 
             if(identifierStart){
                 boolean containsEscape = isUnicodeEscapeStart;
-                for(; ; ){
+                while(true){
                     if(isUnicodeEscapeStart){
                         // strictly speaking we should probably push-back
                         // all the bad characters if the <backslash>uXXXX
@@ -978,9 +977,7 @@ class TokenStream{
                     // Return the corresponding token if it's a keyword
                     int result = stringToKeyword(str, parser.compilerEnv.getLanguageVersion(), parser.inUseStrictDirective());
                     if(result != Token.EOF){
-                        if((result == Token.LET || result == Token.YIELD) &&
-                        parser.compilerEnv.getLanguageVersion()
-                        < Context.VERSION_1_7){
+                        if((result == Token.LET || result == Token.YIELD) && parser.compilerEnv.getLanguageVersion() < Context.VERSION_1_7){
                             // LET and YIELD are tokens only in 1.7 and later
                             string = result == Token.LET ? "let" : "yield";
                             result = Token.NAME;
@@ -1379,7 +1376,7 @@ class TokenStream{
                         }else{
                             commentType = Token.CommentType.BLOCK_COMMENT;
                         }
-                        for(; ; ){
+                        while(true){
                             c = getChar();
                             if(c == EOF_CHAR){
                                 tokenEnd = cursor - 1;
@@ -1869,7 +1866,7 @@ class TokenStream{
             return ungetBuffer[--ungetCursor];
         }
 
-        for(; ; ){
+        while(true){
             int c;
             if(sourceString != null){
                 if(sourceCursor == sourceEnd){
@@ -1924,7 +1921,7 @@ class TokenStream{
             return ungetBuffer[--ungetCursor];
         }
 
-        for(; ; ){
+        while(true){
             int c;
             if(sourceString != null){
                 if(sourceCursor == sourceEnd){

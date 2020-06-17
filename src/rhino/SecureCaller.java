@@ -109,7 +109,7 @@ public abstract class SecureCaller{
             InputStream in = url.openStream();
             try{
                 ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                for(; ; ){
+                while(true){
                     int r = in.read();
                     if(r == -1){
                         return bout.toByteArray();

@@ -237,7 +237,7 @@ public final class Interpreter extends Icode implements Evaluator{
 
         private boolean isStrictTopFrame(){
             CallFrame f = this;
-            for(; ; ){
+            while(true){
                 final CallFrame p = f.parentFrame;
                 if(p == null){
                     return f.idata.isStrict;
@@ -249,7 +249,7 @@ public final class Interpreter extends Icode implements Evaluator{
         private static boolean equals(CallFrame f1, CallFrame f2, EqualObjectGraphs equal){
             // Iterative instead of recursive, as interpreter stack depth can
             // be larger than JVM stack depth.
-            for(; ; ){
+            while(true){
                 if(f1 == f2){
                     return true;
                 }else if(f1 == null || f2 == null){
@@ -1070,7 +1070,7 @@ public final class Interpreter extends Icode implements Evaluator{
         double interpreterResultDbl = 0.0;
 
         StateLoop:
-        for(; ; ){
+        while(true){
             withoutExceptions:
             try{
 
@@ -1106,7 +1106,7 @@ public final class Interpreter extends Icode implements Evaluator{
                 cx.lastInterpreterFrame = frame;
 
                 Loop:
-                for(; ; ){
+                while(true){
 
                     // Exception handler assumes that PC is already incremented
                     // pass the instruction start when it searches the
@@ -2125,7 +2125,7 @@ public final class Interpreter extends Icode implements Evaluator{
                 }
             }
 
-            for(; ; ){
+            while(true){
                 if(exState != EX_NO_JS_STATE){
                     boolean onlyFinally = (exState != EX_CATCH_STATE);
                     indexReg = getExceptionHandler(frame, onlyFinally);
@@ -2811,7 +2811,7 @@ public final class Interpreter extends Icode implements Evaluator{
                 // the continuation was captured within a "with" or "catch"
                 // block ("catch" implicitly uses NativeWith to create a scope
                 // to expose the exception variable).
-                for(; ; ){
+                while(true){
                     if(scope instanceof NativeWith){
                         scope = scope.getParentScope();
                         if(scope == null || (frame.parentFrame != null &&

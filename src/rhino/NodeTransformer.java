@@ -59,7 +59,7 @@ public class NodeTransformer{
                                             boolean inStrictMode){
         Node node = null;
         siblingLoop:
-        for(; ; ){
+        while(true){
             Node previous = null;
             if(node == null){
                 node = parent.getFirstChild();

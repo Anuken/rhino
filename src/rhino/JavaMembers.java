@@ -753,7 +753,7 @@ class JavaMembers{
         Map<Class<?>, JavaMembers> ct = cache.getClassCacheMap();
 
         Class<?> cl = dynamicType;
-        for(; ; ){
+        while(true){
             members = ct.get(cl);
             if(members != null){
                 if(cl != dynamicType){

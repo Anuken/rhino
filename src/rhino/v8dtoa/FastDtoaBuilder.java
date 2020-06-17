@@ -91,7 +91,7 @@ public class FastDtoaBuilder{
         end = charPos + 1;
 
         // code below is needed because Integer.getChars() is not public
-        for(; ; ){
+        while(true){
             int r = exp % 10;
             chars[charPos--] = digits[r];
             exp = exp / 10;

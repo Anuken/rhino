@@ -323,7 +323,7 @@ final class NativeString extends IdScriptableObject{
         }
         int id = f.methodId();
         again:
-        for(; ; ){
+        while(true){
             switch(id){
                 case ConstructorId_charAt:
                 case ConstructorId_charCodeAt:

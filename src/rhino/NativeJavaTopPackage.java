@@ -118,7 +118,7 @@ extends NativeJavaPackage implements Function, IdFunctionCall{
             // the string to find the appropriate NativeJavaClass object
             String name = cl.getName();
             int offset = 0;
-            for(; ; ){
+            while(true){
                 int index = name.indexOf('.', offset);
                 String propName = index == -1
                 ? name.substring(offset)

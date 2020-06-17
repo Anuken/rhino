@@ -2562,7 +2562,7 @@ public class ClassFileWriter{
         addPush(length);
         addInvoke(ByteCode.INVOKESPECIAL, SB, "<init>", "(I)V");
         int cursor = 0;
-        for(; ; ){
+        while(true){
             add(ByteCode.DUP);
             String s = k.substring(cursor, limit);
             addLoadConstant(s);

@@ -41,7 +41,7 @@ public class SoftCachingModuleScriptProvider extends CachingModuleScriptProvider
     throws Exception{
         // Overridden to clear the reference queue before retrieving the
         // script.
-        for(; ; ){
+        while(true){
             ScriptReference ref = (ScriptReference)scriptRefQueue.poll();
             if(ref == null){
                 break;

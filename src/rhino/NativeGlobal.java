@@ -248,7 +248,7 @@ public class NativeGlobal implements IdFunctionCall{
         int start = 0;
         // Scan forward to skip whitespace
         char c;
-        for(; ; ){
+        while(true){
             if(start == len){
                 return ScriptRuntime.NaNobj;
             }

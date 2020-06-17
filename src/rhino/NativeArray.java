@@ -314,7 +314,7 @@ public class NativeArray extends IdScriptableObject implements List{
         }
         int id = f.methodId();
         again:
-        for(; ; ){
+        while(true){
             switch(id){
                 case ConstructorId_join:
                 case ConstructorId_reverse:

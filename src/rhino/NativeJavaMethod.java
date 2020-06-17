@@ -183,7 +183,7 @@ public class NativeJavaMethod extends BaseFunction{
         }else{
             Scriptable o = thisObj;
             Class<?> c = meth.getDeclaringClass();
-            for(; ; ){
+            while(true){
                 if(o == null){
                     throw Context.reportRuntimeError3(
                     "msg.nonjava.method", getFunctionName(),

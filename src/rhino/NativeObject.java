@@ -299,7 +299,7 @@ public class NativeObject extends IdScriptableObject implements Map{
                 int index = s.stringId != null ? 0 : s.index;
                 boolean isSetter = (id == Id___lookupSetter__);
                 Object gs;
-                for(; ; ){
+                while(true){
                     gs = so.getGetterOrSetter(s.stringId, index, isSetter);
                     if(gs != null)
                         break;

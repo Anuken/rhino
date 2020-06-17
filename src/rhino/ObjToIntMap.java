@@ -241,7 +241,7 @@ public class ObjToIntMap{
                 int mask = N - 1;
                 int step = tableLookupStep(fraction, mask, power);
                 int n = 0;
-                for(; ; ){
+                while(true){
                     if(check){
                         if(n >= occupiedCount) Kit.codeBug();
                         ++n;
@@ -344,7 +344,7 @@ public class ObjToIntMap{
                 int mask = N - 1;
                 int step = tableLookupStep(fraction, mask, power);
                 int n = 0;
-                for(; ; ){
+                while(true){
                     if(check){
                         if(n >= occupiedCount) Kit.codeBug();
                         ++n;

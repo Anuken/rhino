@@ -163,7 +163,7 @@ final class MemberBox{
                         }
                     }
                 }
-                for(; ; ){
+                while(true){
                     c = c.getSuperclass();
                     if(c == null){
                         break;

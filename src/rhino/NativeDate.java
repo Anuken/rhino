@@ -1499,7 +1499,7 @@ final class NativeDate extends IdScriptableObject{
         --minWidth;
         if(i >= 10){
             if(i < 1000 * 1000 * 1000){
-                for(; ; ){
+                while(true){
                     int newScale = scale * 10;
                     if(i < newScale){
                         break;

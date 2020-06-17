@@ -345,7 +345,7 @@ public class ScriptRuntime{
      * See ECMA 9.2.
      */
     public static boolean toBoolean(Object val){
-        for(; ; ){
+        while(true){
             if(val instanceof Boolean)
                 return (Boolean)val;
             if(val == null || val == Undefined.instance)
@@ -382,7 +382,7 @@ public class ScriptRuntime{
      * See ECMA 9.3.
      */
     public static double toNumber(Object val){
-        for(; ; ){
+        while(true){
             if(val instanceof Number)
                 return ((Number)val).doubleValue();
             if(val == null)
@@ -502,7 +502,7 @@ public class ScriptRuntime{
                 boolean bit54 = false;
                 int pos = sourceStart;
 
-                for(; ; ){
+                while(true){
                     if(bitShiftInChar == 1){
                         if(pos == end)
                             break;
@@ -591,7 +591,7 @@ public class ScriptRuntime{
         // Skip whitespace at the start
         int start = 0;
         char startChar;
-        for(; ; ){
+        while(true){
             if(start == len){
                 // empty or contains only whitespace
                 return +0.0;
@@ -820,7 +820,7 @@ public class ScriptRuntime{
      * See ECMA 9.8.
      */
     public static String toString(Object val){
-        for(; ; ){
+        while(true){
             if(val == null){
                 return "null";
             }
@@ -1242,7 +1242,7 @@ public class ScriptRuntime{
             scope = getTopCallScope(cx);
         }
         Object nsObject;
-        for(; ; ){
+        while(true){
             Scriptable parent = scope.getParentScope();
             if(parent == null){
                 nsObject = ScriptableObject.getProperty(scope, DEFAULT_NS_TAG);
@@ -1839,7 +1839,7 @@ public class ScriptRuntime{
         Object result;
         Scriptable thisObj = scope; // It is used only if asFunctionCall==true.
 
-        for(; ; ){
+        while(true){
             if(scope instanceof NativeWith){
                 Scriptable withObj = scope.getPrototype();
 
@@ -1933,7 +1933,7 @@ public class ScriptRuntime{
                     break childScopesChecks;
                 }
             }
-            for(; ; ){
+            while(true){
                 if(ScriptableObject.hasProperty(scope, id)){
                     return scope;
                 }
@@ -1990,7 +1990,6 @@ public class ScriptRuntime{
             // {[[Put]]:undefined}, nor to a non-existent property of an
             // object whose [[Extensible]] internal property has the value
             // false. In these cases a TypeError exception is thrown (11.13.1).
-            // TODO: we used to special-case XMLObject here, but putProperty
             // seems to work for E4X and we should optimize  the common case
             ScriptableObject.putProperty(bound, id, value);
             return value;
@@ -2000,8 +1999,7 @@ public class ScriptRuntime{
         throw constructError("ReferenceError", msg);
     }
 
-    public static Object setConst(Scriptable bound, Object value,
-                                  Context cx, String id){
+    public static Object setConst(Scriptable bound, Object value, Context cx, String id){
         ScriptableObject.putConstProperty(bound, id, value);
         return value;
     }
@@ -2160,7 +2158,7 @@ public class ScriptRuntime{
                 throw e;
             }
         }
-        for(; ; ){
+        while(true){
             if(x.obj == null){
                 return Boolean.FALSE;
             }
@@ -3092,7 +3090,7 @@ public class ScriptRuntime{
     }
 
     static boolean eqNumber(double x, Object y){
-        for(; ; ){
+        while(true){
             if(y == null || y == Undefined.instance){
                 return false;
             }else if(y instanceof Number){
@@ -3120,7 +3118,7 @@ public class ScriptRuntime{
     }
 
     private static boolean eqString(CharSequence x, Object y){
-        for(; ; ){
+        while(true){
             if(y == null || y == Undefined.instance){
                 return false;
             }else if(y instanceof CharSequence){
@@ -3365,7 +3363,7 @@ public class ScriptRuntime{
             return possibleDynamicScope;
         }
         Scriptable proto = possibleDynamicScope;
-        for(; ; ){
+        while(true){
             proto = proto.getPrototype();
             if(proto == staticTopScope){
                 return possibleDynamicScope;

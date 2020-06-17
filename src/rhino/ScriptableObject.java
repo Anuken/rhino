@@ -2098,7 +2098,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
      * @return the corresponding global scope
      */
     public static Scriptable getTopLevelScope(Scriptable obj){
-        for(; ; ){
+        while(true){
             Scriptable parent = obj.getParentScope();
             if(parent == null){
                 return obj;
@@ -2390,10 +2390,8 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
      */
     public static void putConstProperty(Scriptable obj, String name, Object value){
         Scriptable base = getBase(obj, name);
-        if(base == null)
-            base = obj;
-        if(base instanceof ConstProperties)
-            ((ConstProperties)base).putConst(name, obj, value);
+        if(base == null) base = obj;
+        if(base instanceof ConstProperties) ((ConstProperties)base).putConst(name, obj, value);
     }
 
     /**
@@ -2471,7 +2469,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
         }
         Object[] result = obj.getIds();
         ObjToIntMap map = null;
-        for(; ; ){
+        while(true){
             obj = obj.getPrototype();
             if(obj == null){
                 break;
@@ -2593,7 +2591,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
      */
     public static Object getTopScopeValue(Scriptable scope, Object key){
         scope = ScriptableObject.getTopLevelScope(scope);
-        for(; ; ){
+        while(true){
             if(scope instanceof ScriptableObject){
                 ScriptableObject so = (ScriptableObject)scope;
                 Object value = so.getAssociatedValue(key);
@@ -2667,6 +2665,10 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
             }
             slot = slotMap.get(key, index, SlotAccess.MODIFY);
         }
+
+        //deny access to readonly slots, as this is a const redeclaration
+        if((slot.getAttributes() & READONLY) != 0) throw Context.reportRuntimeError1("msg.const.redecl", key.toString());
+
         return slot.setValue(value, this, start);
     }
 
@@ -2702,8 +2704,15 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
             // either const hoisted declaration or initialization
             slot = slotMap.get(name, index, SlotAccess.MODIFY_CONST);
             int attr = slot.getAttributes();
-            if((attr & READONLY) == 0)
-                throw Context.reportRuntimeError1("msg.var.redecl", name);
+
+            //if no attributes were set, this const was just created.
+            if(attr == 0){
+                attr |= UNINITIALIZED_CONST;
+                attr |= READONLY;
+                slot.setAttributes(attr);
+            }
+
+            if((attr & READONLY) == 0) throw Context.reportRuntimeError1("msg.const.redecl", name);
             if((attr & UNINITIALIZED_CONST) != 0){
                 slot.value = value;
                 // clear the bit on const initialization

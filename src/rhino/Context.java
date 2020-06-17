@@ -35,7 +35,7 @@ import java.util.jar.*;
  */
 
 public class Context{
-    /**
+    /*
      * Language versions.
      *
      * All integral values are reserved for future version numbers.
@@ -53,7 +53,7 @@ public class Context{
     /**
      * The default version.
      */
-    public static final int VERSION_DEFAULT = 0;
+    public static final int VERSION_DEFAULT = 200;
 
     /**
      * JavaScript 1.0
@@ -609,7 +609,6 @@ public class Context{
 
     public static boolean isValidLanguageVersion(int version){
         switch(version){
-            case VERSION_DEFAULT:
             case VERSION_1_0:
             case VERSION_1_1:
             case VERSION_1_2:

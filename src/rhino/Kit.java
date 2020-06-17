@@ -316,7 +316,7 @@ public class Kit{
         }
         byte[] buffer = new byte[initialBufferCapacity];
         int cursor = 0;
-        for(; ; ){
+        while(true){
             int n = is.read(buffer, cursor, buffer.length - cursor);
             if(n < 0){
                 break;

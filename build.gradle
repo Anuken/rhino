@@ -6,13 +6,14 @@ plugins{
 group = 'com.github.Anuken'
 
 tasks.withType(JavaCompile){
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
     options.encoding = "UTF-8"
 }
 
 sourceSets.main.java.srcDirs = ["src"]
 sourceSets.main.resources.srcDirs = ["src"]
+sourceSets.test.java.srcDirs = ["test"]
 
 task sourceJar(type: Jar){
     from sourceSets.main.allJava
@@ -24,3 +25,19 @@ task runtimeSourceJar(type: Jar){
 }
 
 publishing{ publications{ maven(MavenPublication){ from components.java }}}
+
+repositories{
+    mavenCentral()
+}
+
+dependencies{
+    testImplementation "junit:junit:4.13"
+}
+
+test{
+    useJUnit()
+
+    testLogging{
+        exceptionFormat = 'full'
+    }
+}

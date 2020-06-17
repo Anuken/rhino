@@ -1882,7 +1882,7 @@ public class NativeRegExp extends IdScriptableObject implements Function{
                 return false;
         }
 
-        for(; ; ){
+        while(true){
 
             if(reopIsSimple(op)){
                 int match = simpleMatch(gData, input, op, program, pc, end, true);
@@ -2282,7 +2282,7 @@ public class NativeRegExp extends IdScriptableObject implements Function{
             // found at all.
             //
             if(anchorCh >= 0){
-                for(; ; ){
+                while(true){
                     if(i == end){
                         return false;
                     }
