@@ -28,6 +28,8 @@ public class Tests{
             eval("{ const a = 5125125; a = 0; }");
         });
 
+        assertEquals("123", eval("const gg = 123; gg").toString());
+
     }
 
     Object eval(String str){

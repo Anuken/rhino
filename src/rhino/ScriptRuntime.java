@@ -1018,21 +1018,6 @@ public class ScriptRuntime{
     }
 
     /**
-     * <strong>Warning</strong>: This doesn't allow to resolve primitive
-     * prototype properly when many top scopes are involved
-     * @deprecated Use {@link #toObjectOrNull(Context, Object, Scriptable)} instead
-     */
-    @Deprecated
-    public static Scriptable toObjectOrNull(Context cx, Object obj){
-        if(obj instanceof Scriptable){
-            return (Scriptable)obj;
-        }else if(obj != null && obj != Undefined.instance){
-            return toObject(cx, getTopCallScope(cx), obj);
-        }
-        return null;
-    }
-
-    /**
      * @param scope the scope that should be used to resolve primitive prototype
      */
     public static Scriptable toObjectOrNull(Context cx, Object obj,
@@ -1043,18 +1028,6 @@ public class ScriptRuntime{
             return toObject(cx, scope, obj);
         }
         return null;
-    }
-
-    /**
-     * @deprecated Use {@link #toObject(Scriptable, Object)} instead.
-     */
-    @Deprecated
-    public static Scriptable toObject(Scriptable scope, Object val,
-                                      Class<?> staticClass){
-        if(val instanceof Scriptable){
-            return (Scriptable)val;
-        }
-        return toObject(Context.getContext(), scope, val);
     }
 
     /**
@@ -1100,32 +1073,6 @@ public class ScriptRuntime{
         if(wrapped instanceof Scriptable)
             return (Scriptable)wrapped;
         throw errorWithClassName("msg.invalid.type", val);
-    }
-
-    /**
-     * @deprecated Use {@link #toObject(Context, Scriptable, Object)} instead.
-     */
-    @Deprecated
-    public static Scriptable toObject(Context cx, Scriptable scope, Object val,
-                                      Class<?> staticClass){
-        return toObject(cx, scope, val);
-    }
-
-    /**
-     * @deprecated The method is only present for compatibility.
-     */
-    @Deprecated
-    public static Object call(Context cx, Object fun, Object thisArg,
-                              Object[] args, Scriptable scope){
-        if(!(fun instanceof Function)){
-            throw notFunctionError(toString(fun));
-        }
-        Function function = (Function)fun;
-        Scriptable thisObj = toObjectOrNull(cx, thisArg, scope);
-        if(thisObj == null){
-            throw undefCallError(thisObj, "function");
-        }
-        return function.call(cx, scope, thisObj, args);
     }
 
     public static Scriptable newObject(Context cx, Scriptable scope,
@@ -2840,6 +2787,34 @@ public class ScriptRuntime{
                                                Object value,
                                                int incrDecrMask){
         boolean post = ((incrDecrMask & Node.POST_FLAG) != 0);
+
+        if(value instanceof Integer){
+            int intNumber = ((Integer)value).intValue();
+            if((incrDecrMask & Node.DECR_FLAG) == 0){
+                ++intNumber;
+            }else{
+                --intNumber;
+            }
+            final Integer intResult = wrapInt(intNumber);
+            target.put(id, protoChainStart, intResult);
+            return post ? value : intResult;
+        }
+
+        if(value instanceof Double){
+            final double d = ((Double)value).doubleValue();
+            if(Math.floor(d) == d && Math.abs(d) < NativeNumber.MAX_SAFE_INTEGER){
+                int intNumber = (int)d;
+                if((incrDecrMask & Node.DECR_FLAG) == 0){
+                    ++intNumber;
+                }else{
+                    --intNumber;
+                }
+                final Integer intResult = wrapInt(intNumber);
+                target.put(id, protoChainStart, intResult);
+                return post ? value : intResult;
+            }
+        }
+
         double number;
         if(value instanceof Number){
             number = ((Number)value).doubleValue();

@@ -54,12 +54,6 @@ class SpecialRef extends Ref{
     }
 
     @Override
-    @Deprecated
-    public Object set(Context cx, Object value){
-        throw new IllegalStateException();
-    }
-
-    @Override
     public Object set(Context cx, Scriptable scope, Object value){
         switch(type){
             case SPECIAL_NONE:

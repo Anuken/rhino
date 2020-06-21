@@ -1,14 +1,8 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
 package rhino.optimizer;
 
 import rhino.*;
 
 public final class OptRuntime extends ScriptRuntime{
-
     public static final Double zeroObj = 0.0;
     public static final Double oneObj = 1.0;
     public static final Double minusOneObj = -1.0;
@@ -91,15 +85,6 @@ public final class OptRuntime extends ScriptRuntime{
         if(!(val2 instanceof CharSequence))
             return wrapDouble(toNumber(val2) + val1);
         return new ConsString(toString(val1), (CharSequence)val2);
-    }
-
-    /**
-     * @deprecated Use {@link #elemIncrDecr(Object, double, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object elemIncrDecr(Object obj, double index,
-                                      Context cx, int incrDecrMask){
-        return elemIncrDecr(obj, index, cx, getTopCallScope(cx), incrDecrMask);
     }
 
     public static Object elemIncrDecr(Object obj, double index,
