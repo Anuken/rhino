@@ -765,18 +765,13 @@ implements Scriptable, SymbolScriptable, Wrapper{
             Method meth;
             try{
                 meth = value.getClass().getMethod("doubleValue", (Class[])null);
-            }catch(NoSuchMethodException e){
-                meth = null;
-            }catch(SecurityException e){
+            }catch(NoSuchMethodException | SecurityException e){
                 meth = null;
             }
             if(meth != null){
                 try{
                     return ((Number)meth.invoke(value, (Object[])null)).doubleValue();
-                }catch(IllegalAccessException e){
-                    // XXX: ignore, or error message?
-                    reportConversionError(value, Double.TYPE);
-                }catch(InvocationTargetException e){
+                }catch(IllegalAccessException | InvocationTargetException e){
                     // XXX: ignore, or error message?
                     reportConversionError(value, Double.TYPE);
                 }

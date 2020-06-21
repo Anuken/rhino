@@ -68,7 +68,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
      * and so on
      */
     protected AstNode inlineComment;
-    private static final Map<Integer, String> operatorNames = new HashMap<Integer, String>();
+    private static final Map<Integer, String> operatorNames = new HashMap<>();
 
     static{
         operatorNames.put(Token.IN, "in");

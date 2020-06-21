@@ -1102,13 +1102,13 @@ final class NativeDate extends IdScriptableObject{
         int hour = -1;
         int min = -1;
         int sec = -1;
-        char c = 0;
-        char si = 0;
+        char c;
+        char si;
         int i = 0;
-        int n = -1;
+        int n;
         double tzoffset = -1;
         char prevc = 0;
-        int limit = 0;
+        int limit;
         boolean seenplusminus = false;
 
         limit = s.length();

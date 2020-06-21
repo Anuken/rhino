@@ -73,12 +73,11 @@ public class PropertyGet extends InfixExpression{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append(getLeft().toSource(0));
-        sb.append(".");
-        sb.append(getRight().toSource(0));
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        getLeft().toSource(0) +
+        "." +
+        getRight().toSource(0);
+        return sb;
     }
 
     /**

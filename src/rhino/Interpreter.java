@@ -867,7 +867,7 @@ public final class Interpreter extends Icode implements Evaluator{
     @Override
     public List<String> getScriptStack(RhinoException ex){
         ScriptStackElement[][] stack = getScriptStackElements(ex);
-        List<String> list = new ArrayList<String>(stack.length);
+        List<String> list = new ArrayList<>(stack.length);
         String lineSeparator =
         SecurityUtilities.getSystemProperty("line.separator");
         for(ScriptStackElement[] group : stack){
@@ -886,7 +886,7 @@ public final class Interpreter extends Icode implements Evaluator{
             return null;
         }
 
-        List<ScriptStackElement[]> list = new ArrayList<ScriptStackElement[]>();
+        List<ScriptStackElement[]> list = new ArrayList<>();
 
         CallFrame[] array = (CallFrame[])ex.interpreterStackInfo;
         int[] linePC = ex.interpreterLineData;
@@ -895,7 +895,7 @@ public final class Interpreter extends Icode implements Evaluator{
         while(arrayIndex != 0){
             --arrayIndex;
             CallFrame frame = array[arrayIndex];
-            List<ScriptStackElement> group = new ArrayList<ScriptStackElement>();
+            List<ScriptStackElement> group = new ArrayList<>();
             while(frame != null){
                 if(linePCIndex == 0) Kit.codeBug();
                 --linePCIndex;
@@ -2518,7 +2518,7 @@ public final class Interpreter extends Icode implements Evaluator{
                                                       int stackTop, int op, Scriptable funThisObj, Scriptable calleeScope,
                                                       NoSuchMethodShim noSuchMethodShim, InterpretedFunction ifun){
         // create an args array from the stack
-        Object[] argsArray = null;
+        Object[] argsArray;
         // exactly like getArgsArray except that the first argument
         // is the method name from the shim
         int shift = stackTop + 2;

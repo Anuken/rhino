@@ -105,7 +105,7 @@ implements Symbol{
 
     @Override
     protected int findPrototypeId(String s){
-        int id = 0;
+        int id;
 //  #generated# Last update: 2016-01-26 16:39:41 PST
         L0:
         {
@@ -340,7 +340,7 @@ implements Symbol{
         ScriptableObject top = (ScriptableObject)getTopLevelScope(this);
         Map<String, NativeSymbol> map = (Map<String, NativeSymbol>)top.getAssociatedValue(GLOBAL_TABLE_KEY);
         if(map == null){
-            map = new HashMap<String, NativeSymbol>();
+            map = new HashMap<>();
             top.associateValue(GLOBAL_TABLE_KEY, map);
         }
         return map;

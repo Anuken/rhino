@@ -232,7 +232,7 @@ public final class IRFactory extends Parser{
             decompiler.addToken(Token.LP);
 
             AstNode iter = acl.getIterator();
-            String name = null;
+            String name;
             if(iter.getType() == Token.NAME){
                 name = iter.getString();
                 decompiler.addName(name);
@@ -323,7 +323,7 @@ public final class IRFactory extends Parser{
                 array.addChildToBack(transform(elem));
             }else{
                 if(skipIndexes == null){
-                    skipIndexes = new ArrayList<Integer>();
+                    skipIndexes = new ArrayList<>();
                 }
                 skipIndexes.add(i);
             }
@@ -344,7 +344,7 @@ public final class IRFactory extends Parser{
 
     private Node transformAssignment(Assignment node){
         AstNode left = removeParens(node.getLeft());
-        Node target = null;
+        Node target;
         if(isDestructuring(left)){
             decompile(left);
             target = left;
@@ -362,7 +362,7 @@ public final class IRFactory extends Parser{
             pushScope((Scope)node);
         }
         try{
-            List<Node> kids = new ArrayList<Node>();
+            List<Node> kids = new ArrayList<>();
             for(Node kid : node){
                 kids.add(transform((AstNode)kid));
             }
@@ -642,7 +642,7 @@ public final class IRFactory extends Parser{
             decompiler.addToken(Token.LP);
 
             AstNode iter = acl.getIterator();
-            String name = null;
+            String name;
             if(iter.getType() == Token.NAME){
                 name = iter.getString();
                 decompiler.addName(name);
@@ -1070,7 +1070,7 @@ public final class IRFactory extends Parser{
             String varName = cc.getVarName().getIdentifier();
             decompiler.addName(varName);
 
-            Node catchCond = null;
+            Node catchCond;
             AstNode ccc = cc.getCatchCondition();
             if(ccc != null){
                 decompiler.addName(" ");
@@ -1135,7 +1135,7 @@ public final class IRFactory extends Parser{
             AstNode target = var.getTarget();
             AstNode init = var.getInitializer();
 
-            Node left = null;
+            Node left;
             if(var.isDestructuring()){
                 decompile(target);  // decompile but don't transform
                 left = target;

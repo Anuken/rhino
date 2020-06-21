@@ -137,14 +137,13 @@ public class ConditionalExpression extends AstNode{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append(testExpression.toSource(depth));
-        sb.append(" ? ");
-        sb.append(trueExpression.toSource(0));
-        sb.append(" : ");
-        sb.append(falseExpression.toSource(0));
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        testExpression.toSource(depth) +
+        " ? " +
+        trueExpression.toSource(0) +
+        " : " +
+        falseExpression.toSource(0);
+        return sb;
     }
 
     /**

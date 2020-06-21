@@ -475,7 +475,7 @@ public class RegExpImpl implements RegExpProxy{
         if(dp != -1){
             int[] skip = new int[1];
             do{
-                int len = dp - cp;
+                int len;
                 charBuf.append(da, cp, dp);
                 cp = dp;
                 SubString sub = interpretDollar(cx, regExpImpl, da,

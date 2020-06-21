@@ -19,8 +19,8 @@ import java.util.concurrent.*;
  * @version $Id: SoftCachingModuleScriptProvider.java,v 1.3 2011/04/07 20:26:12 hannes%helma.at Exp $
  */
 public class SoftCachingModuleScriptProvider extends CachingModuleScriptProviderBase{
-    private transient ReferenceQueue<Script> scriptRefQueue = new ReferenceQueue<Script>();
-    private transient ConcurrentMap<String, ScriptReference> scripts = new ConcurrentHashMap<String, ScriptReference>(16, .75f, getConcurrencyLevel());
+    private transient ReferenceQueue<Script> scriptRefQueue = new ReferenceQueue<>();
+    private transient ConcurrentMap<String, ScriptReference> scripts = new ConcurrentHashMap<>(16, .75f, getConcurrencyLevel());
 
     /**
      * Creates a new module provider with the specified module source provider.
@@ -92,8 +92,8 @@ public class SoftCachingModuleScriptProvider extends CachingModuleScriptProvider
 
     private void readObject(ObjectInputStream in) throws IOException,
     ClassNotFoundException{
-        scriptRefQueue = new ReferenceQueue<Script>();
-        scripts = new ConcurrentHashMap<String, ScriptReference>();
+        scriptRefQueue = new ReferenceQueue<>();
+        scripts = new ConcurrentHashMap<>();
         final Map<String, CachedModuleScript> serScripts = (Map)in.readObject();
         for(Map.Entry<String, CachedModuleScript> entry : serScripts.entrySet()){
             final CachedModuleScript cachedModuleScript = entry.getValue();
@@ -104,7 +104,7 @@ public class SoftCachingModuleScriptProvider extends CachingModuleScriptProvider
 
     private void writeObject(ObjectOutputStream out) throws IOException{
         final Map<String, CachedModuleScript> serScripts =
-        new HashMap<String, CachedModuleScript>();
+        new HashMap<>();
         for(Map.Entry<String, ScriptReference> entry : scripts.entrySet()){
             final CachedModuleScript cachedModuleScript =
             entry.getValue().getCachedModuleScript();

@@ -384,7 +384,7 @@ public class Node implements Iterable<Node>{
         return new NodeIterator();
     }
 
-    private static final String propToString(int propType){
+    private static String propToString(int propType){
         if(Token.printTrees){
             // If Context.printTrees is false, the compiler
             // can remove all these strings.
@@ -586,7 +586,7 @@ public class Node implements Iterable<Node>{
     }
 
 
-    /**
+    /*
      * Does consistent-return analysis on the function body when strict mode is
      * enabled.
      *
@@ -663,7 +663,7 @@ public class Node implements Iterable<Node>{
      */
     private int endCheckIf(){
         Node th, el;
-        int rv = END_UNREACHED;
+        int rv;
 
         th = next;
         el = ((Jump)this).target;
@@ -774,7 +774,7 @@ public class Node implements Iterable<Node>{
      */
     private int endCheckLoop(){
         Node n;
-        int rv = END_UNREACHED;
+        int rv;
 
         // To find the loop body, we look at the second to last node of the
         // loop node, which should be the predicate that the loop should
@@ -827,7 +827,7 @@ public class Node implements Iterable<Node>{
      * @return logical OR of END_* flags
      */
     private int endCheckLabel(){
-        int rv = END_UNREACHED;
+        int rv;
 
         rv = next.endCheck();
         rv |= getIntProp(CONTROL_BLOCK_PROP, END_UNREACHED);
@@ -1262,7 +1262,7 @@ public class Node implements Iterable<Node>{
         }
     }
 
-    protected int type = Token.ERROR; // type of the node, e.g. Token.NAME
+    protected int type; // type of the node, e.g. Token.NAME
     protected Node next;             // next sibling
     protected Node first;    // first element of a linked list of children
     protected Node last;     // last element of a linked list of children

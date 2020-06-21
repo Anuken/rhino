@@ -54,11 +54,10 @@ public class Label extends Jump{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append(name);
-        sb.append(":\n");
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        name +
+        ":\n";
+        return sb;
     }
 
     /**

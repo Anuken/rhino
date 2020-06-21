@@ -118,9 +118,7 @@ public class Codegen implements Evaluator{
             Class<?> cl = loader.defineClass(className, classBytes);
             loader.linkClass(cl);
             return cl;
-        }catch(SecurityException x){
-            e = x;
-        }catch(IllegalArgumentException x){
+        }catch(SecurityException | IllegalArgumentException x){
             e = x;
         }
         throw new RuntimeException("Malformed optimizer package " + e);
@@ -172,7 +170,7 @@ public class Codegen implements Evaluator{
                         String name = ofn.fnode.getName();
                         if(name.length() != 0){
                             if(possibleDirectCalls == null){
-                                possibleDirectCalls = new HashMap<String, OptFunctionNode>();
+                                possibleDirectCalls = new HashMap<>();
                             }
                             possibleDirectCalls.put(name, ofn);
                         }
@@ -1114,7 +1112,7 @@ public class Codegen implements Evaluator{
      * Gets a Java-compatible "informative" name for the the ScriptOrFnNode
      */
     String cleanName(final ScriptNode n){
-        String result = "";
+        String result;
         if(n instanceof FunctionNode){
             Name name = ((FunctionNode)n).getFunctionName();
             if(name == null){
@@ -3062,7 +3060,7 @@ class BodyCodegen{
         if(!topLevel && (count > 10 || cfw.getCurrentCodeOffset() > 30000)
         && !hasVarsInRegs && !isGenerator && !inLocalBlock){
             if(literals == null){
-                literals = new LinkedList<Node>();
+                literals = new LinkedList<>();
             }
             literals.add(node);
             String methodName = codegen.getBodyMethodName(scriptOrFn) + "_literal" + literals.size();
@@ -3189,7 +3187,7 @@ class BodyCodegen{
         if(!topLevel && (count > 10 || cfw.getCurrentCodeOffset() > 30000)
         && !hasVarsInRegs && !isGenerator && !inLocalBlock){
             if(literals == null){
-                literals = new LinkedList<Node>();
+                literals = new LinkedList<>();
             }
             literals.add(node);
             String methodName = codegen.getBodyMethodName(scriptOrFn) + "_literal" + literals.size();
@@ -3741,7 +3739,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         if(isGenerator && finallyTarget != null){
             FinallyReturnPoint ret = new FinallyReturnPoint();
             if(finallys == null){
-                finallys = new HashMap<Node, FinallyReturnPoint>();
+                finallys = new HashMap<>();
             }
             // add the finally target to hashtable
             finallys.put(finallyTarget, ret);
@@ -3925,7 +3923,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
      */
     private class ExceptionManager{
         ExceptionManager(){
-            exceptionInfo = new LinkedList<ExceptionInfo>();
+            exceptionInfo = new LinkedList<>();
         }
 
         /**
@@ -5406,7 +5404,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
     private List<Node> literals;
 
     static class FinallyReturnPoint{
-        public List<Integer> jsrPoints = new ArrayList<Integer>();
+        public List<Integer> jsrPoints = new ArrayList<>();
         public int tableLabel = 0;
     }
 

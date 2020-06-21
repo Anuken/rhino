@@ -1318,8 +1318,8 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
         ctor.initAsConstructor(scope, proto);
 
         Method finishInit = null;
-        HashSet<String> staticNames = new HashSet<String>(),
-        instanceNames = new HashSet<String>();
+        HashSet<String> staticNames = new HashSet<>(),
+        instanceNames = new HashSet<>();
         for(Method method : methods){
             if(method == ctorMember){
                 continue;
@@ -2622,7 +2622,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
         if(value == null) throw new IllegalArgumentException();
         Map<Object, Object> h = associatedValues;
         if(h == null){
-            h = new HashMap<Object, Object>();
+            h = new HashMap<>();
             associatedValues = h;
         }
         return Kit.initHash(h, key, value);

@@ -1985,7 +1985,7 @@ class TokenStream{
         return n;
     }
 
-    private final int charAt(int index){
+    private int charAt(int index){
         if(index < 0){
             return EOF_CHAR;
         }
@@ -2012,7 +2012,7 @@ class TokenStream{
         return sourceBuffer[index];
     }
 
-    private final String substring(int beginIndex, int endIndex){
+    private String substring(int beginIndex, int endIndex){
         if(sourceString != null){
             return sourceString.substring(beginIndex, endIndex);
         }
@@ -2164,11 +2164,10 @@ class TokenStream{
             return sourceString.substring(tokenBeg, tokenEnd);
         }
         if(!isMarkingComment()) Kit.codeBug();
-        StringBuilder comment = new StringBuilder(commentPrefix);
-        comment.append(sourceBuffer, commentCursor,
-        getTokenLength() - commentPrefix.length());
         commentCursor = -1;
-        return comment.toString();
+        String comment = commentPrefix + String.valueOf(sourceBuffer, commentCursor,
+        getTokenLength() - commentPrefix.length());
+        return comment;
     }
 
     private String convertLastCharToHex(String str){

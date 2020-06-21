@@ -278,7 +278,7 @@ class JavaMembers{
     private static Method[] discoverAccessibleMethods(Class<?> clazz,
                                                       boolean includeProtected,
                                                       boolean includePrivate){
-        Map<MethodSignature, Method> map = new HashMap<MethodSignature, Method>();
+        Map<MethodSignature, Method> map = new HashMap<>();
         discoverAccessibleMethods(clazz, map, includeProtected, includePrivate);
         return map.values().toArray(new Method[0]);
     }
@@ -502,7 +502,7 @@ class JavaMembers{
             boolean isStatic = (tableCursor == 0);
             Map<String, Object> ht = isStatic ? staticMembers : members;
 
-            Map<String, BeanProperty> toAdd = new HashMap<String, BeanProperty>();
+            Map<String, BeanProperty> toAdd = new HashMap<>();
 
             // Now, For each member, make "bean" properties.
             for(String name : ht.keySet()){
@@ -548,7 +548,7 @@ class JavaMembers{
 
                     // Find the getter method, or if there is none, the is-
                     // method.
-                    MemberBox getter = null;
+                    MemberBox getter;
                     getter = findGetter(isStatic, ht, "get", nameComponent);
                     // If there was no valid getter, check for an is- method.
                     if(getter == null){
@@ -623,7 +623,7 @@ class JavaMembers{
                                         boolean includePrivate){
         if(includePrivate || includeProtected){
             try{
-                List<Field> fieldsList = new ArrayList<Field>();
+                List<Field> fieldsList = new ArrayList<>();
                 Class<?> currentClass = cl;
 
                 while(currentClass != null){
@@ -736,7 +736,7 @@ class JavaMembers{
         if(ht == null)
             return null;
         int len = ht.size();
-        Map<String, FieldAndMethods> result = new HashMap<String, FieldAndMethods>(len);
+        Map<String, FieldAndMethods> result = new HashMap<>(len);
         for(FieldAndMethods fam : ht.values()){
             FieldAndMethods famNew = new FieldAndMethods(scope, fam.methods,
             fam.field);

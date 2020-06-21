@@ -46,7 +46,7 @@ public class ConsString implements CharSequence{
             final char[] chars = new char[length];
             int charPos = length;
 
-            ArrayDeque<CharSequence> stack = new ArrayDeque<CharSequence>();
+            ArrayDeque<CharSequence> stack = new ArrayDeque<>();
             stack.addFirst(left);
 
             CharSequence next = right;

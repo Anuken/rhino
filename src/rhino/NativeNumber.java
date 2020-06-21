@@ -8,7 +8,7 @@ package rhino;
  */
 final class NativeNumber extends IdScriptableObject{
     /**
-     * @see https://www.ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer
+     * see https://www.ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer
      */
     public static final double MAX_SAFE_INTEGER = 9007199254740991.0; // Math.pow(2, 53) - 1
 
@@ -278,8 +278,7 @@ final class NativeNumber extends IdScriptableObject{
 
     static Object isFinite(Object val){
         double d = ScriptRuntime.toNumber(val);
-        Double nd = d;
-        return ScriptRuntime.wrapBoolean(!nd.isInfinite() && !nd.isNaN());
+        return ScriptRuntime.wrapBoolean(!Double.isInfinite(d) && !Double.isNaN(d));
     }
 
     private Object isNaN(Number val){

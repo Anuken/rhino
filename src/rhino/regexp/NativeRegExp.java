@@ -534,7 +534,7 @@ public class NativeRegExp extends IdScriptableObject implements Function{
         }
 
         while(index != end){
-            int localMax = 0;
+            int localMax;
             nDigits = 2;
             switch(src[index]){
                 case '\\':
@@ -965,7 +965,6 @@ public class NativeRegExp extends IdScriptableObject implements Function{
                 return false;
             case '(':{
                 RENode result = null;
-                termStart = state.cp;
                 if(state.cp + 1 < state.cpend && src[state.cp] == '?'
                 && ((c = src[state.cp + 1]) == '=' || c == '!' || c == ':')){
                     state.cp += 2;
@@ -1080,7 +1079,7 @@ public class NativeRegExp extends IdScriptableObject implements Function{
                 hasQ = true;
                 break;
             case '{':  /* balance '}' */{
-                int min = 0;
+                int min;
                 int max = -1;
                 int leftCurl = state.cp;
 

@@ -156,14 +156,13 @@ public class InfixExpression extends AstNode{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append(left.toSource());
-        sb.append(" ");
-        sb.append(operatorToString(getType()));
-        sb.append(" ");
-        sb.append(right.toSource());
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        left.toSource() +
+        " " +
+        operatorToString(getType()) +
+        " " +
+        right.toSource();
+        return sb;
     }
 
     /**

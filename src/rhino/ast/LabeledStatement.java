@@ -13,7 +13,7 @@ import java.util.*;
  */
 public class LabeledStatement extends AstNode{
 
-    private final List<Label> labels = new ArrayList<Label>();  // always at least 1
+    private final List<Label> labels = new ArrayList<>();  // always at least 1
     private AstNode statement;
 
     {

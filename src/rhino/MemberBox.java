@@ -158,8 +158,7 @@ final class MemberBox{
                     if(Modifier.isPublic(intf.getModifiers())){
                         try{
                             return intf.getMethod(name, params);
-                        }catch(NoSuchMethodException ex){
-                        }catch(SecurityException ex){
+                        }catch(NoSuchMethodException | SecurityException ex){
                         }
                     }
                 }
@@ -176,8 +175,7 @@ final class MemberBox{
                             && !Modifier.isStatic(mModifiers)){
                                 return m;
                             }
-                        }catch(NoSuchMethodException ex){
-                        }catch(SecurityException ex){
+                        }catch(NoSuchMethodException | SecurityException ex){
                         }
                     }
                 }

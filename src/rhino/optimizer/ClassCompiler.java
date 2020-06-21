@@ -114,9 +114,6 @@ public class ClassCompiler{
         ScriptNode tree = irf.transformTree(ast);
 
         // release reference to original parse tree & parser
-        irf = null;
-        ast = null;
-        p = null;
 
         Class<?> superClass = getTargetExtends();
         Class<?>[] interfaces = getTargetImplements();

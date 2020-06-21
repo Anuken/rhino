@@ -92,10 +92,7 @@ public final class LazilyLoadedCtor{
                 if(target instanceof RuntimeException){
                     throw (RuntimeException)target;
                 }
-            }catch(RhinoException ex){
-            }catch(InstantiationException ex){
-            }catch(IllegalAccessException ex){
-            }catch(SecurityException ex){
+            }catch(RhinoException | SecurityException | IllegalAccessException | InstantiationException ex){
             }
         }
         return Scriptable.NOT_FOUND;

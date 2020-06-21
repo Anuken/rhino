@@ -11,7 +11,7 @@ import rhino.*;
  * <p>
  * The {@code default xml namespace = &lt;expr&gt;} statement in E4X
  * (JavaScript 1.6) is represented as a {@code UnaryExpression} of node
- * type {@link Token#DEFAULTNAMESPACE}, wrapped with an
+ * type , wrapped with an
  * {@link ExpressionStatement}.
  */
 public class UnaryExpression extends AstNode{

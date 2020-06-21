@@ -616,7 +616,7 @@ public class NativeArray extends IdScriptableObject implements List{
 
     public List<Integer> getIndexIds(){
         Object[] ids = getIds();
-        List<Integer> indices = new ArrayList<Integer>(ids.length);
+        List<Integer> indices = new ArrayList<>(ids.length);
         for(Object id : ids){
             int int32Id = ScriptRuntime.toInt32(id);
             if(int32Id >= 0 && ScriptRuntime.toString(int32Id).equals(ScriptRuntime.toString(id))){

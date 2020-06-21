@@ -19,7 +19,7 @@ import java.util.*;
  */
 public class VariableDeclaration extends AstNode{
 
-    private final List<VariableInitializer> variables = new ArrayList<VariableInitializer>();
+    private final List<VariableInitializer> variables = new ArrayList<>();
     private boolean isStatement;
 
     {

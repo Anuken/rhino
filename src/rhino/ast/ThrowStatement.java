@@ -61,13 +61,12 @@ public class ThrowStatement extends AstNode{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append("throw");
-        sb.append(" ");
-        sb.append(expression.toSource(0));
-        sb.append(";\n");
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        "throw" +
+        " " +
+        expression.toSource(0) +
+        ";\n";
+        return sb;
     }
 
     /**

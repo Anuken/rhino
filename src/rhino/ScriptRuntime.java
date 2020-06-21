@@ -909,11 +909,10 @@ public class ScriptRuntime{
         }
         if(value instanceof CharSequence){
             String escaped = escapeString(value.toString());
-            StringBuilder sb = new StringBuilder(escaped.length() + 2);
-            sb.append('\"');
-            sb.append(escaped);
-            sb.append('\"');
-            return sb.toString();
+            String sb = '\"' +
+            escaped +
+            '\"';
+            return sb;
         }
         if(value instanceof Number){
             double d = ((Number)value).doubleValue();
@@ -2746,15 +2745,6 @@ public class ScriptRuntime{
         incrDecrMask);
     }
 
-    /**
-     * @deprecated Use {@link #propIncrDecr(Object, String, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object propIncrDecr(Object obj, String id,
-                                      Context cx, int incrDecrMask){
-        return propIncrDecr(obj, id, cx, getTopCallScope(cx), incrDecrMask);
-    }
-
     public static Object propIncrDecr(Object obj, String id,
                                       Context cx, Scriptable scope,
                                       int incrDecrMask){
@@ -2789,7 +2779,7 @@ public class ScriptRuntime{
         boolean post = ((incrDecrMask & Node.POST_FLAG) != 0);
 
         if(value instanceof Integer){
-            int intNumber = ((Integer)value).intValue();
+            int intNumber = (Integer)value;
             if((incrDecrMask & Node.DECR_FLAG) == 0){
                 ++intNumber;
             }else{
@@ -2801,7 +2791,7 @@ public class ScriptRuntime{
         }
 
         if(value instanceof Double){
-            final double d = ((Double)value).doubleValue();
+            final double d = (Double)value;
             if(Math.floor(d) == d && Math.abs(d) < NativeNumber.MAX_SAFE_INTEGER){
                 int intNumber = (int)d;
                 if((incrDecrMask & Node.DECR_FLAG) == 0){

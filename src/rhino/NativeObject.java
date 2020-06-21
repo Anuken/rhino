@@ -375,7 +375,7 @@ public class NativeObject extends IdScriptableObject implements Map{
                 Scriptable s = getCompatibleObject(cx, scope, arg);
                 ScriptableObject obj = ensureScriptableObject(s);
                 Object[] ids = obj.getIds(true, true);
-                ArrayList<Object> syms = new ArrayList<Object>();
+                ArrayList<Object> syms = new ArrayList<>();
                 for(int i = 0; i < ids.length; i++){
                     if(ids[i] instanceof Symbol){
                         syms.add(ids[i]);

@@ -5,7 +5,7 @@ import rhino.*;
 import java.lang.reflect.*;
 
 public class VMBridge_jdk18 extends VMBridge{
-    private final ThreadLocal<Object[]> contextLocal = new ThreadLocal<Object[]>();
+    private final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
 
     @Override
     protected Object getThreadContextHelper(){

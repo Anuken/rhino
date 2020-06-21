@@ -13,7 +13,7 @@ import java.util.*;
  */
 public class ErrorCollector implements IdeErrorReporter{
 
-    private final List<ParseProblem> errors = new ArrayList<ParseProblem>();
+    private final List<ParseProblem> errors = new ArrayList<>();
 
     /**
      * This is not called during AST generation.

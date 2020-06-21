@@ -21,23 +21,23 @@ final class TypeInfo{
     static final int OBJECT_TAG = 7;
     static final int UNINITIALIZED_VAR_TAG = 8;
 
-    static final int OBJECT(int constantPoolIndex){
+    static int OBJECT(int constantPoolIndex){
         return ((constantPoolIndex & 0xFFFF) << 8) | OBJECT_TAG;
     }
 
-    static final int OBJECT(String type, ConstantPool pool){
+    static int OBJECT(String type, ConstantPool pool){
         return OBJECT(pool.addClass(type));
     }
 
-    static final int UNINITIALIZED_VARIABLE(int bytecodeOffset){
+    static int UNINITIALIZED_VARIABLE(int bytecodeOffset){
         return ((bytecodeOffset & 0xFFFF) << 8) | UNINITIALIZED_VAR_TAG;
     }
 
-    static final int getTag(int typeInfo){
+    static int getTag(int typeInfo){
         return typeInfo & 0xFF;
     }
 
-    static final int getPayload(int typeInfo){
+    static int getPayload(int typeInfo){
         return typeInfo >>> 8;
     }
 
@@ -47,7 +47,7 @@ final class TypeInfo{
      * <p>
      * Only works on OBJECT types.
      */
-    static final String getPayloadAsType(int typeInfo, ConstantPool pool){
+    static String getPayloadAsType(int typeInfo, ConstantPool pool){
         if(getTag(typeInfo) == OBJECT_TAG){
             return (String)pool.getConstantData(getPayload(typeInfo));
         }
@@ -57,7 +57,7 @@ final class TypeInfo{
     /**
      * Create type information from an internal type.
      */
-    static final int fromType(String type, ConstantPool pool){
+    static int fromType(String type, ConstantPool pool){
         if(type.length() == 1){
             switch(type.charAt(0)){
                 case 'B': // sbyte

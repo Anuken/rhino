@@ -24,9 +24,7 @@ public class EmptyStatement extends AstNode{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth)).append(";\n");
-        return sb.toString();
+        return makeIndent(depth) + ";\n";
     }
 
     /**

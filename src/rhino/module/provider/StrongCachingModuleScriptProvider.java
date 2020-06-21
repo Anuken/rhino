@@ -15,7 +15,7 @@ import java.util.concurrent.*;
  */
 public class StrongCachingModuleScriptProvider extends CachingModuleScriptProviderBase{
 
-    private final Map<String, CachedModuleScript> modules = new ConcurrentHashMap<String, CachedModuleScript>(16, .75f, getConcurrencyLevel());
+    private final Map<String, CachedModuleScript> modules = new ConcurrentHashMap<>(16, .75f, getConcurrencyLevel());
 
     /**
      * Creates a new module provider with the specified module source provider.

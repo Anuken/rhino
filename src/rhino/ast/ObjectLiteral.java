@@ -25,7 +25,7 @@ import java.util.*;
 public class ObjectLiteral extends AstNode implements DestructuringForm{
 
     private static final List<ObjectProperty> NO_ELEMS =
-    Collections.unmodifiableList(new ArrayList<ObjectProperty>());
+    Collections.unmodifiableList(new ArrayList<>());
 
     private List<ObjectProperty> elements;
     boolean isDestructuring;
@@ -77,7 +77,7 @@ public class ObjectLiteral extends AstNode implements DestructuringForm{
     public void addElement(ObjectProperty element){
         assertNotNull(element);
         if(elements == null){
-            elements = new ArrayList<ObjectProperty>();
+            elements = new ArrayList<>();
         }
         elements.add(element);
         element.setParent(this);

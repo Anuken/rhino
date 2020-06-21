@@ -108,14 +108,14 @@ public class ClassCache{
         if(classTable == null){
             // Use 1 as concurrency level here and for other concurrent hash maps
             // as we don't expect high levels of sustained concurrent writes.
-            classTable = new ConcurrentHashMap<Class<?>, JavaMembers>(16, 0.75f, 1);
+            classTable = new ConcurrentHashMap<>(16, 0.75f, 1);
         }
         return classTable;
     }
 
     Map<JavaAdapter.JavaAdapterSignature, Class<?>> getInterfaceAdapterCacheMap(){
         if(classAdapterCache == null){
-            classAdapterCache = new ConcurrentHashMap<JavaAdapter.JavaAdapterSignature, Class<?>>(16, 0.75f, 1);
+            classAdapterCache = new ConcurrentHashMap<>(16, 0.75f, 1);
         }
         return classAdapterCache;
     }
@@ -158,7 +158,7 @@ public class ClassCache{
     synchronized void cacheInterfaceAdapter(Class<?> cl, Object iadapter){
         if(cachingIsEnabled){
             if(interfaceAdapterCache == null){
-                interfaceAdapterCache = new ConcurrentHashMap<Class<?>, Object>(16, 0.75f, 1);
+                interfaceAdapterCache = new ConcurrentHashMap<>(16, 0.75f, 1);
             }
             interfaceAdapterCache.put(cl, iadapter);
         }

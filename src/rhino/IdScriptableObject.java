@@ -848,7 +848,7 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
 
     private IdFunctionObject newIdFunction(Object tag, int id, String name,
                                            int arity, Scriptable scope){
-        IdFunctionObject function = null;
+        IdFunctionObject function;
         if(Context.getContext().getLanguageVersion() < Context.VERSION_ES6){
             function = new IdFunctionObject(this, tag, id, name, arity, scope);
         }else{
@@ -934,8 +934,8 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
     }
 
     private ScriptableObject getBuiltInDescriptor(String name){
-        Object value = null;
-        int attr = EMPTY;
+        Object value;
+        int attr;
 
         Scriptable scope = getParentScope();
         if(scope == null){
@@ -961,8 +961,8 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
     }
 
     private ScriptableObject getBuiltInDescriptor(Symbol key){
-        Object value = null;
-        int attr = EMPTY;
+        Object value;
+        int attr;
 
         Scriptable scope = getParentScope();
         if(scope == null){

@@ -135,21 +135,8 @@ public abstract class SecurityController{
      * The method should always be overridden, it is not declared abstract
      * for compatibility reasons.
      */
-    public Object callWithDomain(Object securityDomain, Context cx,
+    public abstract Object callWithDomain(Object securityDomain, Context cx,
                                  final Callable callable, Scriptable scope,
-                                 final Scriptable thisObj, final Object[] args){
-        return execWithDomain(cx, scope, (cx1, scope1) -> callable.call(cx1, scope1, thisObj, args), securityDomain);
-    }
-
-    /**
-     * @deprecated The application should not override this method and instead
-     * override
-     * {@link #callWithDomain(Object securityDomain, Context cx, Callable callable, Scriptable scope, Scriptable thisObj, Object[] args)}.
-     */
-    @Deprecated
-    public Object execWithDomain(Context cx, Scriptable scope,
-                                 Script script, Object securityDomain){
-        throw new IllegalStateException("callWithDomain should be overridden");
-    }
+                                 final Scriptable thisObj, final Object[] args);
 
 }

@@ -111,13 +111,12 @@ public class ElementGet extends AstNode{
 
     @Override
     public String toSource(int depth){
-        StringBuilder sb = new StringBuilder();
-        sb.append(makeIndent(depth));
-        sb.append(target.toSource(0));
-        sb.append("[");
-        sb.append(element.toSource(0));
-        sb.append("]");
-        return sb.toString();
+        String sb = makeIndent(depth) +
+        target.toSource(0) +
+        "[" +
+        element.toSource(0) +
+        "]";
+        return sb;
     }
 
     /**

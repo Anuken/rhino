@@ -26,7 +26,7 @@ import java.util.*;
  * built-in classes after initialization. For other setups involving
  * top-level scopes that inherit global properties from their proptotypes
  * (e.g. with dynamic scopes) embeddings should explicitly call
- * {@link #cacheBuiltins()} to initialize the class cache for each top-level
+ *  to initialize the class cache for each top-level
  * scope.</p>
  */
 public class TopLevel extends IdScriptableObject{
@@ -98,7 +98,7 @@ public class TopLevel extends IdScriptableObject{
      * <code>initStandardObjects()</code>.
      */
     public void cacheBuiltins(Scriptable scope, boolean sealed){
-        ctors = new EnumMap<Builtins, BaseFunction>(Builtins.class);
+        ctors = new EnumMap<>(Builtins.class);
         for(Builtins builtin : Builtins.values()){
             Object value = ScriptableObject.getProperty(this, builtin.name());
             if(value instanceof BaseFunction){
@@ -109,7 +109,7 @@ public class TopLevel extends IdScriptableObject{
                 ctors.put(builtin, (BaseFunction)BaseFunction.initAsGeneratorFunction(scope, sealed));
             }
         }
-        errors = new EnumMap<NativeErrors, BaseFunction>(NativeErrors.class);
+        errors = new EnumMap<>(NativeErrors.class);
         for(NativeErrors error : NativeErrors.values()){
             Object value = ScriptableObject.getProperty(this, error.name());
             if(value instanceof BaseFunction){
@@ -211,7 +211,7 @@ public class TopLevel extends IdScriptableObject{
 
     /**
      * Get the cached built-in object constructor from this scope with the
-     * given <code>type</code>. Returns null if {@link #cacheBuiltins()} has not
+     * given <code>type</code>. Returns null if  has not
      * been called on this object.
      * @param type the built-in type
      * @return the built-in constructor
@@ -222,7 +222,7 @@ public class TopLevel extends IdScriptableObject{
 
     /**
      * Get the cached native error constructor from this scope with the
-     * given <code>type</code>. Returns null if {@link #cacheBuiltins()} has not
+     * given <code>type</code>. Returns null if  has not
      * been called on this object.
      * @param type the native error type
      * @return the native error constructor
@@ -233,7 +233,7 @@ public class TopLevel extends IdScriptableObject{
 
     /**
      * Get the cached built-in object prototype from this scope with the
-     * given <code>type</code>. Returns null if {@link #cacheBuiltins()} has not
+     * given <code>type</code>. Returns null if  has not
      * been called on this object.
      * @param type the built-in type
      * @return the built-in prototype

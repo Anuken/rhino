@@ -10,7 +10,7 @@ import java.util.*;
 public class FunctionCall extends AstNode{
 
     protected static final List<AstNode> NO_ARGS =
-    Collections.unmodifiableList(new ArrayList<AstNode>());
+    Collections.unmodifiableList(new ArrayList<>());
 
     protected AstNode target;
     protected List<AstNode> arguments;
@@ -85,7 +85,7 @@ public class FunctionCall extends AstNode{
     public void addArgument(AstNode arg){
         assertNotNull(arg);
         if(arguments == null){
-            arguments = new ArrayList<AstNode>();
+            arguments = new ArrayList<>();
         }
         arguments.add(arg);
         arg.setParent(this);

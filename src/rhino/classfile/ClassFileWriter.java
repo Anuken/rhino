@@ -96,9 +96,9 @@ public class ClassFileWriter{
     // jump source to determine if a block is reachable or not.
     private UintMap itsJumpFroms = null;
     private String generatedClassName;
-    private ExceptionTableEntry itsExceptionTable[];
+    private ExceptionTableEntry[] itsExceptionTable;
     private int itsExceptionTableTop;
-    private int itsLineNumberTable[];   // pack start_pc & line_number together
+    private int[] itsLineNumberTable;   // pack start_pc & line_number together
     private int itsLineNumberTableTop;
     private byte[] itsCodeBuffer = new byte[256];
     private int itsCodeBufferTop;
@@ -1479,7 +1479,7 @@ public class ClassFileWriter{
      */
     public void addInterface(String interfaceName){
         short interfaceIndex = itsConstantPool.addClass(interfaceName);
-        itsInterfaces.add(Short.valueOf(interfaceIndex));
+        itsInterfaces.add(interfaceIndex);
     }
 
     /**
@@ -3142,7 +3142,7 @@ public class ClassFileWriter{
         offset = putInt16(itsSuperClassIndex, data, offset);
         offset = putInt16(itsInterfaces.size(), data, offset);
         for(int i = 0; i < itsInterfaces.size(); i++){
-            int interfaceIndex = ((Short)(itsInterfaces.get(i))).shortValue();
+            int interfaceIndex = (Short)(itsInterfaces.get(i));
             offset = putInt16(interfaceIndex, data, offset);
         }
         offset = putInt16(itsFields.size(), data, offset);
@@ -3373,8 +3373,7 @@ public class ClassFileWriter{
         }
 
         private SuperBlock getSuperBlockFromOffset(int offset){
-            for(int i = 0; i < superBlocks.length; i++){
-                SuperBlock sb = superBlocks[i];
+            for(SuperBlock sb : superBlocks){
                 if(sb == null){
                     break;
                 }else if(offset >= sb.getStart() && offset < sb.getEnd()){
@@ -3424,8 +3423,7 @@ public class ClassFileWriter{
                 deps[handlerSB.getIndex()] = dep;
             }
             int[] targetPCs = itsJumpFroms.getKeys();
-            for(int i = 0; i < targetPCs.length; i++){
-                int targetPC = targetPCs[i];
+            for(int targetPC : targetPCs){
                 int branchPC = itsJumpFroms.getInt(targetPC, -1);
                 SuperBlock branchSB = getSuperBlockFromOffset(branchPC);
                 SuperBlock targetSB = getSuperBlockFromOffset(targetPC);
@@ -3513,8 +3511,7 @@ public class ClassFileWriter{
             executeWorkList();
 
             // Replace dead code with no-ops.
-            for(int i = 0; i < superBlocks.length; i++){
-                SuperBlock sb = superBlocks[i];
+            for(SuperBlock sb : superBlocks){
                 if(!sb.isInitialized()){
                     killSuperBlock(sb);
                 }
@@ -3567,9 +3564,7 @@ public class ClassFileWriter{
                 ExceptionTableEntry ete = itsExceptionTable[i];
                 int eteStart = getLabelPC(ete.itsStartLabel);
                 if(eteStart == sb.getStart()){
-                    for(int j = i + 1; j < itsExceptionTableTop; j++){
-                        itsExceptionTable[j - 1] = itsExceptionTable[j];
-                    }
+                    if(itsExceptionTableTop - i + 1 >= 0) System.arraycopy(itsExceptionTable, i + 1, itsExceptionTable, i + 1 - 1, itsExceptionTableTop - i + 1);
                     itsExceptionTableTop--;
                     i--;
                 }
@@ -3602,7 +3597,7 @@ public class ClassFileWriter{
          */
         private void executeBlock(SuperBlock work){
             int bc = 0;
-            int next = 0;
+            int next;
 
             if(DEBUGSTACKMAP){
                 System.out.println("working on sb " + work.getIndex());
@@ -4371,7 +4366,6 @@ public class ClassFileWriter{
                     writeFullFrame(currentLocals, currentStack, offsetDelta);
                 }
 
-                prev = current;
                 prevLocals = currentLocals;
                 prevOffset = current.getStart();
             }

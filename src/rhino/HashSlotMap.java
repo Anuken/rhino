@@ -16,7 +16,7 @@ public class HashSlotMap
 implements SlotMap{
 
     private final LinkedHashMap<Object, ScriptableObject.Slot> map =
-    new LinkedHashMap<Object, ScriptableObject.Slot>();
+    new LinkedHashMap<>();
 
     @Override
     public int size(){

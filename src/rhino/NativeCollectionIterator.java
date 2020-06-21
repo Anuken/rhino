@@ -6,7 +6,7 @@ import java.util.*;
 public class NativeCollectionIterator extends ES6Iterator{
     private String className;
     private Type type;
-    private transient Iterator<Hashtable.Entry> iterator = Collections.emptyIterator();
+    private transient Iterator<Hashtable.Entry> iterator;
 
     enum Type{KEYS, VALUES, BOTH}
 

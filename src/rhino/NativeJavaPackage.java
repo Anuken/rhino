@@ -108,7 +108,7 @@ public class NativeJavaPackage extends ScriptableObject{
         ClassShutter shutter = cx.getClassShutter();
         Scriptable newValue = null;
         if(shutter == null || shutter.visibleToScripts(className)){
-            Class<?> cl = null;
+            Class<?> cl;
             if(classLoader != null){
                 cl = Kit.classOrNull(classLoader, className);
             }else{
@@ -129,7 +129,7 @@ public class NativeJavaPackage extends ScriptableObject{
             }else{
                 // add to negative cache
                 if(negativeCache == null)
-                    negativeCache = new HashSet<String>();
+                    negativeCache = new HashSet<>();
                 negativeCache.add(name);
             }
         }

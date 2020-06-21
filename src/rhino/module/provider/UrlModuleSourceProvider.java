@@ -139,10 +139,7 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase{
             urlConnectionExpiryCalculator));
         }catch(FileNotFoundException e){
             return null;
-        }catch(RuntimeException e){
-            close(urlConnection);
-            throw e;
-        }catch(IOException e){
+        }catch(RuntimeException | IOException e){
             close(urlConnection);
             throw e;
         }

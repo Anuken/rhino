@@ -1,22 +1,3 @@
-/****************************************************************
- *
- * The author of this software is David M. Gay.
- *
- * Copyright (c) 1991, 2000, 2001 by Lucent Technologies.
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose without fee is hereby granted, provided that this entire notice
- * is included in all copies of any software which is or includes a copy
- * or modification of this software and in all copies of the supporting
- * documentation for such software.
- *
- * THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
- * WARRANTY.  IN PARTICULAR, NEITHER THE AUTHOR NOR LUCENT MAKES ANY
- * REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
- * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
- *
- ***************************************************************/
-
 package rhino;
 
 import java.math.*;
@@ -570,7 +551,6 @@ class DToA{
             case 0:
             case 1:
                 ilim = ilim1 = -1;
-                i = 18;
                 ndigits = 0;
                 break;
             case 2:
@@ -580,15 +560,15 @@ class DToA{
             case 4:
                 if(ndigits <= 0)
                     ndigits = 1;
-                ilim = ilim1 = i = ndigits;
+                ilim = ilim1 = ndigits;
                 break;
             /* fall through */
             case 5:
                 i = ndigits + k + 1;
                 ilim = i;
                 ilim1 = i - 1;
-                if(i <= 0)
-                    i = 1;
+                if(i <= 0){
+                }
         }
         /* ilim is the maximum number of significant digits we want, based on k and ndigits. */
         /* ilim1 is the maximum number of significant digits we want, based on k and ndigits,
@@ -645,7 +625,7 @@ class DToA{
             eps = ieps * d + 7.0;
             eps = setWord0(eps, word0(eps) - (P - 1) * Exp_msk1);
             if(ilim == 0){
-                S = mhi = null;
+                S = null;
                 d -= 5.0;
                 if(d > eps){
                     buf.append('1');
@@ -742,7 +722,7 @@ class DToA{
             /* Yes. */
             ds = tens[k];
             if(ndigits < 0 && ilim <= 0){
-                S = mhi = null;
+                S = null;
                 if(ilim < 0 || d < 5 * ds || (!biasUp && d == 5 * ds)){
                     buf.setLength(0);
                     buf.append('0');        /* copy "0" to buffer */
@@ -791,7 +771,7 @@ class DToA{
 
         m2 = b2;
         m5 = b5;
-        mhi = mlo = null;
+        mhi = null;
         if(leftright){
             if(mode < 2){
                 i = (denorm) ? be[0] + (Bias + (P - 1) - 1 + 1) : 1 + P - bbits[0];

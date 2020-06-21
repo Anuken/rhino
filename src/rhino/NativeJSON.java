@@ -205,7 +205,7 @@ public final class NativeJSON extends IdScriptableObject{
             this.space = space;
         }
 
-        Stack<Scriptable> stack = new Stack<Scriptable>();
+        Stack<Scriptable> stack = new Stack<>();
         String indent;
         String gap;
         Callable replacer;
@@ -227,7 +227,7 @@ public final class NativeJSON extends IdScriptableObject{
         if(replacer instanceof Callable){
             replacerFunction = (Callable)replacer;
         }else if(replacer instanceof NativeArray){
-            propertyList = new LinkedList<Object>();
+            propertyList = new LinkedList<>();
             NativeArray replacerArray = (NativeArray)replacer;
             for(int i : replacerArray.getIndexIds()){
                 Object v = replacerArray.get(i, replacerArray);
@@ -273,7 +273,7 @@ public final class NativeJSON extends IdScriptableObject{
 
     private static Object str(Object key, Scriptable holder,
                               StringifyState state){
-        Object value = null;
+        Object value;
         if(key instanceof String){
             value = getProperty(holder, (String)key);
         }else{
@@ -350,14 +350,14 @@ public final class NativeJSON extends IdScriptableObject{
 
         String stepback = state.indent;
         state.indent = state.indent + state.gap;
-        Object[] k = null;
+        Object[] k;
         if(state.propertyList != null){
             k = state.propertyList.toArray();
         }else{
             k = value.getIds();
         }
 
-        List<Object> partial = new LinkedList<Object>();
+        List<Object> partial = new LinkedList<>();
 
         for(Object p : k){
             Object strP = str(p, value, state);
@@ -399,7 +399,7 @@ public final class NativeJSON extends IdScriptableObject{
 
         String stepback = state.indent;
         state.indent = state.indent + state.gap;
-        List<Object> partial = new LinkedList<Object>();
+        List<Object> partial = new LinkedList<>();
 
         long len = value.getLength();
         for(long index = 0; index < len; index++){
