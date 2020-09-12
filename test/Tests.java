@@ -30,6 +30,10 @@ public class Tests{
 
         assertEquals("123", eval("const gg = 123; gg").toString());
 
+        eval("const someValue = 99");
+        eval("(function(){ const someValue = 444; return someValue })();");
+        eval("someValue");
+        eval("var c = new java.lang.Object().getClass(); new JavaAdapter(c, {})");
     }
 
     Object eval(String str){

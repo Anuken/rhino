@@ -123,6 +123,11 @@ public final class JavaAdapter implements IdFunctionCall{
             if(arg instanceof NativeObject){
                 break;
             }
+
+            if(arg instanceof NativeJavaObject && ((NativeJavaObject)arg).unwrap() instanceof Class){
+                args[classCount] = arg = new NativeJavaClass(scope, (Class)((NativeJavaObject)arg).unwrap());
+            }
+
             if(!(arg instanceof NativeJavaClass)){
                 throw ScriptRuntime.typeError2("msg.not.java.class.arg",
                 String.valueOf(classCount),
