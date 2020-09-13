@@ -124,7 +124,7 @@ public final class JavaAdapter implements IdFunctionCall{
                 break;
             }
 
-            if(arg instanceof NativeJavaObject && ((NativeJavaObject)arg).unwrap() instanceof Class){
+            if(!(arg instanceof NativeJavaClass) && arg instanceof NativeJavaObject && ((NativeJavaObject)arg).unwrap() instanceof Class){
                 args[classCount] = arg = new NativeJavaClass(scope, (Class)((NativeJavaObject)arg).unwrap());
             }
 
