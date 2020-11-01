@@ -286,6 +286,9 @@ class JavaMembers{
     private static void discoverAccessibleMethods(Class<?> clazz,
                                                   Map<MethodSignature, Method> map, boolean includeProtected,
                                                   boolean includePrivate){
+        System.out.println("discovering methods of class " + clazz + " / " + clazz.getSuperclass() + " / " + Arrays.toString(clazz.getInterfaces()));
+
+
         if(isPublic(clazz.getModifiers()) || includePrivate){
             try{
                 if(includeProtected || includePrivate){
@@ -312,7 +315,7 @@ class JavaMembers{
                                 includePrivate);
                             }
                             clazz = clazz.getSuperclass();
-                        }catch(Exception e){
+                        }catch(SecurityException e){
                             // Some security settings (i.e., applets) disallow
                             // access to Class.getDeclaredMethods. Fall back to
                             // Class.getMethods.
