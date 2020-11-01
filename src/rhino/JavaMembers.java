@@ -312,7 +312,7 @@ class JavaMembers{
                                 includePrivate);
                             }
                             clazz = clazz.getSuperclass();
-                        }catch(SecurityException e){
+                        }catch(Exception e){
                             // Some security settings (i.e., applets) disallow
                             // access to Class.getDeclaredMethods. Fall back to
                             // Class.getMethods.
