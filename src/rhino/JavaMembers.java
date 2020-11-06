@@ -336,10 +336,10 @@ class JavaMembers{
                     }
                 }
                 return;
-            }catch(SecurityException e){
+            }catch(Exception e){
                 Context.reportWarning(
                 "Could not discover accessible methods of class " +
-                clazz.getName() + " due to lack of privileges, " +
+                clazz.getName() + " (probably) due to lack of privileges, " +
                 "attemping superclasses/interfaces.");
                 // Fall through and attempt to discover superclass/interface
                 // methods
