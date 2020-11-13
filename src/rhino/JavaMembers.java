@@ -329,14 +329,18 @@ class JavaMembers{
                 }else{
                     Method[] methods = clazz.getMethods();
                     for(Method method : methods){
-                        MethodSignature sig = new MethodSignature(method);
-                        // Array may contain methods with same signature but different return value!
-                        if(!map.containsKey(sig))
-                            map.put(sig, method);
+                        try{
+                            MethodSignature sig = new MethodSignature(method);
+                            // Array may contain methods with same signature but different return value!
+                            if(!map.containsKey(sig))
+                                map.put(sig, method);
+                        }catch(Throwable ignored){
+                            //some methods may contain invalid signatures
+                        }
                     }
                 }
                 return;
-            }catch(SecurityException e){
+            }catch(Throwable e){
                 Context.reportWarning(
                 "Could not discover accessible methods of class " +
                 clazz.getName() + " due to lack of privileges, " +
