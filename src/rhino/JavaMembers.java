@@ -527,7 +527,7 @@ class JavaMembers{
                     char ch0 = nameComponent.charAt(0);
                     if(Character.isUpperCase(ch0)){
                         if(nameComponent.length() == 1){
-                            beanPropertyName = nameComponent.toLowerCase();
+                            beanPropertyName = nameComponent.toLowerCase(Locale.ROOT);
                         }else{
                             char ch1 = nameComponent.charAt(1);
                             if(!Character.isUpperCase(ch1)){

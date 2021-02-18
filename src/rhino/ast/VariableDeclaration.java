@@ -118,7 +118,7 @@ public class VariableDeclaration extends AstNode{
     }
 
     private String declTypeName(){
-        return Token.typeToName(type).toLowerCase();
+        return Token.typeToName(type).toLowerCase(Locale.ROOT);
     }
 
     @Override
