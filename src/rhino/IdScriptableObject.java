@@ -6,8 +6,6 @@
 
 package rhino;
 
-import java.io.*;
-
 /**
  * Base class for native object implementation that uses IdFunctionObject to
  * export its methods to script via &lt;class-name&gt;.prototype object.
@@ -978,25 +976,6 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
             }
         }
         return null;
-    }
-
-    private void readObject(ObjectInputStream stream)
-    throws IOException, ClassNotFoundException{
-        stream.defaultReadObject();
-        int maxPrototypeId = stream.readInt();
-        if(maxPrototypeId != 0){
-            activatePrototypeMap(maxPrototypeId);
-        }
-    }
-
-    private void writeObject(ObjectOutputStream stream)
-    throws IOException{
-        stream.defaultWriteObject();
-        int maxPrototypeId = 0;
-        if(prototypeValues != null){
-            maxPrototypeId = prototypeValues.getMaxId();
-        }
-        stream.writeInt(maxPrototypeId);
     }
 
 }

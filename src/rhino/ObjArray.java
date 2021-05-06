@@ -1,7 +1,5 @@
 package rhino;
 
-import java.io.*;
-
 /**
  * Implementation of resizable array with focus on minimizing memory usage by storing few initial array elements in object fields. Can also be used as a stack.
  */
@@ -377,28 +375,6 @@ public class ObjArray{
 
     private static RuntimeException onSeledMutation(){
         throw new IllegalStateException("Attempt to modify sealed array");
-    }
-
-    private void writeObject(ObjectOutputStream os) throws IOException{
-        os.defaultWriteObject();
-        int N = size;
-        for(int i = 0; i != N; ++i){
-            Object obj = getImpl(i);
-            os.writeObject(obj);
-        }
-    }
-
-    private void readObject(ObjectInputStream is)
-    throws IOException, ClassNotFoundException{
-        is.defaultReadObject(); // It reads size
-        int N = size;
-        if(N > FIELDS_STORE_SIZE){
-            data = new Object[N - FIELDS_STORE_SIZE];
-        }
-        for(int i = 0; i != N; ++i){
-            Object obj = is.readObject();
-            setImpl(i, obj);
-        }
     }
 
     // Number of data elements

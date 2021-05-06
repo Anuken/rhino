@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -190,9 +189,4 @@ public class NativeWeakSet extends IdScriptableObject{
 
 // #/string_id_map#
 
-    private void readObject(ObjectInputStream stream)
-    throws IOException, ClassNotFoundException{
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
-    }
 }

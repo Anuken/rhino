@@ -24,7 +24,13 @@ task runtimeSourceJar(type: Jar){
     from sourceSets.main.allJava
 }
 
-publishing{ publications{ maven(MavenPublication){ from components.java }}}
+publishing{
+    publications{
+        maven(MavenPublication){
+            from components.java
+        }
+    }
+}
 
 repositories{
     mavenCentral()

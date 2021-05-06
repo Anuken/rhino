@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.*;
 import java.util.*;
 
 public class NativeCollectionIterator extends ES6Iterator{
@@ -54,18 +53,4 @@ public class NativeCollectionIterator extends ES6Iterator{
         }
     }
 
-    private void readObject(ObjectInputStream stream)
-    throws IOException, ClassNotFoundException{
-        stream.defaultReadObject();
-        className = (String)stream.readObject();
-        type = (Type)stream.readObject();
-        iterator = Collections.emptyIterator();
-    }
-
-    private void writeObject(ObjectOutputStream stream)
-    throws IOException{
-        stream.defaultWriteObject();
-        stream.writeObject(className);
-        stream.writeObject(type);
-    }
 }

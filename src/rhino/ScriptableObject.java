@@ -6,7 +6,6 @@ import rhino.ScriptRuntime.*;
 import rhino.annotations.*;
 import rhino.debug.*;
 
-import java.io.*;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -124,14 +123,6 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
             this.name = name;
             this.indexOrHash = indexOrHash;
             this.attributes = (short)attributes;
-        }
-
-        private void readObject(ObjectInputStream in)
-        throws IOException, ClassNotFoundException{
-            in.defaultReadObject();
-            if(name != null){
-                indexOrHash = name.hashCode();
-            }
         }
 
         boolean setValue(Object value, Scriptable owner, Scriptable start){
@@ -2795,37 +2786,6 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
         }
 
         return result;
-    }
-
-    private void writeObject(ObjectOutputStream out)
-    throws IOException{
-        out.defaultWriteObject();
-        final long stamp = slotMap.readLock();
-        try{
-            int objectsCount = slotMap.dirtySize();
-            if(objectsCount == 0){
-                out.writeInt(0);
-            }else{
-                out.writeInt(objectsCount);
-                for(Slot slot : slotMap){
-                    out.writeObject(slot);
-                }
-            }
-        }finally{
-            slotMap.unlockRead(stamp);
-        }
-    }
-
-    private void readObject(ObjectInputStream in)
-    throws IOException, ClassNotFoundException{
-        in.defaultReadObject();
-
-        int tableSize = in.readInt();
-        slotMap = createSlotMap(tableSize);
-        for(int i = 0; i < tableSize; i++){
-            Slot slot = (Slot)in.readObject();
-            slotMap.addSlot(slot);
-        }
     }
 
     protected ScriptableObject getOwnPropertyDescriptor(Context cx, Object id){

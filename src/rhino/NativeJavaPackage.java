@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -144,11 +143,6 @@ public class NativeJavaPackage extends ScriptableObject{
     @Override
     public Object getDefaultValue(Class<?> ignored){
         return toString();
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException{
-        in.defaultReadObject();
-        this.classLoader = Context.getCurrentContext().getApplicationClassLoader();
     }
 
     @Override

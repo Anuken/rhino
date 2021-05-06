@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -811,60 +810,6 @@ implements Scriptable, SymbolScriptable, Wrapper{
         JavaMembers.javaSignature(type));
     }
 
-    private void writeObject(ObjectOutputStream out)
-    throws IOException{
-        out.defaultWriteObject();
-
-        out.writeBoolean(isAdapter);
-        if(isAdapter){
-            if(adapter_writeAdapterObject == null){
-                throw new IOException();
-            }
-            Object[] args = {javaObject, out};
-            try{
-                adapter_writeAdapterObject.invoke(null, args);
-            }catch(Exception ex){
-                throw new IOException();
-            }
-        }else{
-            out.writeObject(javaObject);
-        }
-
-        if(staticType != null){
-            out.writeObject(staticType.getName());
-        }else{
-            out.writeObject(null);
-        }
-    }
-
-    private void readObject(ObjectInputStream in)
-    throws IOException, ClassNotFoundException{
-        in.defaultReadObject();
-
-        isAdapter = in.readBoolean();
-        if(isAdapter){
-            if(adapter_readAdapterObject == null)
-                throw new ClassNotFoundException();
-            Object[] args = {this, in};
-            try{
-                javaObject = adapter_readAdapterObject.invoke(null, args);
-            }catch(Exception ex){
-                throw new IOException();
-            }
-        }else{
-            javaObject = in.readObject();
-        }
-
-        String className = (String)in.readObject();
-        if(className != null){
-            staticType = Class.forName(className);
-        }else{
-            staticType = null;
-        }
-
-        initMembers();
-    }
-
     /**
      * The prototype of this object.
      */
@@ -883,30 +828,5 @@ implements Scriptable, SymbolScriptable, Wrapper{
     protected transient boolean isAdapter;
 
     private static final Object COERCED_INTERFACE_KEY = "Coerced Interface";
-    private static Method adapter_writeAdapterObject;
-    private static Method adapter_readAdapterObject;
-
-    static{
-        // Reflection in java is verbose
-        Class<?>[] sig2 = new Class[2];
-        Class<?> cl = Kit.classOrNull("rhino.JavaAdapter");
-        if(cl != null){
-            try{
-                sig2[0] = ScriptRuntime.ObjectClass;
-                sig2[1] = Kit.classOrNull("java.io.ObjectOutputStream");
-                adapter_writeAdapterObject = cl.getMethod("writeAdapterObject",
-                sig2);
-
-                sig2[0] = ScriptRuntime.ScriptableClass;
-                sig2[1] = Kit.classOrNull("java.io.ObjectInputStream");
-                adapter_readAdapterObject = cl.getMethod("readAdapterObject",
-                sig2);
-
-            }catch(NoSuchMethodException e){
-                adapter_writeAdapterObject = null;
-                adapter_readAdapterObject = null;
-            }
-        }
-    }
 
 }

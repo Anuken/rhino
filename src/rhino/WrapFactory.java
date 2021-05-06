@@ -150,6 +150,6 @@ public class WrapFactory{
         javaPrimitiveWrap = value;
     }
 
-    private boolean javaPrimitiveWrap = true;
+    private boolean javaPrimitiveWrap = false;
 
 }

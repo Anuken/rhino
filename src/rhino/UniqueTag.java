@@ -2,11 +2,6 @@ package rhino;
 
 /**
  * Class instances represent serializable tags to mark special Object values.
- * <p>
- * Compatibility note: under jdk 1.1 use
- * rhino.serialize.ScriptableInputStream to read serialized
- * instances of UniqueTag as under this JDK version the default
- * ObjectInputStream would not restore them correctly as it lacks support
  * for readResolve method
  */
 public final class UniqueTag{

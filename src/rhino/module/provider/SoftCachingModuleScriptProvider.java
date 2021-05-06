@@ -3,10 +3,8 @@ package rhino.module.provider;
 import rhino.*;
 import rhino.module.*;
 
-import java.io.*;
 import java.lang.ref.*;
 import java.net.*;
-import java.util.*;
 import java.util.concurrent.*;
 
 /**
@@ -90,28 +88,4 @@ public class SoftCachingModuleScriptProvider extends CachingModuleScriptProvider
         }
     }
 
-    private void readObject(ObjectInputStream in) throws IOException,
-    ClassNotFoundException{
-        scriptRefQueue = new ReferenceQueue<>();
-        scripts = new ConcurrentHashMap<>();
-        final Map<String, CachedModuleScript> serScripts = (Map)in.readObject();
-        for(Map.Entry<String, CachedModuleScript> entry : serScripts.entrySet()){
-            final CachedModuleScript cachedModuleScript = entry.getValue();
-            putLoadedModule(entry.getKey(), cachedModuleScript.getModule(),
-            cachedModuleScript.getValidator());
-        }
-    }
-
-    private void writeObject(ObjectOutputStream out) throws IOException{
-        final Map<String, CachedModuleScript> serScripts =
-        new HashMap<>();
-        for(Map.Entry<String, ScriptReference> entry : scripts.entrySet()){
-            final CachedModuleScript cachedModuleScript =
-            entry.getValue().getCachedModuleScript();
-            if(cachedModuleScript != null){
-                serScripts.put(entry.getKey(), cachedModuleScript);
-            }
-        }
-        out.writeObject(serScripts);
-    }
 }

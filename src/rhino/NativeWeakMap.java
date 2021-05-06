@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -220,10 +219,4 @@ public class NativeWeakMap extends IdScriptableObject{
     MAX_PROTOTYPE_ID = SymbolId_toStringTag;
 
 // #/string_id_map#
-
-    private void readObject(ObjectInputStream stream)
-    throws IOException, ClassNotFoundException{
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
-    }
 }

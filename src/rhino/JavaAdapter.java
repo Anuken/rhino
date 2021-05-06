@@ -2,7 +2,6 @@ package rhino;
 
 import rhino.classfile.*;
 
-import java.io.*;
 import java.lang.reflect.*;
 import java.security.*;
 import java.util.*;
@@ -210,69 +209,6 @@ public final class JavaAdapter implements IdFunctionCall{
         }catch(Exception ex){
             throw Context.throwAsScriptRuntimeEx(ex);
         }
-    }
-
-    // Needed by NativeJavaObject serializer
-    public static void writeAdapterObject(Object javaObject,
-                                          ObjectOutputStream out)
-    throws IOException{
-        Class<?> cl = javaObject.getClass();
-        out.writeObject(cl.getSuperclass().getName());
-
-        Class<?>[] interfaces = cl.getInterfaces();
-        String[] interfaceNames = new String[interfaces.length];
-
-        for(int i = 0; i < interfaces.length; i++)
-            interfaceNames[i] = interfaces[i].getName();
-
-        out.writeObject(interfaceNames);
-
-        try{
-            Object delegee = cl.getField("delegee").get(javaObject);
-            out.writeObject(delegee);
-            return;
-        }catch(IllegalAccessException | NoSuchFieldException e){
-        }
-        throw new IOException();
-    }
-
-    // Needed by NativeJavaObject de-serializer
-    public static Object readAdapterObject(Scriptable self,
-                                           ObjectInputStream in)
-    throws IOException, ClassNotFoundException{
-        ContextFactory factory;
-        Context cx = Context.getCurrentContext();
-        if(cx != null){
-            factory = cx.getFactory();
-        }else{
-            factory = null;
-        }
-
-        Class<?> superClass = Class.forName((String)in.readObject());
-
-        String[] interfaceNames = (String[])in.readObject();
-        Class<?>[] interfaces = new Class[interfaceNames.length];
-
-        for(int i = 0; i < interfaceNames.length; i++)
-            interfaces[i] = Class.forName(interfaceNames[i]);
-
-        Scriptable delegee = (Scriptable)in.readObject();
-
-        Class<?> adapterClass = getAdapterClass(self, superClass, interfaces,
-        delegee);
-
-        Class<?>[] ctorParms = {
-        ScriptRuntime.ContextFactoryClass,
-        ScriptRuntime.ScriptableClass,
-        ScriptRuntime.ScriptableClass
-        };
-        Object[] ctorArgs = {factory, delegee, self};
-        try{
-            return adapterClass.getConstructor(ctorParms).newInstance(ctorArgs);
-        }catch(InstantiationException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e){
-        }
-
-        throw new ClassNotFoundException("adapter");
     }
 
     private static ObjToIntMap getObjectFunctionNames(Scriptable obj){
