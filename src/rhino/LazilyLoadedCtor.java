@@ -1,7 +1,6 @@
 package rhino;
 
 import java.lang.reflect.*;
-import java.security.*;
 
 /**
  * Avoid loading classes unless they are used.
@@ -17,27 +16,17 @@ public final class LazilyLoadedCtor{
     private final String propertyName;
     private final String className;
     private final boolean sealed;
-    private final boolean privileged;
     private Object initializedValue;
     private int state;
 
-    public LazilyLoadedCtor(ScriptableObject scope, String propertyName,
-                            String className, boolean sealed){
-        this(scope, propertyName, className, sealed, false);
-    }
-
-    LazilyLoadedCtor(ScriptableObject scope, String propertyName,
-                     String className, boolean sealed, boolean privileged){
-
+    LazilyLoadedCtor(ScriptableObject scope, String propertyName, String className, boolean sealed){
         this.scope = scope;
         this.propertyName = propertyName;
         this.className = className;
         this.sealed = sealed;
-        this.privileged = privileged;
         this.state = STATE_BEFORE_INIT;
 
-        scope.addLazilyInitializedValue(propertyName, 0, this,
-        ScriptableObject.DONTENUM);
+        scope.addLazilyInitializedValue(propertyName, 0, this, ScriptableObject.DONTENUM);
     }
 
     void init(){
@@ -67,9 +56,6 @@ public final class LazilyLoadedCtor{
     }
 
     private Object buildValue(){
-        if(privileged){
-            return AccessController.doPrivileged((PrivilegedAction<Object>)() -> buildValue0());
-        }
         return buildValue0();
     }
 
@@ -92,7 +78,7 @@ public final class LazilyLoadedCtor{
                 if(target instanceof RuntimeException){
                     throw (RuntimeException)target;
                 }
-            }catch(RhinoException | SecurityException | IllegalAccessException | InstantiationException ex){
+            }catch(Exception ex){
             }
         }
         return Scriptable.NOT_FOUND;

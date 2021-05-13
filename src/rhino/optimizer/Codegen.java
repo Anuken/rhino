@@ -69,9 +69,8 @@ public class Codegen implements Evaluator{
     }
 
     @Override
-    public Script createScriptObject(Object bytecode,
-                                     Object staticSecurityDomain){
-        Class<?> cl = defineClass(bytecode, staticSecurityDomain);
+    public Script createScriptObject(Object bytecode){
+        Class<?> cl = defineClass(bytecode);
 
         Script script;
         try{
@@ -85,9 +84,8 @@ public class Codegen implements Evaluator{
 
     @Override
     public Function createFunctionObject(Context cx, Scriptable scope,
-                                         Object bytecode,
-                                         Object staticSecurityDomain){
-        Class<?> cl = defineClass(bytecode, staticSecurityDomain);
+                                         Object bytecode){
+        Class<?> cl = defineClass(bytecode);
 
         NativeFunction f;
         try{
@@ -101,8 +99,7 @@ public class Codegen implements Evaluator{
         return f;
     }
 
-    private Class<?> defineClass(Object bytecode,
-                                 Object staticSecurityDomain){
+    private Class<?> defineClass(Object bytecode){
         Object[] nameBytesPair = (Object[])bytecode;
         String className = (String)nameBytesPair[0];
         byte[] classBytes = (byte[])nameBytesPair[1];
@@ -111,17 +108,15 @@ public class Codegen implements Evaluator{
         // which must be accessible through this class loader
         ClassLoader rhinoLoader = getClass().getClassLoader();
         GeneratedClassLoader loader;
-        loader = SecurityController.createLoader(rhinoLoader,
-        staticSecurityDomain);
-        Exception e;
+        Context cx = Context.getContext();
+        loader = cx.createClassLoader(rhinoLoader == null ? cx.getApplicationClassLoader() : rhinoLoader);
         try{
             Class<?> cl = loader.defineClass(className, classBytes);
             loader.linkClass(cl);
             return cl;
-        }catch(SecurityException | IllegalArgumentException x){
-            e = x;
+        }catch(Exception x){
+            throw new RuntimeException("Malformed optimizer package", x);
         }
-        throw new RuntimeException("Malformed optimizer package " + e);
     }
 
     public byte[] compileToClassFile(CompilerEnvirons compilerEnv,

@@ -19,7 +19,7 @@ import java.util.jar.*;
  * and associated with the thread that will be executing the script.
  * The Context will be used to store information about the executing
  * of the script such as the call stack. Contexts are associated with
- * the current thread  using the {@link #call(ContextAction)}
+ * the current thread.
  * or {@link #enter()} methods.<p>
  * <p>
  * Different forms of script execution are supported. Scripts may be
@@ -169,13 +169,6 @@ public class Context{
     public static final int FEATURE_PARENT_PROTO_PROPERTIES = 5;
 
     /**
-     * @deprecated In previous releases, this name was given to
-     * FEATURE_PARENT_PROTO_PROPERTIES.
-     */
-    @Deprecated
-    public static final int FEATURE_PARENT_PROTO_PROPRTIES = 5;
-
-    /**
      * Control if support for E4X(ECMAScript for XML) extension is available.
      * If hasFeature(FEATURE_E4X) returns true, the XML syntax is available.
      * <p>
@@ -322,13 +315,6 @@ public class Context{
      */
     public static final int FEATURE_LITTLE_ENDIAN = 19;
 
-    /**
-     * Configure the XMLProcessor to parse XML with security features or not.
-     * Security features include not fetching remote entity references and disabling XIncludes
-     * @since 1.7 Release 12
-     */
-    public static final int FEATURE_ENABLE_XML_SECURE_PARSING = 20;
-
     public static final String languageVersionProperty = "language version";
     public static final String errorReporterProperty = "error reporter";
 
@@ -336,24 +322,6 @@ public class Context{
      * Convenient value to use as zero-length array of objects.
      */
     public static final Object[] emptyArgs = ScriptRuntime.emptyArgs;
-
-    /**
-     * Creates a new Context. The context will be associated with the {@link
-     * ContextFactory#getGlobal() global context factory}.
-     * <p>
-     * Note that the Context must be associated with a thread before
-     * it can be used to execute a script.
-     * @deprecated this constructor is deprecated because it creates a
-     * dependency on a static singleton context factory. Use
-     * {@link ContextFactory#enter()} or
-     * {@link ContextFactory#call(ContextAction)} instead. If you subclass
-     * this class, consider using {@link #Context(ContextFactory)} constructor
-     * instead in the subclasses' constructors.
-     */
-    @Deprecated
-    public Context(){
-        this(ContextFactory.getGlobal());
-    }
 
     /**
      * Creates a new context. Provided as a preferred super constructor for
@@ -396,30 +364,9 @@ public class Context{
      * @return a Context associated with the current thread
      * @see #getCurrentContext()
      * @see #exit()
-     * @see #call(ContextAction)
      */
     public static Context enter(){
         return enter(null, ContextFactory.getGlobal());
-    }
-
-    /**
-     * Get a Context associated with the current thread, using
-     * the given Context if need be.
-     * <p>
-     * The same as <code>enter()</code> except that <code>cx</code>
-     * is associated with the current thread and returned if
-     * the current thread has no associated context and <code>cx</code>
-     * is not associated with any other thread.
-     * @param cx a Context to associate with the thread if possible
-     * @return a Context associated with the current thread
-     * @see ContextFactory#enterContext(Context)
-     * @see ContextFactory#call(ContextAction)
-     * @deprecated use {@link ContextFactory#enterContext(Context)} instead as
-     * this method relies on usage of a static singleton "global" ContextFactory.
-     */
-    @Deprecated
-    public static Context enter(Context cx){
-        return enter(cx, ContextFactory.getGlobal());
     }
 
     static Context enter(Context cx, ContextFactory factory){
@@ -471,24 +418,6 @@ public class Context{
             VMBridge.instance.setContext(helper, null);
             cx.factory.onContextReleased(cx);
         }
-    }
-
-    /**
-     * Call {@link ContextAction#run(Context cx)}
-     * using the Context instance associated with the current thread.
-     * If no Context is associated with the thread, then
-     * <tt>ContextFactory.getGlobal().makeContext()</tt> will be called to
-     * construct new Context instance. The instance will be temporary
-     * associated with the thread during call to
-     * {@link ContextAction#run(Context)}.
-     * @return The result of {@link ContextAction#run(Context)}.
-     * @deprecated use {@link ContextFactory#call(ContextAction)} instead as
-     * this method relies on usage of a static singleton "global"
-     * ContextFactory.
-     */
-    @Deprecated
-    public static <T> T call(ContextAction<T> action){
-        return call(ContextFactory.getGlobal(), action);
     }
 
     /**
@@ -1054,18 +983,11 @@ public class Context{
      * @param source the JavaScript source
      * @param sourceName a string describing the source, such as a filename
      * @param lineno the starting line number
-     * @param securityDomain an arbitrary object that specifies security
-     * information about the origin or owner of the script. For
-     * implementations that don't care about security, this value
-     * may be null.
      * @return the result of evaluating the string
-     * @see SecurityController
      */
     public final Object evaluateString(Scriptable scope, String source,
-                                       String sourceName, int lineno,
-                                       Object securityDomain){
-        Script script = compileString(source, sourceName, lineno,
-        securityDomain);
+                                       String sourceName, int lineno){
+        Script script = compileString(source, sourceName, lineno);
         if(script != null){
             return script.exec(this, scope);
         }
@@ -1080,15 +1002,11 @@ public class Context{
      * @param in the Reader to get JavaScript source from
      * @param sourceName a string describing the source, such as a filename
      * @param lineno the starting line number
-     * @param securityDomain an arbitrary object that specifies security
-     * information about the origin or owner of the script. For
-     * implementations that don't care about security, this value
-     * may be null.
      * @return the result of evaluating the source
      * @throws IOException if an IOException was generated by the Reader
      */
-    public final Object evaluateReader(Scriptable scope, Reader in, String sourceName, int lineno, Object securityDomain) throws IOException{
-        Script script = compileReader(in, sourceName, lineno, securityDomain);
+    public final Object evaluateReader(Scriptable scope, Reader in, String sourceName, int lineno) throws IOException{
+        Script script = compileReader(in, sourceName, lineno);
         if(script != null){
             return script.exec(this, scope);
         }
@@ -1236,24 +1154,19 @@ public class Context{
      * @param in the input reader
      * @param sourceName a string describing the source, such as a filename
      * @param lineno the starting line number for reporting errors
-     * @param securityDomain an arbitrary object that specifies security
-     * information about the origin or owner of the script. For
-     * implementations that don't care about security, this value
-     * may be null.
      * @return a script that may later be executed
      * @throws IOException if an IOException was generated by the Reader
      * @see Script
      */
     public final Script compileReader(Reader in, String sourceName,
-                                      int lineno, Object securityDomain)
+                                      int lineno)
     throws IOException{
         if(lineno < 0){
             // For compatibility IllegalArgumentException can not be thrown here
             lineno = 0;
         }
 
-        return (Script)compileImpl(null, Kit.readReader(in), sourceName, lineno,
-        securityDomain, false, null, null);
+        return (Script)compileImpl(null, Kit.readReader(in), sourceName, lineno, false, null, null);
     }
 
     /**
@@ -1264,32 +1177,26 @@ public class Context{
      * @param sourceName a string describing the source, such as a filename
      * @param lineno the starting line number for reporting errors. Use
      * 0 if the line number is unknown.
-     * @param securityDomain an arbitrary object that specifies security
-     * information about the origin or owner of the script. For
-     * implementations that don't care about security, this value
-     * may be null.
      * @return a script that may later be executed
      * @see Script
      */
     public final Script compileString(String source,
-                                      String sourceName, int lineno,
-                                      Object securityDomain){
+                                      String sourceName, int lineno){
         if(lineno < 0){
             // For compatibility IllegalArgumentException can not be thrown here
             lineno = 0;
         }
-        return compileString(source, null, null, sourceName, lineno,
-        securityDomain);
+        return compileString(source, null, null, sourceName, lineno
+        );
     }
 
     final Script compileString(String source,
                                Evaluator compiler,
                                ErrorReporter compilationErrorReporter,
-                               String sourceName, int lineno,
-                               Object securityDomain){
+                               String sourceName, int lineno){
         try{
             return (Script)compileImpl(null, source, sourceName, lineno,
-            securityDomain, false,
+            false,
             compiler, compilationErrorReporter);
         }catch(IOException ioe){
             // Should not happen when dealing with source as string
@@ -1306,28 +1213,21 @@ public class Context{
      * @param source the function definition source
      * @param sourceName a string describing the source, such as a filename
      * @param lineno the starting line number
-     * @param securityDomain an arbitrary object that specifies security
-     * information about the origin or owner of the script. For
-     * implementations that don't care about security, this value
-     * may be null.
      * @return a Function that may later be called
      * @see Function
      */
     public final Function compileFunction(Scriptable scope, String source,
-                                          String sourceName, int lineno,
-                                          Object securityDomain){
-        return compileFunction(scope, source, null, null, sourceName, lineno,
-        securityDomain);
+                                          String sourceName, int lineno){
+        return compileFunction(scope, source, null, null, sourceName, lineno);
     }
 
     final Function compileFunction(Scriptable scope, String source,
                                    Evaluator compiler,
                                    ErrorReporter compilationErrorReporter,
-                                   String sourceName, int lineno,
-                                   Object securityDomain){
+                                   String sourceName, int lineno){
         try{
             return (Function)compileImpl(scope, source, sourceName,
-            lineno, securityDomain, true,
+            lineno, true,
             compiler, compilationErrorReporter);
         }catch(IOException ioe){
             // Should never happen because we just made the reader
@@ -1554,16 +1454,6 @@ public class Context{
     }
 
     /**
-     * @see #toObject(Object, Scriptable)
-     * @deprecated
-     */
-    @Deprecated
-    public static Scriptable toObject(Object value, Scriptable scope,
-                                      Class<?> staticType){
-        return ScriptRuntime.toObject(scope, value);
-    }
-
-    /**
      * Convenient method to convert java value to its closest representation
      * in JavaScript.
      * <p>
@@ -1616,23 +1506,6 @@ public class Context{
     public static Object jsToJava(Object value, Class<?> desiredType)
     throws EvaluatorException{
         return NativeJavaObject.coerceTypeImpl(desiredType, value);
-    }
-
-    /**
-     * @throws IllegalArgumentException if the conversion cannot be performed.
-     * Note that {@link #jsToJava(Object, Class)} throws
-     * {@link EvaluatorException} instead.
-     * @see #jsToJava(Object, Class)
-     * @deprecated
-     */
-    @Deprecated
-    public static Object toType(Object value, Class<?> desiredType)
-    throws IllegalArgumentException{
-        try{
-            return jsToJava(value, desiredType);
-        }catch(EvaluatorException ex){
-            throw new IllegalArgumentException(ex.getMessage(), ex);
-        }
     }
 
     /**
@@ -1810,42 +1683,17 @@ public class Context{
     }
 
     /**
-     * Set the security controller for this context.
-     * <p> SecurityController may only be set if it is currently null
-     * and {@link SecurityController#hasGlobal()} is <tt>false</tt>.
-     * Otherwise a SecurityException is thrown.
-     * @param controller a SecurityController object
-     * @throws SecurityException if there is already a SecurityController
-     * object for this Context or globally installed.
-     * @see SecurityController#initGlobal(SecurityController controller)
-     * @see SecurityController#hasGlobal()
-     */
-    public final void setSecurityController(SecurityController controller){
-        if(sealed) onSealedMutation();
-        if(controller == null) throw new IllegalArgumentException();
-        if(securityController != null){
-            throw new SecurityException("Can not overwrite existing SecurityController object");
-        }
-        if(SecurityController.hasGlobal()){
-            throw new SecurityException("Can not overwrite existing global SecurityController object");
-        }
-        securityController = controller;
-    }
-
-    /**
      * Set the LiveConnect access filter for this context.
      * <p> {@link ClassShutter} may only be set if it is currently null.
-     * Otherwise a SecurityException is thrown.
      * @param shutter a ClassShutter object
-     * @throws SecurityException if there is already a ClassShutter
+     * @throws IllegalStateException if there is already a ClassShutter
      * object for this Context
      */
     public synchronized final void setClassShutter(ClassShutter shutter){
         if(sealed) onSealedMutation();
         if(shutter == null) throw new IllegalArgumentException();
         if(hasClassShutter){
-            throw new SecurityException("Cannot overwrite existing " +
-            "ClassShutter object");
+            throw new IllegalStateException("Cannot overwrite existing " + "ClassShutter object");
         }
         classShutter = shutter;
         hasClassShutter = true;
@@ -1853,30 +1701,6 @@ public class Context{
 
     final synchronized ClassShutter getClassShutter(){
         return classShutter;
-    }
-
-    public interface ClassShutterSetter{
-        void setClassShutter(ClassShutter shutter);
-
-        ClassShutter getClassShutter();
-    }
-
-    public final synchronized ClassShutterSetter getClassShutterSetter(){
-        if(hasClassShutter)
-            return null;
-        hasClassShutter = true;
-        return new ClassShutterSetter(){
-
-            @Override
-            public void setClassShutter(ClassShutter shutter){
-                classShutter = shutter;
-            }
-
-            @Override
-            public ClassShutter getClassShutter(){
-                return classShutter;
-            }
-        };
     }
 
     /**
@@ -1923,15 +1747,6 @@ public class Context{
         if(threadLocalMap == null)
             return;
         threadLocalMap.remove(key);
-    }
-
-    /**
-     * @see ClassCache#get(Scriptable)
-     * @see ClassCache#setCachingEnabled(boolean)
-     * @deprecated
-     */
-    @Deprecated
-    public static void setCachingEnabled(boolean cachingEnabled){
     }
 
     /**
@@ -2016,7 +1831,6 @@ public class Context{
      * @see #FEATURE_MEMBER_EXPR_AS_FUNCTION_NAME
      * @see #FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER
      * @see #FEATURE_TO_STRING_AS_SOURCE
-     * @see #FEATURE_PARENT_PROTO_PROPRTIES
      * @see #FEATURE_E4X
      * @see #FEATURE_DYNAMIC_SCOPE
      * @see #FEATURE_STRICT_VARS
@@ -2161,7 +1975,7 @@ public class Context{
      * Internal method that reports an error for missing calls to
      * enter().
      */
-    static Context getContext(){
+    public static Context getContext(){
         Context cx = getCurrentContext();
         if(cx == null){
             throw new RuntimeException(
@@ -2172,16 +1986,12 @@ public class Context{
 
     private Object compileImpl(Scriptable scope,
                                String sourceString, String sourceName, int lineno,
-                               Object securityDomain, boolean returnFunction,
+                               boolean returnFunction,
                                Evaluator compiler,
                                ErrorReporter compilationErrorReporter)
     throws IOException{
         if(sourceName == null){
             sourceName = "unnamed script";
-        }
-        if(securityDomain != null && getSecurityController() == null){
-            throw new IllegalArgumentException(
-            "securityDomain should be null if setSecurityController() was never called");
         }
 
         // scope should be given if and only if compiling function
@@ -2225,9 +2035,9 @@ public class Context{
 
         Object result;
         if(returnFunction){
-            result = compiler.createFunctionObject(this, scope, bytecode, securityDomain);
+            result = compiler.createFunctionObject(this, scope, bytecode);
         }else{
-            result = compiler.createScriptObject(bytecode, securityDomain);
+            result = compiler.createScriptObject(bytecode);
         }
 
         return result;
@@ -2333,15 +2143,6 @@ public class Context{
         return version == VERSION_DEFAULT || version >= VERSION_1_3;
     }
 
-    // The method must NOT be public or protected
-    SecurityController getSecurityController(){
-        SecurityController global = SecurityController.global();
-        if(global != null){
-            return global;
-        }
-        return securityController;
-    }
-
     public final boolean isGeneratingDebugChanged(){
         return generatingDebugChanged;
     }
@@ -2399,11 +2200,8 @@ public class Context{
     // Use ObjToIntMap instead of java.util.HashSet for JDK 1.1 compatibility
     ObjToIntMap iterating;
 
-    Object interpreterSecurityDomain;
-
     int version;
 
-    private SecurityController securityController;
     private boolean hasClassShutter;
     private ClassShutter classShutter;
     private ErrorReporter errorReporter;

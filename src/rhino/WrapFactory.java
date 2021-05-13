@@ -29,8 +29,7 @@ public class WrapFactory{
      * @param cx the current Context for this thread
      * @param scope the scope of the executing script
      * @param obj the object to be wrapped. Note it can be null.
-     * @param staticType type hint. If security restrictions prevent to wrap
-     * object based on its class, staticType will be used instead.
+     * @param staticType type hint.
      * @return the wrapped value.
      */
     public Object wrap(Context cx, Scriptable scope,
@@ -98,8 +97,7 @@ public class WrapFactory{
      * @param cx the current Context for this thread
      * @param scope the scope of the executing script
      * @param javaObject the object to be wrapped
-     * @param staticType type hint. If security restrictions prevent to wrap
-     * object based on its class, staticType will be used instead.
+     * @param staticType type hint.
      * @return the wrapped value which shall not be null
      */
     public Scriptable wrapAsJavaObject(Context cx, Scriptable scope,

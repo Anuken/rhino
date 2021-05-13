@@ -9,6 +9,7 @@ public class Tests{
 
     {
         cx.setLanguageVersion(Context.VERSION_ES6);
+        cx.setOptimizationLevel(9);
     }
 
     @Test
@@ -30,6 +31,8 @@ public class Tests{
 
         assertEquals("123", eval("const gg = 123; gg").toString());
 
+        assertEquals("666", eval("var w = new JavaAdapter(Packages.java.lang.Object, { hashCode(){ return 666; } }); w.hashCode();").toString());
+
         eval("const someValue = 99");
         eval("(function(){ const someValue = 444; return someValue })();");
         eval("someValue");
@@ -37,7 +40,7 @@ public class Tests{
     }
 
     Object eval(String str){
-        Object res = cx.evaluateString(scope, str, "testfile", 0, null);
+        Object res = cx.evaluateString(scope, str, "testfile", 0);
         System.out.println(res);
         return res;
     }

@@ -18,7 +18,7 @@ public interface ModuleSourceProvider{
      * cached representation is still valid according to the passed validator.
      */
     ModuleSource NOT_MODIFIED = new ModuleSource(null,
-    null, null, null, null);
+    null, null, null);
 
     /**
      * Returns the script source of the requested module. More specifically, it
@@ -30,8 +30,7 @@ public interface ModuleSourceProvider{
      * whatever semantics for validation that this source provider implements),
      * then {@link #NOT_MODIFIED} should be returned. Otherwise, it should
      * return a {@link ModuleSource} object with the actual source text of the
-     * module, preferrably a validator for it, and a security domain, where
-     * applicable.
+     * module.
      * @param moduleId the ID of the module. An implementation must only accept
      * an absolute ID, starting with a term.
      * @param paths the value of the require() function's "paths" attribute. If
@@ -67,7 +66,7 @@ public interface ModuleSourceProvider{
      * that this source provider implements), then {@link #NOT_MODIFIED}
      * should be returned. Otherwise, it should return a {@link ModuleSource}
      * object with the actual source text of the module, preferrably a
-     * validator for it, and a security domain, where applicable.
+     * validator for it.
      * @param uri the absolute URI from which to load the module source, but
      * without an extension such as ".js".
      * @param baseUri the module path base URI from which <code>uri</code>

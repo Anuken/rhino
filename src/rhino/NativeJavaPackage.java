@@ -15,29 +15,10 @@ import java.util.*;
  */
 
 public class NativeJavaPackage extends ScriptableObject{
-    NativeJavaPackage(boolean internalUsage, String packageName,
-                      ClassLoader classLoader){
+
+    NativeJavaPackage(boolean internalUsage, String packageName, ClassLoader classLoader){
         this.packageName = packageName;
         this.classLoader = classLoader;
-    }
-
-    /**
-     * @deprecated NativeJavaPackage is an internal class, do not use
-     * it directly.
-     */
-    @Deprecated
-    public NativeJavaPackage(String packageName, ClassLoader classLoader){
-        this(false, packageName, classLoader);
-    }
-
-    /**
-     * @deprecated NativeJavaPackage is an internal class, do not use
-     * it directly.
-     */
-    @Deprecated
-    public NativeJavaPackage(String packageName){
-        this(false, packageName,
-        Context.getCurrentContext().getApplicationClassLoader());
     }
 
     @Override

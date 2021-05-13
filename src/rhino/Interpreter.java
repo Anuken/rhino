@@ -367,12 +367,12 @@ public final class Interpreter extends Icode implements Evaluator{
     }
 
     @Override
-    public Script createScriptObject(Object bytecode, Object staticSecurityDomain){
+    public Script createScriptObject(Object bytecode){
         if(bytecode != itsData){
             Kit.codeBug();
         }
-        return InterpretedFunction.createScript(itsData,
-        staticSecurityDomain);
+        return InterpretedFunction.createScript(itsData
+        );
     }
 
     @Override
@@ -382,12 +382,12 @@ public final class Interpreter extends Icode implements Evaluator{
 
     @Override
     public Function createFunctionObject(Context cx, Scriptable scope,
-                                         Object bytecode, Object staticSecurityDomain){
+                                         Object bytecode){
         if(bytecode != itsData){
             Kit.codeBug();
         }
-        return InterpretedFunction.createFunction(cx, scope, itsData,
-        staticSecurityDomain);
+        return InterpretedFunction.createFunction(cx, scope, itsData
+        );
     }
 
     private static int getShort(byte[] iCode, int pc){
@@ -810,7 +810,7 @@ public final class Interpreter extends Icode implements Evaluator{
                                   String nativeStackTrace){
         String tag = "rhino.Interpreter.interpretLoop";
         StringBuilder sb = new StringBuilder(nativeStackTrace.length() + 1000);
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.getProperty("line.separator");
 
         CallFrame[] array = (CallFrame[])ex.interpreterStackInfo;
         int[] linePC = ex.interpreterLineData;
@@ -869,7 +869,7 @@ public final class Interpreter extends Icode implements Evaluator{
         ScriptStackElement[][] stack = getScriptStackElements(ex);
         List<String> list = new ArrayList<>(stack.length);
         String lineSeparator =
-        SecurityUtilities.getSystemProperty("line.separator");
+        System.getProperty("line.separator");
         for(ScriptStackElement[] group : stack){
             StringBuilder sb = new StringBuilder();
             for(ScriptStackElement elem : group){
@@ -938,17 +938,6 @@ public final class Interpreter extends Icode implements Evaluator{
                             Context cx, Scriptable scope,
                             Scriptable thisObj, Object[] args){
         if(!ScriptRuntime.hasTopCall(cx)) Kit.codeBug();
-
-        if(cx.interpreterSecurityDomain != ifun.securityDomain){
-            Object savedDomain = cx.interpreterSecurityDomain;
-            cx.interpreterSecurityDomain = ifun.securityDomain;
-            try{
-                return ifun.securityController.callWithDomain(
-                ifun.securityDomain, cx, ifun, scope, thisObj, args);
-            }finally{
-                cx.interpreterSecurityDomain = savedDomain;
-            }
-        }
 
         CallFrame frame = initFrame(cx, scope, thisObj, args, null, 0, args.length,
         ifun, null);
@@ -1539,38 +1528,36 @@ public final class Interpreter extends Icode implements Evaluator{
                                 }
                                 if(fun instanceof InterpretedFunction){
                                     InterpretedFunction ifun = (InterpretedFunction)fun;
-                                    if(frame.fnOrScript.securityDomain == ifun.securityDomain){
-                                        CallFrame callParentFrame = frame;
-                                        if(op == Icode_TAIL_CALL){
-                                            // In principle tail call can re-use the current
-                                            // frame and its stack arrays but it is hard to
-                                            // do properly. Any exceptions that can legally
-                                            // happen during frame re-initialization including
-                                            // StackOverflowException during innocent looking
-                                            // System.arraycopy may leave the current frame
-                                            // data corrupted leading to undefined behaviour
-                                            // in the catch code bellow that unwinds JS stack
-                                            // on exceptions. Then there is issue about frame release
-                                            // end exceptions there.
-                                            // To avoid frame allocation a released frame
-                                            // can be cached for re-use which would also benefit
-                                            // non-tail calls but it is not clear that this caching
-                                            // would gain in performance due to potentially
-                                            // bad interaction with GC.
-                                            callParentFrame = frame.parentFrame;
-                                            // Release the current frame. See Bug #344501 to see why
-                                            // it is being done here.
-                                            exitFrame(cx, frame, null);
-                                        }
-                                        CallFrame calleeFrame = initFrame(cx, calleeScope, funThisObj, stack, sDbl,
-                                        stackTop + 2, indexReg, ifun, callParentFrame);
-                                        if(op != Icode_TAIL_CALL){
-                                            frame.savedStackTop = stackTop;
-                                            frame.savedCallOp = op;
-                                        }
-                                        frame = calleeFrame;
-                                        continue StateLoop;
+                                    CallFrame callParentFrame = frame;
+                                    if(op == Icode_TAIL_CALL){
+                                        // In principle tail call can re-use the current
+                                        // frame and its stack arrays but it is hard to
+                                        // do properly. Any exceptions that can legally
+                                        // happen during frame re-initialization including
+                                        // StackOverflowException during innocent looking
+                                        // System.arraycopy may leave the current frame
+                                        // data corrupted leading to undefined behaviour
+                                        // in the catch code bellow that unwinds JS stack
+                                        // on exceptions. Then there is issue about frame release
+                                        // end exceptions there.
+                                        // To avoid frame allocation a released frame
+                                        // can be cached for re-use which would also benefit
+                                        // non-tail calls but it is not clear that this caching
+                                        // would gain in performance due to potentially
+                                        // bad interaction with GC.
+                                        callParentFrame = frame.parentFrame;
+                                        // Release the current frame. See Bug #344501 to see why
+                                        // it is being done here.
+                                        exitFrame(cx, frame, null);
                                     }
+                                    CallFrame calleeFrame = initFrame(cx, calleeScope, funThisObj, stack, sDbl,
+                                    stackTop + 2, indexReg, ifun, callParentFrame);
+                                    if(op != Icode_TAIL_CALL){
+                                        frame.savedStackTop = stackTop;
+                                        frame.savedCallOp = op;
+                                    }
+                                    frame = calleeFrame;
+                                    continue StateLoop;
                                 }
 
                                 if(fun instanceof NativeContinuation){
@@ -1605,12 +1592,10 @@ public final class Interpreter extends Icode implements Evaluator{
                                         Callable applyCallable = ScriptRuntime.getCallable(funThisObj);
                                         if(applyCallable instanceof InterpretedFunction){
                                             InterpretedFunction iApplyCallable = (InterpretedFunction)applyCallable;
-                                            if(frame.fnOrScript.securityDomain == iApplyCallable.securityDomain){
-                                                frame = initFrameForApplyOrCall(cx, frame, indexReg,
-                                                stack, sDbl, stackTop, op, calleeScope, ifun,
-                                                iApplyCallable);
-                                                continue StateLoop;
-                                            }
+                                            frame = initFrameForApplyOrCall(cx, frame, indexReg,
+                                            stack, sDbl, stackTop, op, calleeScope, ifun,
+                                            iApplyCallable);
+                                            continue StateLoop;
                                         }
                                     }
                                 }
@@ -1624,12 +1609,10 @@ public final class Interpreter extends Icode implements Evaluator{
                                     // if the method is in fact an InterpretedFunction
                                     if(noSuchMethodMethod instanceof InterpretedFunction){
                                         InterpretedFunction ifun = (InterpretedFunction)noSuchMethodMethod;
-                                        if(frame.fnOrScript.securityDomain == ifun.securityDomain){
-                                            frame = initFrameForNoSuchMethod(cx, frame, indexReg, stack, sDbl,
-                                            stackTop, op, funThisObj, calleeScope,
-                                            noSuchMethodShim, ifun);
-                                            continue StateLoop;
-                                        }
+                                        frame = initFrameForNoSuchMethod(cx, frame, indexReg, stack, sDbl,
+                                        stackTop, op, funThisObj, calleeScope,
+                                        noSuchMethodShim, ifun);
+                                        continue StateLoop;
                                     }
                                 }
 
@@ -1652,17 +1635,15 @@ public final class Interpreter extends Icode implements Evaluator{
                                 Object lhs = stack[stackTop];
                                 if(lhs instanceof InterpretedFunction){
                                     InterpretedFunction f = (InterpretedFunction)lhs;
-                                    if(frame.fnOrScript.securityDomain == f.securityDomain){
-                                        Scriptable newInstance = f.createObject(cx, frame.scope);
-                                        CallFrame calleeFrame = initFrame(cx, frame.scope, newInstance, stack, sDbl,
-                                        stackTop + 1, indexReg, f, frame);
+                                    Scriptable newInstance = f.createObject(cx, frame.scope);
+                                    CallFrame calleeFrame = initFrame(cx, frame.scope, newInstance, stack, sDbl,
+                                    stackTop + 1, indexReg, f, frame);
 
-                                        stack[stackTop] = newInstance;
-                                        frame.savedStackTop = stackTop;
-                                        frame.savedCallOp = op;
-                                        frame = calleeFrame;
-                                        continue StateLoop;
-                                    }
+                                    stack[stackTop] = newInstance;
+                                    frame.savedStackTop = stackTop;
+                                    frame.savedCallOp = op;
+                                    frame = calleeFrame;
+                                    continue StateLoop;
                                 }
                                 if(!(lhs instanceof Function)){
                                     if(lhs == DBL_MRK) lhs = ScriptRuntime.wrapNumber(sDbl[stackTop]);

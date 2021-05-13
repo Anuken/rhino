@@ -4,8 +4,8 @@ package rhino;
  * Load generated classes.
  * @author Norris Boyd
  */
-public class DefiningClassLoader extends ClassLoader
-implements GeneratedClassLoader{
+public class DefiningClassLoader extends ClassLoader implements GeneratedClassLoader{
+
     public DefiningClassLoader(){
         this.parentLoader = getClass().getClassLoader();
     }
@@ -16,11 +16,7 @@ implements GeneratedClassLoader{
 
     @Override
     public Class<?> defineClass(String name, byte[] data){
-        // Use our own protection domain for the generated classes.
-        // TODO: we might want to use a separate protection domain for classes
-        // compiled from scripts, based on where the script was loaded from.
-        return super.defineClass(name, data, 0, data.length,
-        SecurityUtilities.getProtectionDomain(getClass()));
+        return super.defineClass(name, data, 0, data.length);
     }
 
     @Override

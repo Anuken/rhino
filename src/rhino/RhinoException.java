@@ -188,7 +188,7 @@ public abstract class RhinoException extends RuntimeException{
 
     static String formatStackTrace(ScriptStackElement[] stack, String message){
         StringBuilder buffer = new StringBuilder();
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.getProperty("line.separator");
 
         if((stackStyle == StackStyle.V8) && !"null".equals(message)){
             // V8 Actually puts the error message at the top of "stack."
@@ -211,20 +211,6 @@ public abstract class RhinoException extends RuntimeException{
             buffer.append(lineSeparator);
         }
         return buffer.toString();
-    }
-
-    /**
-     * Get a string representing the script stack of this exception.
-     * @param filter ignored
-     * @return a script stack dump
-     * @since 1.6R6
-     * @deprecated the filter argument is ignored as we are able to
-     * recognize script stack elements by our own. Use
-     * #getScriptStackTrace() instead.
-     */
-    @Deprecated
-    public String getScriptStackTrace(FilenameFilter filter){
-        return getScriptStackTrace();
     }
 
     /**

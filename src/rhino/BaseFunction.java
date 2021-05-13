@@ -600,7 +600,7 @@ public class BaseFunction extends IdScriptableObject implements Function{
         // Compile with explicit interpreter instance to force interpreter
         // mode.
         return cx.compileFunction(global, source, evaluator, reporter,
-        sourceURI, 1, null);
+        sourceURI, 1);
     }
 
     @Override

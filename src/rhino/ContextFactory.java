@@ -2,8 +2,6 @@
 
 package rhino;
 
-import java.security.*;
-
 /**
  * Factory class that Rhino runtime uses to create new {@link Context}
  * instances.  A <code>ContextFactory</code> can also notify listeners
@@ -252,8 +250,6 @@ public class ContextFactory{
 
             case Context.FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER:
 
-            case Context.FEATURE_ENABLE_XML_SECURE_PARSING:
-
             case Context.FEATURE_V8_EXTENSIONS:
 
             case Context.FEATURE_PARENT_PROTO_PROPERTIES:
@@ -295,13 +291,12 @@ public class ContextFactory{
     /**
      * Create class loader for generated classes.
      * This method creates an instance of the default implementation
-     * of {@link GeneratedClassLoader}. Rhino uses this interface to load
-     * generated JVM classes when no {@link SecurityController}
+     * of {@link GeneratedClassLoader}.
      * is installed.
      * Application can override the method to provide custom class loading.
      */
     protected GeneratedClassLoader createClassLoader(final ClassLoader parent){
-        return AccessController.doPrivileged((PrivilegedAction<DefiningClassLoader>)() -> new DefiningClassLoader(parent));
+        return new DefiningClassLoader(parent);
     }
 
     /**
@@ -487,23 +482,6 @@ public class ContextFactory{
      */
     public Context enterContext(){
         return enterContext(null);
-    }
-
-    /**
-     * @return a Context associated with the current thread
-     * @deprecated use {@link #enterContext()} instead
-     */
-    @Deprecated
-    public final Context enter(){
-        return enterContext(null);
-    }
-
-    /**
-     * @deprecated Use {@link Context#exit()} instead.
-     */
-    @Deprecated
-    public final void exit(){
-        Context.exit();
     }
 
     /**

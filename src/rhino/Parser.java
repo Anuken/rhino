@@ -491,28 +491,6 @@ public class Parser{
         }
     }
 
-    /**
-     * Builds a parse tree from the given sourcereader.
-     * @throws IOException if the {@link Reader} encounters an error
-     * @see #parse(String, String, int)
-     * @deprecated use parse(String, String, int) instead
-     */
-    @Deprecated
-    public AstRoot parse(Reader sourceReader, String sourceURI, int lineno)
-    throws IOException{
-        if(parseFinished) throw new IllegalStateException("parser reused");
-        if(compilerEnv.isIdeMode()){
-            return parse(Kit.readReader(sourceReader), sourceURI, lineno);
-        }
-        try{
-            this.sourceURI = sourceURI;
-            ts = new TokenStream(this, sourceReader, null, lineno);
-            return parse();
-        }finally{
-            parseFinished = true;
-        }
-    }
-
     private AstRoot parse() throws IOException{
         int pos = 0;
         AstRoot root = new AstRoot(pos);

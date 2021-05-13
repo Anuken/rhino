@@ -11,8 +11,7 @@ public class Kit{
     public static Class<?> classOrNull(String className){
         try{
             return Class.forName(className);
-        }catch(ClassNotFoundException | LinkageError | SecurityException ex){
-        }catch(IllegalArgumentException e){
+        }catch(Exception e){
             // Can be thrown if name has characters that a class name
             // can not contain
         }
@@ -26,8 +25,7 @@ public class Kit{
     public static Class<?> classOrNull(ClassLoader loader, String className){
         try{
             return loader.loadClass(className);
-        }catch(ClassNotFoundException | LinkageError | SecurityException ex){
-        }catch(IllegalArgumentException e){
+        }catch(Exception e){
             // Can be thrown if name has characters that a class name
             // can not contain
         }
@@ -37,7 +35,7 @@ public class Kit{
     static Object newInstanceOrNull(Class<?> cl){
         try{
             return cl.newInstance();
-        }catch(SecurityException | IllegalAccessException | InstantiationException | LinkageError x){
+        }catch(Exception x){
         }
         return null;
     }

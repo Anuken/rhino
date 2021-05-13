@@ -31,20 +31,17 @@ public interface Evaluator{
      * @param cx Current context
      * @param scope scope of the function
      * @param bytecode opaque object returned by compile
-     * @param staticSecurityDomain security domain
      * @return Function object that can be called
      */
     Function createFunctionObject(Context cx, Scriptable scope,
-                                  Object bytecode, Object staticSecurityDomain);
+                                  Object bytecode);
 
     /**
      * Create a script object.
      * @param bytecode opaque object returned by compile
-     * @param staticSecurityDomain security domain
      * @return Script object that can be evaluated
      */
-    Script createScriptObject(Object bytecode,
-                              Object staticSecurityDomain);
+    Script createScriptObject(Object bytecode);
 
     /**
      * Capture stack information from the given exception.

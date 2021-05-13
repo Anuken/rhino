@@ -4,8 +4,7 @@ import java.io.*;
 import java.net.*;
 
 /**
- * Represents the source text of the module as a tuple of a reader, a URI, a
- * security domain, and a cache validator.
+ * Represents the source text of the module as a tuple of a reader, a URI, and a cache validator.
  * <h1>Cache validators</h1>
  * Validators are used by caches subclassed from
  * {@link CachingModuleScriptProviderBase} to avoid repeated loading of
@@ -27,7 +26,6 @@ import java.net.*;
  */
 public class ModuleSource{
     private final Reader reader;
-    private final Object securityDomain;
     private final URI uri;
     private final URI base;
     private final Object validator;
@@ -35,16 +33,12 @@ public class ModuleSource{
     /**
      * Creates a new module source.
      * @param reader the reader returning the source text of the module.
-     * @param securityDomain the object representing the security domain for
-     * the module's source (passed to Rhino script compiler).
      * @param uri the URI of the module's source text
      * @param validator a validator that can be used for subsequent cache
-     * validation of the source text.
      */
-    public ModuleSource(Reader reader, Object securityDomain, URI uri,
+    public ModuleSource(Reader reader, URI uri,
                         URI base, Object validator){
         this.reader = reader;
-        this.securityDomain = securityDomain;
         this.uri = uri;
         this.base = base;
         this.validator = validator;
@@ -58,16 +52,6 @@ public class ModuleSource{
      */
     public Reader getReader(){
         return reader;
-    }
-
-    /**
-     * Returns the object representing the security domain for the module's
-     * source.
-     * @return the object representing the security domain for the module's
-     * source.
-     */
-    public Object getSecurityDomain(){
-        return securityDomain;
     }
 
     /**

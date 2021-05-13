@@ -58,8 +58,6 @@ public abstract class VMBridge{
      * classes are not accessible by default (Sun Bug #4071593).
      * VMBridge instance should try to workaround that via, for example,
      * calling method.setAccessible(true) when it is available.
-     * The implementation is responsible to catch all possible exceptions
-     * like SecurityException if the workaround is not available.
      * @return true if it was possible to make method accessible
      * or false otherwise.
      */

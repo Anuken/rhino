@@ -110,15 +110,6 @@ public class ImporterTopLevel extends TopLevel{
         return result;
     }
 
-    /**
-     * @deprecated Kept only for compatibility.
-     */
-    @Deprecated
-    public void importPackage(Context cx, Scriptable thisObj, Object[] args,
-                              Function funObj){
-        js_importPackage(args);
-    }
-
     private Object js_construct(Scriptable scope, Object[] args){
         ImporterTopLevel result = new ImporterTopLevel();
         for(int i = 0; i != args.length; ++i){

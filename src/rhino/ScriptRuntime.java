@@ -20,17 +20,6 @@ public class ScriptRuntime{
     protected ScriptRuntime(){
     }
 
-
-    /**
-     * Returns representation of the [[ThrowTypeError]] object.
-     * See ECMA 5 spec, 13.2.3
-     * @deprecated {@link #typeErrorThrower(Context)}
-     */
-    @Deprecated
-    public static BaseFunction typeErrorThrower(){
-        return typeErrorThrower(Context.getCurrentContext());
-    }
-
     /**
      * Returns representation of the [[ThrowTypeError]] object.
      * See ECMA 5 spec, 13.2.3
@@ -182,46 +171,46 @@ public class ScriptRuntime{
 
         // define lazy-loaded properties using their class name
         new LazilyLoadedCtor(scope, "RegExp",
-        "rhino.regexp.NativeRegExp", sealed, true);
+        "rhino.regexp.NativeRegExp", sealed);
         new LazilyLoadedCtor(scope, "Continuation",
-        "rhino.NativeContinuation", sealed, true);
+        "rhino.NativeContinuation", sealed);
 
         if(((cx.getLanguageVersion() >= Context.VERSION_1_8) &&
         cx.hasFeature(Context.FEATURE_V8_EXTENSIONS)) ||
         (cx.getLanguageVersion() >= Context.VERSION_ES6)){
             new LazilyLoadedCtor(scope, "ArrayBuffer",
             "rhino.typedarrays.NativeArrayBuffer",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Int8Array",
             "rhino.typedarrays.NativeInt8Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Uint8Array",
             "rhino.typedarrays.NativeUint8Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Uint8ClampedArray",
             "rhino.typedarrays.NativeUint8ClampedArray",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Int16Array",
             "rhino.typedarrays.NativeInt16Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Uint16Array",
             "rhino.typedarrays.NativeUint16Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Int32Array",
             "rhino.typedarrays.NativeInt32Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Uint32Array",
             "rhino.typedarrays.NativeUint32Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Float32Array",
             "rhino.typedarrays.NativeFloat32Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "Float64Array",
             "rhino.typedarrays.NativeFloat64Array",
-            sealed, true);
+            sealed);
             new LazilyLoadedCtor(scope, "DataView",
             "rhino.typedarrays.NativeDataView",
-            sealed, true);
+            sealed);
         }
 
         if(cx.getLanguageVersion() >= Context.VERSION_ES6){
@@ -247,17 +236,17 @@ public class ScriptRuntime{
         ScriptableObject s = initSafeStandardObjects(cx, scope, sealed);
 
         new LazilyLoadedCtor(s, "Packages",
-        "rhino.NativeJavaTopPackage", sealed, true);
+        "rhino.NativeJavaTopPackage", sealed);
         new LazilyLoadedCtor(s, "getClass",
-        "rhino.NativeJavaTopPackage", sealed, true);
+        "rhino.NativeJavaTopPackage", sealed);
         new LazilyLoadedCtor(s, "JavaAdapter",
-        "rhino.JavaAdapter", sealed, true);
+        "rhino.JavaAdapter", sealed);
         new LazilyLoadedCtor(s, "JavaImporter",
-        "rhino.ImporterTopLevel", sealed, true);
+        "rhino.ImporterTopLevel", sealed);
 
         for(String packageName : getTopPackageNames()){
             new LazilyLoadedCtor(s, packageName,
-            "rhino.NativeJavaTopPackage", sealed, true);
+            "rhino.NativeJavaTopPackage", sealed);
         }
 
         return s;
@@ -1387,15 +1376,6 @@ public class ScriptRuntime{
 
     /**
      * Call obj.[[Get]](id)
-     * @deprecated Use {@link #getObjectElem(Object, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object getObjectElem(Object obj, Object elem, Context cx){
-        return getObjectElem(obj, elem, cx, getTopCallScope(cx));
-    }
-
-    /**
-     * Call obj.[[Get]](id)
      */
     public static Object getObjectElem(Object obj, Object elem, Context cx, Scriptable scope){
         Scriptable sobj = toObjectOrNull(cx, obj, scope);
@@ -1431,16 +1411,6 @@ public class ScriptRuntime{
 
     /**
      * Version of getObjectElem when elem is a valid JS identifier name.
-     * @deprecated Use {@link #getObjectProp(Object, String, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object getObjectProp(Object obj, String property,
-                                       Context cx){
-        return getObjectProp(obj, property, cx, getTopCallScope(cx));
-    }
-
-    /**
-     * Version of getObjectElem when elem is a valid JS identifier name.
      * @param scope the scope that should be used to resolve primitive prototype
      */
     public static Object getObjectProp(Object obj, String property,
@@ -1467,15 +1437,6 @@ public class ScriptRuntime{
         return result;
     }
 
-    /**
-     * @deprecated Use {@link #getObjectPropNoWarn(Object, String, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object getObjectPropNoWarn(Object obj, String property,
-                                             Context cx){
-        return getObjectPropNoWarn(obj, property, cx, getTopCallScope(cx));
-    }
-
     public static Object getObjectPropNoWarn(Object obj, String property,
                                              Context cx, Scriptable scope){
         Scriptable sobj = toObjectOrNull(cx, obj, scope);
@@ -1487,17 +1448,6 @@ public class ScriptRuntime{
             return Undefined.instance;
         }
         return result;
-    }
-
-    /**
-     * A cheaper and less general version of the above for well-known argument
-     * types.
-     * @deprecated Use {@link #getObjectIndex(Object, double, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object getObjectIndex(Object obj, double dblIndex,
-                                        Context cx){
-        return getObjectIndex(obj, dblIndex, cx, getTopCallScope(cx));
     }
 
     /**
@@ -1531,16 +1481,6 @@ public class ScriptRuntime{
 
     /**
      * Call obj.[[Put]](id, value)
-     * @deprecated Use {@link #setObjectElem(Object, Object, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object setObjectElem(Object obj, Object elem, Object value,
-                                       Context cx){
-        return setObjectElem(obj, elem, value, cx, getTopCallScope(cx));
-    }
-
-    /**
-     * Call obj.[[Put]](id, value)
      */
     public static Object setObjectElem(Object obj, Object elem, Object value,
                                        Context cx, Scriptable scope){
@@ -1569,16 +1509,6 @@ public class ScriptRuntime{
 
     /**
      * Version of setObjectElem when elem is a valid JS identifier name.
-     * @deprecated Use {@link #setObjectProp(Object, String, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object setObjectProp(Object obj, String property,
-                                       Object value, Context cx){
-        return setObjectProp(obj, property, value, cx, getTopCallScope(cx));
-    }
-
-    /**
-     * Version of setObjectElem when elem is a valid JS identifier name.
      */
     public static Object setObjectProp(Object obj, String property,
                                        Object value, Context cx,
@@ -1601,17 +1531,6 @@ public class ScriptRuntime{
                                        Object value, Context cx){
         ScriptableObject.putProperty(obj, property, value);
         return value;
-    }
-
-    /**
-     * A cheaper and less general version of the above for well-known argument
-     * types.
-     * @deprecated Use {@link #setObjectIndex(Object, double, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object setObjectIndex(Object obj, double dblIndex,
-                                        Object value, Context cx){
-        return setObjectIndex(obj, dblIndex, value, cx, getTopCallScope(cx));
     }
 
     /**
@@ -1679,14 +1598,6 @@ public class ScriptRuntime{
         return ref.get(cx);
     }
 
-    /**
-     * @deprecated Use {@link #refSet(Ref, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Object refSet(Ref ref, Object value, Context cx){
-        return refSet(ref, value, cx, getTopCallScope(cx));
-    }
-
     public static Object refSet(Ref ref, Object value, Context cx,
                                 Scriptable scope){
         return ref.set(cx, scope, value);
@@ -1700,43 +1611,9 @@ public class ScriptRuntime{
         return s.equals("__proto__") || s.equals("__parent__");
     }
 
-    /**
-     * @deprecated Use {@link #specialRef(Object, String, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Ref specialRef(Object obj, String specialProperty,
-                                 Context cx){
-        return specialRef(obj, specialProperty, cx, getTopCallScope(cx));
-    }
-
     public static Ref specialRef(Object obj, String specialProperty,
                                  Context cx, Scriptable scope){
         return SpecialRef.createSpecial(cx, scope, obj, specialProperty);
-    }
-
-    /**
-     * @deprecated Use {@link #delete(Object, Object, Context, Scriptable, boolean)} instead
-     */
-    @Deprecated
-    public static Object delete(Object obj, Object id, Context cx){
-        return delete(obj, id, cx, false);
-    }
-
-    /**
-     * The delete operator
-     * <p>
-     * See ECMA 11.4.1
-     * <p>
-     * In ECMA 0.19, the description of the delete operator (11.4.1)
-     * assumes that the [[Delete]] method returns a value. However,
-     * the definition of the [[Delete]] operator (8.6.2.5) does not
-     * define a return value. Here we assume that the [[Delete]]
-     * method doesn't return a value.
-     * @deprecated Use {@link #delete(Object, Object, Context, Scriptable, boolean)} instead
-     */
-    @Deprecated
-    public static Object delete(Object obj, Object id, Context cx, boolean isName){
-        return delete(obj, id, cx, getTopCallScope(cx), isName);
     }
 
     /**
@@ -2000,16 +1877,6 @@ public class ScriptRuntime{
         return null;
     }
 
-    /**
-     * For backwards compatibility with generated class files
-     * @deprecated Use {@link #enumInit(Object, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object enumInit(Object value, Context cx, boolean enumValues){
-        return enumInit(value, cx, enumValues ? ENUMERATE_VALUES
-        : ENUMERATE_KEYS);
-    }
-
     public static final int ENUMERATE_KEYS = 0;
     public static final int ENUMERATE_VALUES = 1;
     public static final int ENUMERATE_ARRAY = 2;
@@ -2017,14 +1884,6 @@ public class ScriptRuntime{
     public static final int ENUMERATE_VALUES_NO_ITERATOR = 4;
     public static final int ENUMERATE_ARRAY_NO_ITERATOR = 5;
     public static final int ENUMERATE_VALUES_IN_ORDER = 6;
-
-    /**
-     * @deprecated Use {@link #enumInit(Object, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object enumInit(Object value, Context cx, int enumType){
-        return enumInit(value, cx, getTopCallScope(cx), enumType);
-    }
 
     public static Object enumInit(Object value, Context cx, Scriptable scope,
                                   int enumType){
@@ -2252,21 +2111,6 @@ public class ScriptRuntime{
      * as ScriptRuntime.lastStoredScriptable() for consumption as thisObj.
      * The caller must call ScriptRuntime.lastStoredScriptable() immediately
      * after calling this method.
-     * @deprecated Use {@link #getElemFunctionAndThis(Object, Object, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Callable getElemFunctionAndThis(Object obj,
-                                                  Object elem,
-                                                  Context cx){
-        return getElemFunctionAndThis(obj, elem, cx, getTopCallScope(cx));
-    }
-
-    /**
-     * Prepare for calling obj[id](...): return function corresponding to
-     * obj[id] and make obj properly converted to Scriptable available
-     * as ScriptRuntime.lastStoredScriptable() for consumption as thisObj.
-     * The caller must call ScriptRuntime.lastStoredScriptable() immediately
-     * after calling this method.
      */
     public static Callable getElemFunctionAndThis(Object obj, Object elem,
                                                   Context cx, Scriptable scope){
@@ -2300,23 +2144,6 @@ public class ScriptRuntime{
 
         storeScriptable(cx, thisObj);
         return (Callable)value;
-    }
-
-    /**
-     * Prepare for calling obj.property(...): return function corresponding to
-     * obj.property and make obj properly converted to Scriptable available
-     * as ScriptRuntime.lastStoredScriptable() for consumption as thisObj.
-     * The caller must call ScriptRuntime.lastStoredScriptable() immediately
-     * after calling this method.
-     * Warning: this doesn't allow to resolve primitive prototype properly when
-     * many top scopes are involved.
-     * @deprecated Use {@link #getPropFunctionAndThis(Object, String, Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Callable getPropFunctionAndThis(Object obj,
-                                                  String property,
-                                                  Context cx){
-        return getPropFunctionAndThis(obj, property, cx, getTopCallScope(cx));
     }
 
     /**
@@ -2415,7 +2242,7 @@ public class ScriptRuntime{
     /**
      * Perform function call in reference context. Should always
      * return value that can be passed to
-     * {@link #refGet(Ref, Context)} or {@link #refSet(Ref, Object, Context)}
+     * {@link #refGet(Ref, Context)}
      * arbitrary number of times.
      * The args array reference should not be stored in any object that is
      * can be GC-reachable after this method returns. If this is necessary,
@@ -2613,7 +2440,7 @@ public class ScriptRuntime{
         // Compile with explicit interpreter instance to force interpreter
         // mode.
         Script script = cx.compileString(x.toString(), evaluator,
-        reporter, sourceName, 1, null);
+        reporter, sourceName, 1);
         evaluator.setEvalScriptFlag(script);
         Callable c = (Callable)script;
         return c.call(cx, scope, (Scriptable)thisArg, ScriptRuntime.emptyArgs);
@@ -2707,16 +2534,6 @@ public class ScriptRuntime{
 
     public static CharSequence add(Object val1, CharSequence val2){
         return new ConsString(toCharSequence(val1), val2);
-    }
-
-    /**
-     * The method is only present for compatibility.
-     * @deprecated Use {@link #nameIncrDecr(Scriptable, String, Context, int)} instead
-     */
-    @Deprecated
-    public static Object nameIncrDecr(Scriptable scopeChain, String id,
-                                      int incrDecrMask){
-        return nameIncrDecr(scopeChain, id, Context.getContext(), incrDecrMask);
     }
 
     public static Object nameIncrDecr(Scriptable scopeChain, String id,
@@ -2828,15 +2645,6 @@ public class ScriptRuntime{
         return result;
     }
 
-    /**
-     * @deprecated Use {@link #elemIncrDecr(Object, Object, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object elemIncrDecr(Object obj, Object index,
-                                      Context cx, int incrDecrMask){
-        return elemIncrDecr(obj, index, cx, getTopCallScope(cx), incrDecrMask);
-    }
-
     public static Object elemIncrDecr(Object obj, Object index,
                                       Context cx, Scriptable scope,
                                       int incrDecrMask){
@@ -2863,14 +2671,6 @@ public class ScriptRuntime{
             return value;
         }
         return result;
-    }
-
-    /**
-     * @deprecated Use {@link #refIncrDecr(Ref, Context, Scriptable, int)} instead
-     */
-    @Deprecated
-    public static Object refIncrDecr(Ref ref, Context cx, int incrDecrMask){
-        return refIncrDecr(ref, cx, getTopCallScope(cx), incrDecrMask);
     }
 
     public static Object refIncrDecr(Ref ref, Context cx, Scriptable scope,
@@ -3276,16 +3076,6 @@ public class ScriptRuntime{
         return scope;
     }
 
-    /**
-     * @deprecated Use {@link #doTopCall(Callable, Context, Scriptable, Scriptable, Object[], boolean)} instead
-     */
-    @Deprecated
-    public static Object doTopCall(Callable callable,
-                                   Context cx, Scriptable scope,
-                                   Scriptable thisObj, Object[] args){
-        return doTopCall(callable, cx, scope, thisObj, args, cx.isTopLevelStrict);
-    }
-
     public static Object doTopCall(Callable callable,
                                    Context cx, Scriptable scope,
                                    Scriptable thisObj, Object[] args, boolean isTopLevelStrict){
@@ -3385,16 +3175,6 @@ public class ScriptRuntime{
                 }
             }
         }
-    }
-
-    /**
-     * @deprecated Use {@link #createFunctionActivation(NativeFunction, Scriptable, Object[], boolean)} instead
-     */
-    @Deprecated
-    public static Scriptable createFunctionActivation(NativeFunction funObj,
-                                                      Scriptable scope,
-                                                      Object[] args){
-        return createFunctionActivation(funObj, scope, args, false);
     }
 
     public static Scriptable createFunctionActivation(NativeFunction funObj,
@@ -3763,21 +3543,6 @@ public class ScriptRuntime{
             ++j;
         }
         return array;
-    }
-
-    /**
-     * This method is here for backward compat with existing compiled code.  It
-     * is called when an object literal is compiled.  The next instance will be
-     * the version called from new code.
-     * <strong>This method only present for compatibility.</strong>
-     * @deprecated Use {@link #newObjectLiteral(Object[], Object[], int[], Context, Scriptable)} instead
-     */
-    @Deprecated
-    public static Scriptable newObjectLiteral(Object[] propertyIds,
-                                              Object[] propertyValues,
-                                              Context cx, Scriptable scope){
-        // Passing null for getterSetters means no getters or setters
-        return newObjectLiteral(propertyIds, propertyValues, null, cx, scope);
     }
 
     public static Scriptable newObjectLiteral(Object[] propertyIds,

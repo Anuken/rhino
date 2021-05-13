@@ -813,12 +813,6 @@ public class NativeArray extends IdScriptableObject implements List{
         return length;
     }
 
-    /** @deprecated Use {@link #getLength()} instead. */
-    @Deprecated
-    public long jsGet_length(){
-        return getLength();
-    }
-
     /**
      * Change the value of the internal flag that determines whether all
      * storage is handed by a dense backing array rather than an associative

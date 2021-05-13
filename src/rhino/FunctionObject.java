@@ -250,24 +250,11 @@ public class FunctionObject extends BaseFunction{
      * @see Class#getDeclaredMethods()
      */
     static Method[] getMethodList(Class<?> clazz){
-        Method[] methods = null;
-        try{
-            // getDeclaredMethods may be rejected by the security manager
-            // but getMethods is more expensive
-            if(!sawSecurityException)
-                methods = clazz.getDeclaredMethods();
-        }catch(SecurityException e){
-            // If we get an exception once, give up on getDeclaredMethods
-            sawSecurityException = true;
-        }
-        if(methods == null){
-            methods = clazz.getMethods();
-        }
+        Method[] methods = clazz.getDeclaredMethods();
+
         int count = 0;
         for(int i = 0; i < methods.length; i++){
-            if(sawSecurityException
-            ? methods[i].getDeclaringClass() != clazz
-            : !Modifier.isPublic(methods[i].getModifiers())){
+            if(!Modifier.isPublic(methods[i].getModifiers())){
                 methods[i] = null;
             }else{
                 count++;
@@ -275,9 +262,9 @@ public class FunctionObject extends BaseFunction{
         }
         Method[] result = new Method[count];
         int j = 0;
-        for(int i = 0; i < methods.length; i++){
-            if(methods[i] != null)
-                result[j++] = methods[i];
+        for(Method method : methods){
+            if(method != null)
+                result[j++] = method;
         }
         return result;
     }
@@ -314,22 +301,6 @@ public class FunctionObject extends BaseFunction{
         ScriptableObject.PERMANENT |
         ScriptableObject.READONLY);
         setParentScope(scope);
-    }
-
-    /**
-     * @deprecated Use {@link #getTypeTag(Class)}
-     * and {@link #convertArg(Context, Scriptable, Object, int)}
-     * for type conversion.
-     */
-    @Deprecated
-    public static Object convertArg(Context cx, Scriptable scope,
-                                    Object arg, Class<?> desired){
-        int tag = getTypeTag(desired);
-        if(tag == JAVA_UNSUPPORTED_TYPE){
-            throw Context.reportRuntimeError1
-            ("msg.cant.convert", desired.getName());
-        }
-        return convertArg(cx, scope, arg, tag);
     }
 
     /**
@@ -476,8 +447,6 @@ public class FunctionObject extends BaseFunction{
 
     private static final short VARARGS_METHOD = -1;
     private static final short VARARGS_CTOR = -2;
-
-    private static boolean sawSecurityException;
 
     public static final int JAVA_UNSUPPORTED_TYPE = 0;
     public static final int JAVA_STRING_TYPE = 1;

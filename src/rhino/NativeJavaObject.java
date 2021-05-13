@@ -170,17 +170,6 @@ implements Scriptable, SymbolScriptable, Wrapper{
         return members.getIds(false);
     }
 
-    /**
-     * @deprecated Use {@link Context#getWrapFactory()} together with calling {@link
-     * WrapFactory#wrap(Context, Scriptable, Object, Class)}
-     */
-    @Deprecated
-    public static Object wrap(Scriptable scope, Object obj, Class<?> staticType){
-
-        Context cx = Context.getContext();
-        return cx.getWrapFactory().wrap(cx, scope, obj, staticType);
-    }
-
     @Override
     public Object unwrap(){
         return javaObject;
@@ -450,17 +439,6 @@ implements Scriptable, SymbolScriptable, Wrapper{
             }
             return JSTYPE_JAVA_OBJECT;
         }
-    }
-
-    /**
-     * Not intended for public use. Callers should use the
-     * public API Context.toType.
-     * @see Context#jsToJava(Object, Class)
-     * @deprecated as of 1.5 Release 4
-     */
-    @Deprecated
-    public static Object coerceType(Class<?> type, Object value){
-        return coerceTypeImpl(type, value);
     }
 
     /**
@@ -764,7 +742,7 @@ implements Scriptable, SymbolScriptable, Wrapper{
             Method meth;
             try{
                 meth = value.getClass().getMethod("doubleValue", (Class[])null);
-            }catch(NoSuchMethodException | SecurityException e){
+            }catch(Exception e){
                 meth = null;
             }
             if(meth != null){

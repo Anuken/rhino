@@ -3,7 +3,6 @@ package rhino;
 import rhino.classfile.*;
 
 import java.lang.reflect.*;
-import java.security.*;
 import java.util.*;
 
 public final class JavaAdapter implements IdFunctionCall{
@@ -425,24 +424,9 @@ public final class JavaAdapter implements IdFunctionCall{
     }
 
     static Class<?> loadAdapterClass(String className, byte[] classBytes){
-        Object staticDomain;
-        Class<?> domainClass = SecurityController.getStaticSecurityDomainClass();
-        if(domainClass == CodeSource.class || domainClass == ProtectionDomain.class){
-            // use the calling script's security domain if available
-            ProtectionDomain protectionDomain = SecurityUtilities.getScriptProtectionDomain();
-            if(protectionDomain == null){
-                protectionDomain = JavaAdapter.class.getProtectionDomain();
-            }
-            if(domainClass == CodeSource.class){
-                staticDomain = protectionDomain == null ? null : protectionDomain.getCodeSource();
-            }else{
-                staticDomain = protectionDomain;
-            }
-        }else{
-            staticDomain = null;
-        }
-        GeneratedClassLoader loader = SecurityController.createLoader(null,
-        staticDomain);
+        Object staticDomain = null;
+        Context cx = Context.getContext();
+        GeneratedClassLoader loader = cx.createClassLoader(null == null ? cx.getApplicationClassLoader() : null);
         Class<?> result = loader.defineClass(className, classBytes);
         loader.linkClass(result);
         return result;
