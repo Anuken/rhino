@@ -274,19 +274,6 @@ public class ContextFactory{
         throw new IllegalArgumentException(String.valueOf(featureIndex));
     }
 
-    private boolean isDom3Present(){
-        Class<?> nodeClass = Kit.classOrNull("org.w3c.dom.Node");
-        if(nodeClass == null) return false;
-        // Check to see whether DOM3 is present; use a new method defined in
-        // DOM3 that is vital to our implementation
-        try{
-            nodeClass.getMethod("getUserData", String.class);
-            return true;
-        }catch(NoSuchMethodException e){
-            return false;
-        }
-    }
-
 
     /**
      * Create class loader for generated classes.
