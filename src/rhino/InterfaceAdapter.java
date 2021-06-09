@@ -56,7 +56,7 @@ public class InterfaceAdapter{
             adapter = new InterfaceAdapter(cf, cl);
             cache.cacheInterfaceAdapter(cl, adapter);
         }
-        return VMBridge.instance.newInterfaceProxy(
+        return VMBridge.newInterfaceProxy(
         adapter.proxyHelper, cf, adapter, object, topScope);
     }
 
@@ -79,7 +79,7 @@ public class InterfaceAdapter{
 
     private InterfaceAdapter(ContextFactory cf, Class<?> cl){
         this.proxyHelper
-        = VMBridge.instance.getInterfaceProxyHelper(
+        = VMBridge.getInterfaceProxyHelper(
         cf, new Class[]{cl});
     }
 

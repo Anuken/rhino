@@ -108,7 +108,7 @@ final class MemberBox{
                     memberObject = accessible;
                     method = accessible;
                 }else{
-                    if(!VMBridge.instance.tryToMakeAccessible(method)){
+                    if(!VMBridge.tryToMakeAccessible(method)){
                         throw Context.throwAsScriptRuntimeEx(ex);
                     }
                 }
@@ -135,7 +135,7 @@ final class MemberBox{
             try{
                 return ctor.newInstance(args);
             }catch(IllegalAccessException ex){
-                if(!VMBridge.instance.tryToMakeAccessible(ctor)){
+                if(!VMBridge.tryToMakeAccessible(ctor)){
                     throw Context.throwAsScriptRuntimeEx(ex);
                 }
             }

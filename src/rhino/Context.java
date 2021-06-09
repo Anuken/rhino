@@ -315,9 +315,6 @@ public class Context{
      */
     public static final int FEATURE_LITTLE_ENDIAN = 19;
 
-    public static final String languageVersionProperty = "language version";
-    public static final String errorReporterProperty = "error reporter";
-
     /**
      * Convenient value to use as zero-length array of objects.
      */
@@ -354,8 +351,8 @@ public class Context{
      * @see ContextFactory#call(ContextAction)
      */
     public static Context getCurrentContext(){
-        Object helper = VMBridge.instance.getThreadContextHelper();
-        return VMBridge.instance.getContext(helper);
+        Object helper = VMBridge.getThreadContextHelper();
+        return VMBridge.getContext(helper);
     }
 
     /**
@@ -370,8 +367,8 @@ public class Context{
     }
 
     static Context enter(Context cx, ContextFactory factory){
-        Object helper = VMBridge.instance.getThreadContextHelper();
-        Context old = VMBridge.instance.getContext(helper);
+        Object helper = VMBridge.getThreadContextHelper();
+        Context old = VMBridge.getContext(helper);
         if(old != null){
             cx = old;
         }else{
@@ -389,7 +386,7 @@ public class Context{
                     throw new IllegalStateException("can not use Context instance already associated with some thread");
                 }
             }
-            VMBridge.instance.setContext(helper, cx);
+            VMBridge.setContext(helper, cx);
         }
         ++cx.enterCount;
         return cx;
@@ -407,15 +404,15 @@ public class Context{
      * @see ContextFactory#enterContext()
      */
     public static void exit(){
-        Object helper = VMBridge.instance.getThreadContextHelper();
-        Context cx = VMBridge.instance.getContext(helper);
+        Object helper = VMBridge.getThreadContextHelper();
+        Context cx = VMBridge.getContext(helper);
         if(cx == null){
             throw new IllegalStateException(
             "Calling Context.exit without previous Context.enter");
         }
         if(cx.enterCount < 1) Kit.codeBug();
         if(--cx.enterCount == 0){
-            VMBridge.instance.setContext(helper, null);
+            VMBridge.setContext(helper, null);
             cx.factory.onContextReleased(cx);
         }
     }
