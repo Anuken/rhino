@@ -31,8 +31,6 @@
 package rhino.v8dtoa;
 
 public class CachedPowers{
-
-
     static final double kD_1_LOG2_10 = 0.30102999566398114;  //  1 / lg(10)
 
     static class CachedPower{

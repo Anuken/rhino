@@ -333,8 +333,7 @@ public class Kit{
      * only to be able to write <tt>throw Kit.codeBug()</tt> if plain
      * <tt>Kit.codeBug()</tt> triggers unreachable code error.
      */
-    public static RuntimeException codeBug()
-    throws RuntimeException{
+    public static RuntimeException codeBug() throws RuntimeException{
         RuntimeException ex = new IllegalStateException("FAILED ASSERTION");
         // Print stack trace ASAP
         ex.printStackTrace(System.err);
@@ -347,8 +346,7 @@ public class Kit{
      * only to be able to write <tt>throw Kit.codeBug()</tt> if plain
      * <tt>Kit.codeBug()</tt> triggers unreachable code error.
      */
-    public static RuntimeException codeBug(String msg)
-    throws RuntimeException{
+    public static RuntimeException codeBug(String msg) throws RuntimeException{
         msg = "FAILED ASSERTION: " + msg;
         RuntimeException ex = new IllegalStateException(msg);
         // Print stack trace ASAP

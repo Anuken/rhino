@@ -33,6 +33,8 @@ public class Tests{
 
         assertEquals("666", eval("var w = new JavaAdapter(Packages.java.lang.Object, { hashCode(){ return 666; } }); w.hashCode();").toString());
 
+        eval("var w = {a: 123}; delete w[\"a\"]");
+
         eval("const someValue = 99");
         eval("(function(){ const someValue = 444; return someValue })();");
         eval("someValue");

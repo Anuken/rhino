@@ -866,14 +866,10 @@ public class ScriptRuntime{
             "msg.bad.radix", Integer.toString(base));
         }
 
-        if(Double.isNaN(d))
-            return "NaN";
-        if(d == Double.POSITIVE_INFINITY)
-            return "Infinity";
-        if(d == Double.NEGATIVE_INFINITY)
-            return "-Infinity";
-        if(d == 0.0)
-            return "0";
+        if(Double.isNaN(d)) return "NaN";
+        if(d == Double.POSITIVE_INFINITY) return "Infinity";
+        if(d == Double.NEGATIVE_INFINITY) return "-Infinity";
+        if(d == 0.0) return "0";
 
         if(base != 10){
             return DToA.JS_dtobasestr(base, d);
@@ -1627,8 +1623,7 @@ public class ScriptRuntime{
      * define a return value. Here we assume that the [[Delete]]
      * method doesn't return a value.
      */
-    public static Object delete(Object obj, Object id, Context cx,
-                                Scriptable scope, boolean isName){
+    public static Object delete(Object obj, Object id, Context cx, Scriptable scope, boolean isName){
         Scriptable sobj = toObjectOrNull(cx, obj, scope);
         if(sobj == null){
             if(isName){
@@ -1638,6 +1633,21 @@ public class ScriptRuntime{
         }
         boolean result = deleteObjectElem(sobj, id, cx);
         return wrapBoolean(result);
+    }
+
+    /**
+     * The delete operator
+     * <p>
+     * See ECMA 11.4.1
+     * <p>
+     * In ECMA 0.19, the description of the delete operator (11.4.1)
+     * assumes that the [[Delete]] method returns a value. However,
+     * the definition of the [[Delete]] operator (8.6.2.5) does not
+     * define a return value. Here we assume that the [[Delete]]
+     * method doesn't return a value.
+     */
+    public static Object delete(Object obj, Object id, Context cx, boolean isName){
+        return delete(obj, id, cx, getTopCallScope(cx), isName);
     }
 
     /**

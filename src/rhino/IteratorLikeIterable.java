@@ -16,8 +16,7 @@ import java.util.*;
  * * If it has a function property called "return" then it will be called
  * when the caller is done iterating.
  */
-public class IteratorLikeIterable
-implements Iterable<Object>, Closeable{
+public class IteratorLikeIterable implements Iterable<Object>, Closeable{
     private final Context cx;
     private final Scriptable scope;
     private final Callable next;
@@ -58,8 +57,7 @@ implements Iterable<Object>, Closeable{
         return new Itr();
     }
 
-    public final class Itr
-    implements Iterator<Object>{
+    public final class Itr implements Iterator<Object>{
         private Object nextVal;
         private boolean isDone;
 

@@ -1631,8 +1631,7 @@ public class Context{
         if(isValidOptimizationLevel(optimizationLevel)){
             return;
         }
-        throw new IllegalArgumentException(
-        "Optimization level outside [-1..9]: " + optimizationLevel);
+        throw new IllegalArgumentException("Optimization level outside [-1..9]: " + optimizationLevel);
     }
 
     /**
@@ -1690,7 +1689,7 @@ public class Context{
         if(sealed) onSealedMutation();
         if(shutter == null) throw new IllegalArgumentException();
         if(hasClassShutter){
-            throw new IllegalStateException("Cannot overwrite existing " + "ClassShutter object");
+            throw new IllegalStateException("Cannot overwrite existing ClassShutter object");
         }
         classShutter = shutter;
         hasClassShutter = true;

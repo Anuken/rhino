@@ -61,7 +61,7 @@ public class AstRoot extends ScriptNode{
     public void addComment(Comment comment){
         assertNotNull(comment);
         if(comments == null){
-            comments = new TreeSet<>(new AstNode.PositionComparator());
+            comments = new TreeSet<>((n1, n2) -> n1.position - n2.position);
         }
         comments.add(comment);
         comment.setParent(this);

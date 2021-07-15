@@ -25,8 +25,7 @@ public class DefiningClassLoader extends ClassLoader implements GeneratedClassLo
     }
 
     @Override
-    public Class<?> loadClass(String name, boolean resolve)
-    throws ClassNotFoundException{
+    public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException{
         Class<?> cl = findLoadedClass(name);
         if(cl == null){
             if(parentLoader != null){

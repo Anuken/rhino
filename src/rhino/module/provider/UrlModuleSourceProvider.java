@@ -60,22 +60,16 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase{
     }
 
     @Override
-    protected ModuleSource loadFromPrivilegedLocations(
-    String moduleId, Object validator)
-    throws IOException, URISyntaxException{
+    protected ModuleSource loadFromPrivilegedLocations(String moduleId, Object validator) throws IOException, URISyntaxException{
         return loadFromPathList(moduleId, validator, privilegedUris);
     }
 
     @Override
-    protected ModuleSource loadFromFallbackLocations(
-    String moduleId, Object validator)
-    throws IOException, URISyntaxException{
+    protected ModuleSource loadFromFallbackLocations(String moduleId, Object validator) throws IOException, URISyntaxException{
         return loadFromPathList(moduleId, validator, fallbackUris);
     }
 
-    private ModuleSource loadFromPathList(String moduleId,
-                                          Object validator, Iterable<URI> paths)
-    throws IOException, URISyntaxException{
+    private ModuleSource loadFromPathList(String moduleId, Object validator, Iterable<URI> paths) throws IOException, URISyntaxException{
         if(paths == null){
             return null;
         }

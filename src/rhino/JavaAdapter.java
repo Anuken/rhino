@@ -296,8 +296,7 @@ public final class JavaAdapter implements IdFunctionCall{
         // generate methods to satisfy all specified interfaces.
         for(int i = 0; i < interfacesCount; i++){
             Method[] methods = interfaces[i].getMethods();
-            for(int j = 0; j < methods.length; j++){
-                Method method = methods[j];
+            for(Method method : methods){
                 int mods = method.getModifiers();
                 if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || method.isDefault()){
                     continue;
@@ -333,8 +332,7 @@ public final class JavaAdapter implements IdFunctionCall{
 
         // generate any additional overrides that the object might contain.
         Method[] methods = getOverridableMethods(superClass);
-        for(int j = 0; j < methods.length; j++){
-            Method method = methods[j];
+        for(Method method : methods){
             int mods = method.getModifiers();
             // if a method is marked abstract, must implement it or the
             // resulting class won't be instantiable. otherwise, if the object
@@ -424,9 +422,8 @@ public final class JavaAdapter implements IdFunctionCall{
     }
 
     static Class<?> loadAdapterClass(String className, byte[] classBytes){
-        Object staticDomain = null;
         Context cx = Context.getContext();
-        GeneratedClassLoader loader = cx.createClassLoader(null == null ? cx.getApplicationClassLoader() : null);
+        GeneratedClassLoader loader = cx.createClassLoader(cx.getApplicationClassLoader());
         Class<?> result = loader.defineClass(className, classBytes);
         loader.linkClass(result);
         return result;

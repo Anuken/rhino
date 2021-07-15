@@ -119,18 +119,6 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
         operatorNames.put(Token.VOID, "void");
     }
 
-    public static class PositionComparator implements Comparator<AstNode>{
-        /**
-         * Sorts nodes by (relative) start position.  The start positions are
-         * relative to their parent, so this comparator is only meaningful for
-         * comparing siblings.
-         */
-        @Override
-        public int compare(AstNode n1, AstNode n2){
-            return n1.position - n2.position;
-        }
-    }
-
     public AstNode(){
         super(Token.ERROR);
     }
