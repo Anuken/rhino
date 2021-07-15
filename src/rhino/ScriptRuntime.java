@@ -1447,11 +1447,17 @@ public class ScriptRuntime{
     }
 
     /**
+     * A cheaper and less general version of the above for well-known argument types.
+     */
+    public static Object getObjectIndex(Object obj, double dblIndex, Context cx){
+        return getObjectIndex(obj, dblIndex, cx, getTopCallScope(cx));
+    }
+
+    /**
      * A cheaper and less general version of the above for well-known argument
      * types.
      */
-    public static Object getObjectIndex(Object obj, double dblIndex,
-                                        Context cx, Scriptable scope){
+    public static Object getObjectIndex(Object obj, double dblIndex, Context cx, Scriptable scope){
         Scriptable sobj = toObjectOrNull(cx, obj, scope);
         if(sobj == null){
             throw undefReadError(obj, toString(dblIndex));
@@ -1465,8 +1471,7 @@ public class ScriptRuntime{
         return getObjectProp(sobj, s, cx);
     }
 
-    public static Object getObjectIndex(Scriptable obj, int index,
-                                        Context cx){
+    public static Object getObjectIndex(Scriptable obj, int index, Context cx){
         Object result = ScriptableObject.getProperty(obj, index);
         if(result == Scriptable.NOT_FOUND){
             result = Undefined.instance;
@@ -2655,9 +2660,11 @@ public class ScriptRuntime{
         return result;
     }
 
-    public static Object elemIncrDecr(Object obj, Object index,
-                                      Context cx, Scriptable scope,
-                                      int incrDecrMask){
+    public static Object elemIncrDecr(Object obj, Object index, Context cx, int incrDecrMask){
+        return elemIncrDecr(obj, index, cx, getTopCallScope(cx), incrDecrMask);
+    }
+
+    public static Object elemIncrDecr(Object obj, Object index, Context cx, Scriptable scope, int incrDecrMask){
         Object value = getObjectElem(obj, index, cx, scope);
         boolean post = ((incrDecrMask & Node.POST_FLAG) != 0);
         double number;
@@ -2681,6 +2688,10 @@ public class ScriptRuntime{
             return value;
         }
         return result;
+    }
+
+    public static Object refIncrDecr(Ref ref, Context cx, int incrDecrMask){
+        return refIncrDecr(ref, cx, getTopCallScope(cx), incrDecrMask);
     }
 
     public static Object refIncrDecr(Ref ref, Context cx, Scriptable scope,

@@ -33,7 +33,7 @@ public class Tests{
 
         assertEquals("666", eval("var w = new JavaAdapter(Packages.java.lang.Object, { hashCode(){ return 666; } }); w.hashCode();").toString());
 
-        eval("var w = {a: 123}; delete w[\"a\"]");
+        assertEquals("undefined", eval("var w = {a: 123}; delete w[\"a\"]; w.a"));
 
         eval("const someValue = 99");
         eval("(function(){ const someValue = 444; return someValue })();");
@@ -43,7 +43,8 @@ public class Tests{
 
     Object eval(String str){
         Object res = cx.evaluateString(scope, str, "testfile", 0);
-        System.out.println(res);
-        return res;
+        Object o = res instanceof NativeJavaObject ? ((NativeJavaObject)res).unwrap() : res instanceof Undefined ? "undefined" : res;
+        System.out.println(o);
+        return o;
     }
 }
