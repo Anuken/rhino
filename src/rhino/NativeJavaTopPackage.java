@@ -12,9 +12,8 @@ package rhino;
  * @see NativeJavaClass
  */
 
-public class NativeJavaTopPackage
-extends NativeJavaPackage implements Function, IdFunctionCall{
-    // we know these are packages so we can skip the class check
+public class NativeJavaTopPackage extends NativeJavaPackage implements Function, IdFunctionCall{
+    // we know these are packages, so we can skip the class check
     // note that this is ok even if the package isn't present.
     private static final String[][] commonPackages = {
     {"java", "lang", "reflect"},
@@ -27,8 +26,8 @@ extends NativeJavaPackage implements Function, IdFunctionCall{
     {"javax", "swing"}
     };
 
-    NativeJavaTopPackage(ClassLoader loader){
-        super(true, "", loader);
+    public NativeJavaTopPackage(ClassLoader loader){
+        super("", loader);
     }
 
     @Override
@@ -53,7 +52,7 @@ extends NativeJavaPackage implements Function, IdFunctionCall{
             Context.reportRuntimeError0("msg.not.classloader");
             return null;
         }
-        NativeJavaPackage pkg = new NativeJavaPackage(true, "", loader);
+        NativeJavaPackage pkg = new NativeJavaPackage("", loader);
         ScriptRuntime.setObjectProtoAndParent(pkg, scope);
         return pkg;
     }

@@ -157,7 +157,7 @@ public class ImporterTopLevel extends TopLevel{
         return Undefined.instance;
     }
 
-    private void importPackage(NativeJavaPackage pkg){
+    public void importPackage(NativeJavaPackage pkg){
         if(pkg == null){
             return;
         }
@@ -171,7 +171,7 @@ public class ImporterTopLevel extends TopLevel{
         }
     }
 
-    private void importClass(NativeJavaClass cl){
+    public void importClass(NativeJavaClass cl){
         String s = cl.getClassObject().getName();
         String n = s.substring(s.lastIndexOf('.') + 1);
         Object val = get(n, this);

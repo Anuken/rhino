@@ -15,10 +15,18 @@ import java.util.*;
  */
 
 public class NativeJavaPackage extends ScriptableObject{
+    private final String packageName;
+    private transient ClassLoader classLoader;
+    private Set<String> negativeCache = null;
 
-    NativeJavaPackage(boolean internalUsage, String packageName, ClassLoader classLoader){
+    public NativeJavaPackage(String packageName, ClassLoader classLoader){
         this.packageName = packageName;
         this.classLoader = classLoader;
+    }
+
+    @Deprecated
+    public NativeJavaPackage(boolean completelyPointless, String packageName, ClassLoader classLoader){
+        this(packageName, classLoader);
     }
 
     @Override
@@ -66,7 +74,7 @@ public class NativeJavaPackage extends ScriptableObject{
         String newPackage = packageName.length() == 0
         ? name
         : packageName + "." + name;
-        NativeJavaPackage pkg = new NativeJavaPackage(true, newPackage, classLoader);
+        NativeJavaPackage pkg = new NativeJavaPackage(newPackage, classLoader);
         ScriptRuntime.setObjectProtoAndParent(pkg, scope);
         super.put(name, this, pkg);
         return pkg;
@@ -103,7 +111,7 @@ public class NativeJavaPackage extends ScriptableObject{
         if(newValue == null){
             if(createPkg){
                 NativeJavaPackage pkg;
-                pkg = new NativeJavaPackage(true, className, classLoader);
+                pkg = new NativeJavaPackage(className, classLoader);
                 ScriptRuntime.setObjectProtoAndParent(pkg, getParentScope());
                 newValue = pkg;
             }else{
@@ -146,8 +154,4 @@ public class NativeJavaPackage extends ScriptableObject{
         return packageName.hashCode() ^
         (classLoader == null ? 0 : classLoader.hashCode());
     }
-
-    private final String packageName;
-    private transient ClassLoader classLoader;
-    private Set<String> negativeCache = null;
 }
