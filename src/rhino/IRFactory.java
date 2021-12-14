@@ -1036,7 +1036,7 @@ public final class IRFactory extends Parser{
             decompiler.addEOL(Token.COLON);
 
             List<AstNode> stmts = sc.getStatements();
-            Node body = new Block();
+            Node body = new CodeBlock();
             if(stmts != null){
                 for(AstNode kid : stmts){
                     body.addChildToBack(transform(kid));
@@ -1062,7 +1062,7 @@ public final class IRFactory extends Parser{
         Node tryBlock = transform(node.getTryBlock());
         decompiler.addEOL(Token.RC);
 
-        Node catchBlocks = new Block();
+        Node catchBlocks = new CodeBlock();
         for(CatchClause cc : node.getCatchClauses()){
             decompiler.addToken(Token.CATCH);
             decompiler.addToken(Token.LP);

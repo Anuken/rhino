@@ -10,20 +10,20 @@ import rhino.*;
  * <pre><i>Block</i> :
  *     <b>{</b> Statement* <b>}</b></pre>
  */
-public class Block extends AstNode{
+public class CodeBlock extends AstNode{
 
     {
         this.type = Token.BLOCK;
     }
 
-    public Block(){
+    public CodeBlock(){
     }
 
-    public Block(int pos){
+    public CodeBlock(int pos){
         super(pos);
     }
 
-    public Block(int pos, int len){
+    public CodeBlock(int pos, int len){
         super(pos, len);
     }
 

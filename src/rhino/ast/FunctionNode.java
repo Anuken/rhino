@@ -168,7 +168,7 @@ public class FunctionNode extends ScriptNode{
     }
 
     /**
-     * Returns function body.  Normally a {@link Block}, but can be a plain
+     * Returns function body.  Normally a {@link CodeBlock}, but can be a plain
      * {@link AstNode} if it's a function closure.
      * @return the body.  Can be {@code null} only if the AST is malformed.
      */

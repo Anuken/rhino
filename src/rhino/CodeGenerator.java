@@ -187,7 +187,7 @@ class CodeGenerator extends Icode{
             final AstNode fnParent = fn.getParent();
             if(!(fnParent instanceof AstRoot
             || fnParent instanceof Scope
-            || fnParent instanceof Block)){
+            || fnParent instanceof CodeBlock)){
                 gen.itsData.declaredAsFunctionExpression = true;
             }
         }

@@ -591,7 +591,7 @@ public class Parser{
         boolean isArrow = type == FunctionNode.ARROW_FUNCTION;
         ++nestingOfFunction;
         int pos = ts.tokenBeg;
-        Block pn = new Block(pos);  // starts at LC position
+        CodeBlock pn = new CodeBlock(pos);  // starts at LC position
 
         boolean inDirectivePrologue = true;
         boolean savedStrictMode = inUseStrictDirective;
@@ -949,7 +949,7 @@ public class Parser{
         if(currentToken != Token.LC  // assertion can be invalid in bad code
         && !compilerEnv.isIdeMode()) codeBug();
         int pos = ts.tokenBeg;
-        AstNode block = parent != null ? parent : new Block(pos);
+        AstNode block = parent != null ? parent : new CodeBlock(pos);
         block.setLineno(ts.lineno);
 
         int tt;
@@ -1561,7 +1561,7 @@ public class Parser{
                     rp = ts.tokenBeg;
                 mustMatchToken(Token.LC, "msg.no.brace.catchblock", true);
 
-                Block catchBlock = (Block)statements();
+                CodeBlock catchBlock = (CodeBlock)statements();
                 tryEnd = getNodeEnd(catchBlock);
                 CatchClause catchNode = new CatchClause(catchPos);
                 catchNode.setVarName(varName);
