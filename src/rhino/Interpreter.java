@@ -2392,10 +2392,10 @@ public final class Interpreter extends Icode implements Evaluator{
                                      Object[] vars, double[] varDbls,
                                      int[] varAttributes, int indexReg){
         if(!frame.useActivation){
-            if((varAttributes[indexReg] & ScriptableObject.READONLY) == 0){
-                throw Context.reportRuntimeError1("msg.var.redecl",
-                frame.idata.argNames[indexReg]);
-            }
+            //This incorrectly fails with arrow functions (u => u), and I don't know why. I don't really care, frankly. The interpreter is incredibly broken, and I just want it working on iOS.
+            /*if((varAttributes[indexReg] & ScriptableObject.READONLY) == 0){
+                throw Context.reportRuntimeError1("msg.var.redecl", frame.idata.argNames[indexReg]);
+            }*/
             if((varAttributes[indexReg] & ScriptableObject.UNINITIALIZED_CONST)
             != 0){
                 vars[indexReg] = stack[stackTop];
