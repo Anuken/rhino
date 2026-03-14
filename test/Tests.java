@@ -46,6 +46,12 @@ public class Tests{
         //redeclaration of const throws a different error in the interpreter for some reason
         assertThrows(EcmaError.class, () -> eval("const a = 5125125; a = 0;"));
 
+        eval(
+        "const log = () => 1\n" +
+        "const print = text => log(1, text)\n" +
+        "\n" +
+        "print();");
+
         eval("u => u;");
         eval("var func = new Packages.java.util.function.Predicate(){test: u => true}; func.test(321);");
         assertEquals(Boolean.FALSE, eval("Tests.testPredicate(i => i > 0, 0)"));
