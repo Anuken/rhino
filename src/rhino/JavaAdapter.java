@@ -298,7 +298,7 @@ public final class JavaAdapter implements IdFunctionCall{
             Method[] methods = interfaces[i].getMethods();
             for(Method method : methods){
                 int mods = method.getModifiers();
-                if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || method.isDefault()){
+                if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || (method.isDefault() && !functionNames.has(method.getName()))){
                     continue;
                 }
                 String methodName = method.getName();
