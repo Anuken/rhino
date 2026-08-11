@@ -133,10 +133,9 @@ final class InterpretedFunction extends NativeFunction implements Script{
             InterpreterData functionData = (InterpreterData)idata.getFunction(f);
             if(!functionData.declaredAsFunctionExpression
             && name.equals(functionData.getFunctionName())){
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 }
-

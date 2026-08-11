@@ -1701,9 +1701,16 @@ public final class Interpreter extends Icode implements Evaluator{
                                 cx, iCode[frame.pc]);
                                 ++frame.pc;
                                 continue Loop;
-                            case Icode_SETCONSTVAR1:
                             case Icode_GETVAR1:
+                                indexReg = iCode[frame.pc++];
+                                stackTop = doGetVar(frame, stack, sDbl, stackTop, vars, varDbls, indexReg);
+                                continue Loop;
                             case Icode_SETVAR1:
+                                indexReg = iCode[frame.pc++];
+                                stackTop = doSetVar(frame, stack, sDbl, stackTop, vars, varDbls,
+                                varAttributes, indexReg);
+                                continue Loop;
+                            case Icode_SETCONSTVAR1:
                                 indexReg = iCode[frame.pc++];
                                 // fallthrough
                             case Token.SETCONSTVAR:
@@ -2392,10 +2399,6 @@ public final class Interpreter extends Icode implements Evaluator{
                                      Object[] vars, double[] varDbls,
                                      int[] varAttributes, int indexReg){
         if(!frame.useActivation){
-            //This incorrectly fails with arrow functions (u => u), and I don't know why. I don't really care, frankly. The interpreter is incredibly broken, and I just want it working on iOS.
-            /*if((varAttributes[indexReg] & ScriptableObject.READONLY) == 0){
-                throw Context.reportRuntimeError1("msg.var.redecl", frame.idata.argNames[indexReg]);
-            }*/
             if((varAttributes[indexReg] & ScriptableObject.UNINITIALIZED_CONST)
             != 0){
                 vars[indexReg] = stack[stackTop];
@@ -2423,6 +2426,9 @@ public final class Interpreter extends Icode implements Evaluator{
             if((varAttributes[indexReg] & ScriptableObject.READONLY) == 0){
                 vars[indexReg] = stack[stackTop];
                 varDbls[indexReg] = sDbl[stackTop];
+            }else{
+                throw Context.reportRuntimeError1("msg.var.redecl",
+                frame.idata.argNames[indexReg]);
             }
         }else{
             Object val = stack[stackTop];

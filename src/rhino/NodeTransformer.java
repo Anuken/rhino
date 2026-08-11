@@ -360,6 +360,18 @@ public class NodeTransformer{
                     String name = nameSource.getString();
                     Scope defining = scope.getDefiningScope(name);
                     if(defining != null){
+                        boolean withinCurrentTree = false;
+                        for(Scope s = defining; s != null; s = s.getParentScope()){
+                            if(s == tree){
+                                withinCurrentTree = true;
+                                break;
+                            }
+                        }
+                        if(!withinCurrentTree){
+                            defining = null;
+                        }
+                    }
+                    if(defining != null){
                         nameSource.setScope(defining);
                         if(type == Token.NAME){
                             node.setType(Token.GETVAR);
