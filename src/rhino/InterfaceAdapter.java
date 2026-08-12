@@ -111,11 +111,7 @@ public class InterfaceAdapter{
                 // methods.
                 Context.reportWarning(ScriptRuntime.getMessage1(
                 "msg.undefined.function.interface", methodName));
-                Class<?> resultType = method.getReturnType();
-                if(resultType == Void.TYPE){
-                    return null;
-                }
-                return Context.jsToJava(null, resultType);
+                return defaultPrimitiveValue(method.getReturnType());
             }
             if(!(value instanceof Callable)){
                 throw Context.reportRuntimeError1(
@@ -146,5 +142,20 @@ public class InterfaceAdapter{
             result = Context.jsToJava(result, javaResultType);
         }
         return result;
+    }
+
+    private static Object defaultPrimitiveValue(Class<?> resultType){
+        if(!resultType.isPrimitive() || resultType == Void.TYPE){
+            return null;
+        }
+        if(resultType == Boolean.TYPE) return Boolean.FALSE;
+        if(resultType == Character.TYPE) return Character.valueOf('\0');
+        if(resultType == Byte.TYPE) return Byte.valueOf((byte)0);
+        if(resultType == Short.TYPE) return Short.valueOf((short)0);
+        if(resultType == Integer.TYPE) return Integer.valueOf(0);
+        if(resultType == Long.TYPE) return Long.valueOf(0L);
+        if(resultType == Float.TYPE) return Float.valueOf(0f);
+        if(resultType == Double.TYPE) return Double.valueOf(0d);
+        return null;
     }
 }
