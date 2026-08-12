@@ -3681,10 +3681,17 @@ public class Parser{
             createNumber(index));
             if(n.getType() == Token.NAME){
                 String name = n.getString();
-                parent.addChildToBack(new Node(setOp,
+                Node setNode = new Node(setOp,
                 createName(Token.BINDNAME,
                 name, null),
-                rightElem));
+                rightElem);
+                if(variableType == Token.VAR || variableType == Token.LET){
+                    // A destructured var/let binding; not a plain
+                    // source-level assignment, so strict mode must not
+                    // reject it as an assignment to an undeclared name.
+                    setNode.putIntProp(Node.DECLARATION_PROP, 1);
+                }
+                parent.addChildToBack(setNode);
                 if(variableType != -1){
                     defineSymbol(variableType, name, true);
                     destructuringNames.add(name);
@@ -3737,10 +3744,17 @@ public class Parser{
             AstNode value = prop.getRight();
             if(value.getType() == Token.NAME){
                 String name = ((Name)value).getIdentifier();
-                parent.addChildToBack(new Node(setOp,
+                Node setNode = new Node(setOp,
                 createName(Token.BINDNAME,
                 name, null),
-                rightElem));
+                rightElem);
+                if(variableType == Token.VAR || variableType == Token.LET){
+                    // A destructured var/let binding; not a plain
+                    // source-level assignment, so strict mode must not
+                    // reject it as an assignment to an undeclared name.
+                    setNode.putIntProp(Node.DECLARATION_PROP, 1);
+                }
+                parent.addChildToBack(setNode);
                 if(variableType != -1){
                     defineSymbol(variableType, name, true);
                     destructuringNames.add(name);

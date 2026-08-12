@@ -1458,6 +1458,14 @@ public final class IRFactory extends Parser{
             }
         }else{
             assign = simpleAssignment(lvalue, id);
+            if(declType == Token.VAR || declType == Token.LET){
+                // This assignment writes into the loop's own declared
+                // binding (e.g. "for(var i in obj)") on every iteration.
+                // It isn't a plain source-level assignment to an
+                // identifier, so strict mode must not treat it as an
+                // assignment to an undeclared name.
+                assign.putIntProp(Node.DECLARATION_PROP, 1);
+            }
         }
         newBody.addChildToBack(new Node(Token.EXPR_VOID, assign));
         newBody.addChildToBack(body);

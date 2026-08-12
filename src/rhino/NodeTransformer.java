@@ -270,15 +270,42 @@ public class NodeTransformer{
                         Node n = cursor;
                         cursor = cursor.getNext();
                         if(n.getType() == Token.NAME){
-                            if(!n.hasChildren())
-                                continue;
-                            Node init = n.getFirstChild();
-                            n.removeChild(init);
-                            n.setType(Token.BINDNAME);
-                            n = new Node(type == Token.CONST ?
-                            Token.SETCONST :
-                            Token.SETNAME,
-                            n, init);
+                            if(!n.hasChildren()){
+                                if(type == Token.LET){
+                                    // "let x;" with no initializer must
+                                    // still create the binding (as
+                                    // undefined) right here. Unlike "var",
+                                    // a block-scoped "let" name can't be
+                                    // redeclared later in the same scope,
+                                    // so there's no risk of clobbering a
+                                    // previously assigned value, and it
+                                    // can't rely on hoisting to a
+                                    // function/script-level variable slot
+                                    // the way "var" can.
+                                    Node bind = n;
+                                    bind.setType(Token.BINDNAME);
+                                    Node undef = Node.newString(Token.NAME, "undefined");
+                                    n = new Node(Token.SETNAME, bind, undef);
+                                    n.putIntProp(Node.DECLARATION_PROP, 1);
+                                }else{
+                                    continue;
+                                }
+                            }else{
+                                Node init = n.getFirstChild();
+                                n.removeChild(init);
+                                n.setType(Token.BINDNAME);
+                                n = new Node(type == Token.CONST ?
+                                Token.SETCONST :
+                                Token.SETNAME,
+                                n, init);
+                                // Mark this as coming from a var/let/const
+                                // declaration initializer rather than a plain
+                                // assignment expression, so that strict mode
+                                // does not treat it as an assignment to an
+                                // undeclared name (declarations always define
+                                // the binding, even in strict mode).
+                                n.putIntProp(Node.DECLARATION_PROP, 1);
+                            }
                         }else{
                             // May be a destructuring assignment already transformed
                             // to a LETEXPR
@@ -331,7 +358,7 @@ public class NodeTransformer{
                 }
 
                 case Token.SETNAME:
-                    if(inStrictMode){
+                    if(inStrictMode && node.getIntProp(Node.DECLARATION_PROP, 0) == 0){
                         node.setType(Token.STRICT_SETNAME);
                     }
                     /* fall through */

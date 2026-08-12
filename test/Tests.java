@@ -57,10 +57,23 @@ public class Tests{
         eval("var func = new Packages.java.util.function.Predicate(){test: u => true}; func.test(321);");
         assertEquals(Boolean.FALSE, eval("Tests.testPredicate(i => i > 0, 0)"));
         assertEquals(Boolean.TRUE, eval("Tests.testPredicate(i => i > 0, 1)"));
+
+        eval("\"use strict\";\n" +
+        "\n" +
+        "let scriptName = \"base.js\"");
+
+        eval("\"use strict\";\n" +
+        "\n" +
+        "for(var i in [1, 2, 3]){ }");
+
+        eval("\"use strict\";\nlet test = undefined; Packages.java.lang.System.out.println(Packages.java.lang.String.valueOf(test));");
+        eval("\"use strict\";\nlet testnodef; Packages.java.lang.System.out.println(Packages.java.lang.String.valueOf(testnodef));");
     }
 
     @Test
     public void testInterpreterMatchesCompiledArrowsAndConsts(){
+        assertSameAtBothLevels("\"use strict\";\n\n(function(){let entries = {};})();", "undefined");
+
         // arrow function forwarding an argument to another arrow function -
         // the original crash report (ClassCastException: Undefined -> Callable)
         assertSameAtBothLevels(
