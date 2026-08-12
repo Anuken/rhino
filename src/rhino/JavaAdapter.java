@@ -298,7 +298,7 @@ public final class JavaAdapter implements IdFunctionCall{
             Method[] methods = interfaces[i].getMethods();
             for(Method method : methods){
                 int mods = method.getModifiers();
-                if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || (method.isDefault() && !functionNames.has(method.getName()))){
+                if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || (methodIsDefault(method) && !functionNames.has(method.getName()))){
                     continue;
                 }
                 String methodName = method.getName();
@@ -377,6 +377,18 @@ public final class JavaAdapter implements IdFunctionCall{
             ScriptRuntime.ObjectClass, false);
         }
         return cfw.toByteArray();
+    }
+
+    static final boolean isIos = "iOS".equals(System.getProperty("os.name")) || System.getProperty("java.vm.name", "").toLowerCase().contains("robovm");
+
+    static boolean methodIsDefault(Method method){
+        if(isIos) return false;
+        //android/iOS compatibility shim
+        try{
+            return method.isDefault();
+        }catch(Throwable throwable){
+            return false;
+        }
     }
 
     static Method[] getOverridableMethods(Class<?> clazz){
