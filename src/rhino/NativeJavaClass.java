@@ -159,15 +159,14 @@ public class NativeJavaClass extends NativeJavaObject implements Function{
         }
         Scriptable topLevel = ScriptableObject.getTopLevelScope(this);
         String msg = "";
+        // When running on Android/iOS create an InterfaceAdapter since our
+        // bytecode generation won't work on Dalvik VM.
+        if(("Dalvik".equals(System.getProperty("java.vm.name")) || Kit.isIos) && classObject.isInterface()){
+            Object obj = createInterfaceAdapter(classObject,
+            ScriptableObject.ensureScriptableObject(args[0]));
+            return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, null);
+        }
         try{
-            // When running on Android create an InterfaceAdapter since our
-            // bytecode generation won't work on Dalvik VM.
-            if("Dalvik".equals(System.getProperty("java.vm.name"))
-            && classObject.isInterface()){
-                Object obj = createInterfaceAdapter(classObject,
-                ScriptableObject.ensureScriptableObject(args[0]));
-                return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, null);
-            }
             // use JavaAdapter to construct a new class on the fly that
             // implements/extends this interface/abstract class.
             Object v = topLevel.get("JavaAdapter", topLevel);
@@ -178,10 +177,26 @@ public class NativeJavaClass extends NativeJavaObject implements Function{
                 return f.construct(cx, topLevel, adapterArgs);
             }
         }catch(Exception ex){
-            // fall through to error
-            String m = ex.getMessage();
-            if(m != null)
-                msg = m;
+            if(classObject.isInterface()){
+                // Bytecode generation failed (or isn't supported on this
+                // platform) - fall back to a Proxy-based adapter, which
+                // doesn't require generating or loading any new class
+                // files and so works on AOT-only runtimes too.
+                try{
+                    Object obj = createInterfaceAdapter(classObject,
+                    ScriptableObject.ensureScriptableObject(args[0]));
+                    return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, null);
+                }catch(Exception ex2){
+                    String m2 = ex2.getMessage();
+                    if(m2 != null)
+                        msg = m2;
+                }
+            }else{
+                // fall through to error
+                String m = ex.getMessage();
+                if(m != null)
+                    msg = m;
+            }
         }
         throw Context.reportRuntimeError2(
         "msg.cant.instantiate", msg, classObject.getName());

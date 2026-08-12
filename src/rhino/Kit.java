@@ -8,6 +8,8 @@ import java.util.*;
  */
 
 public class Kit{
+    public static final boolean isIos = "iOS".equals(System.getProperty("os.name")) || System.getProperty("java.vm.name", "").toLowerCase().contains("robovm");
+
     public static Class<?> classOrNull(String className){
         try{
             return Class.forName(className);

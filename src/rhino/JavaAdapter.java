@@ -379,10 +379,8 @@ public final class JavaAdapter implements IdFunctionCall{
         return cfw.toByteArray();
     }
 
-    static final boolean isIos = "iOS".equals(System.getProperty("os.name")) || System.getProperty("java.vm.name", "").toLowerCase().contains("robovm");
-
     static boolean methodIsDefault(Method method){
-        if(isIos) return false;
+        if(Kit.isIos) return false;
         //android/iOS compatibility shim
         try{
             return method.isDefault();
