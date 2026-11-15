@@ -110,7 +110,7 @@ public interface FactoryBase extends TypeInfoFactory {
         return Collections.unmodifiableMap(merged);
     }
 
-    private void extractSuperMapping(Type superType, Map<VariableTypeInfo, TypeInfo> pushTo) {
+    default void extractSuperMapping(Type superType, Map<VariableTypeInfo, TypeInfo> pushTo) {
         if (!(superType instanceof ParameterizedType)) {
             return;
         }
