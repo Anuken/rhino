@@ -1,0 +1,48 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.lang.reflect.InvocationTargetException;
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.ScriptableObject;
+import rhino.TopLevel;
+import rhino.VarScope;
+
+@SuppressWarnings("serial")
+public class DefineClassMapInheritance {
+
+    public static class Food extends ScriptableObject {
+        @Override
+        public String getClassName() {
+            return getClass().getSimpleName();
+        }
+    }
+
+    public static class Fruit extends Food {}
+
+    public static class Vegetable extends Food {}
+
+    @Test
+    public void test()
+            throws IllegalAccessException, InstantiationException, InvocationTargetException {
+        try (Context cx = Context.enter()) {
+            TopLevel scope = cx.initStandardObjects();
+
+            // define two classes that share a parent prototype
+            ScriptableObject.defineClass(scope, Fruit.class, false, true);
+            ScriptableObject.defineClass(scope, Vegetable.class, false, true);
+
+            assertEquals(Boolean.TRUE, evaluate(cx, scope, "(new Fruit instanceof Food)"));
+            assertEquals(Boolean.TRUE, evaluate(cx, scope, "(new Vegetable instanceof Food)"));
+        }
+    }
+
+    private static Object evaluate(Context cx, VarScope scope, String source) {
+        return cx.evaluateString(scope, source, "<eval>", 1, null);
+    }
+}

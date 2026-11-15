@@ -1,56 +1,60 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 // API class
 
 package rhino;
 
 /**
- * This class provides support for implementing Java-style synchronized
- * methods in Javascript.
- * <p>
- * Synchronized functions are created from ordinary Javascript
- * functions by the <code>Synchronizer</code> constructor, e.g.
- * <code>new Packages.rhino.Synchronizer(fun)</code>.
- * The resulting object is a function that establishes an exclusive
- * lock on the <code>this</code> object of its invocation.
- * <p>
- * The Rhino shell provides a short-cut for the creation of
- * synchronized methods: <code>sync(fun)</code> has the same effect as
- * calling the above constructor.
+ * This class provides support for implementing Java-style synchronized methods in Javascript.
+ *
+ * <p>Synchronized functions are created from ordinary Javascript functions by the {@code
+ * Synchronizer} constructor, e.g. {@code new Packages.rhino.Synchronizer(fun) }.
+ * The resulting object is a function that establishes an exclusive lock on the {@code this } object
+ * of its invocation.
+ *
+ * <p>The Rhino shell provides a short-cut for the creation of synchronized methods: {@code
+ * sync(fun) } has the same effect as calling the above constructor.
+ *
+ * @see rhino.Delegator
  * @author Matthias Radestock
- * @see Delegator
  */
-
-public class Synchronizer extends Delegator{
+public class Synchronizer extends Delegator {
 
     private Object syncObject;
 
     /**
      * Create a new synchronized function from an existing one.
+     *
      * @param obj the existing function
      */
-    public Synchronizer(Scriptable obj){
+    public Synchronizer(Scriptable obj) {
         super(obj);
     }
 
     /**
-     * Create a new synchronized function from an existing one using
-     * an explicit object as synchronization object.
+     * Create a new synchronized function from an existing one using an explicit object as
+     * synchronization object.
+     *
      * @param obj the existing function
      * @param syncObject the object to synchronized on
      */
-    public Synchronizer(Scriptable obj, Object syncObject){
+    public Synchronizer(Scriptable obj, Object syncObject) {
         super(obj);
         this.syncObject = syncObject;
     }
 
     /**
-     * @see Function#call
+     * @see rhino.Function#call
      */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
-                       Object[] args){
+    public Object call(Context cx, VarScope scope, Object thisObj, Object[] args) {
         Object sync = syncObject != null ? syncObject : thisObj;
-        synchronized(sync instanceof Wrapper ? ((Wrapper)sync).unwrap() : sync){
-            return ((Function)obj).call(cx, scope, thisObj, args);
+        synchronized (sync instanceof Wrapper ? ((Wrapper) sync).unwrap() : sync) {
+            return ((Function) obj).call(cx, scope, thisObj, args);
         }
     }
 }

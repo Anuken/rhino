@@ -1,11 +1,18 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-/**
- * Encapsulates information for a JavaScript parse error or warning.
- */
-public class ParseProblem{
+/** Encapsulates information for a JavaScript parse error or warning. */
+public class ParseProblem {
 
-    public enum Type{Error, Warning}
+    public static enum Type {
+        Error,
+        Warning
+    }
 
     private Type type;
     private String message;
@@ -13,11 +20,9 @@ public class ParseProblem{
     private int offset;
     private int length;
 
-    /**
-     * Constructs a new ParseProblem.
-     */
-    public ParseProblem(ParseProblem.Type type, String message,
-                        String sourceName, int offset, int length){
+    /** Constructs a new ParseProblem. */
+    public ParseProblem(
+            ParseProblem.Type type, String message, String sourceName, int offset, int length) {
         setType(type);
         setMessage(message);
         setSourceName(sourceName);
@@ -25,53 +30,54 @@ public class ParseProblem{
         setLength(length);
     }
 
-    public ParseProblem.Type getType(){
+    public ParseProblem.Type getType() {
         return type;
     }
 
-    public void setType(ParseProblem.Type type){
+    public void setType(ParseProblem.Type type) {
         this.type = type;
     }
 
-    public String getMessage(){
+    public String getMessage() {
         return message;
     }
 
-    public void setMessage(String msg){
+    public void setMessage(String msg) {
         this.message = msg;
     }
 
-    public String getSourceName(){
+    public String getSourceName() {
         return sourceName;
     }
 
-    public void setSourceName(String name){
+    public void setSourceName(String name) {
         this.sourceName = name;
     }
 
-    public int getFileOffset(){
+    public int getFileOffset() {
         return offset;
     }
 
-    public void setFileOffset(int offset){
+    public void setFileOffset(int offset) {
         this.offset = offset;
     }
 
-    public int getLength(){
+    public int getLength() {
         return length;
     }
 
-    public void setLength(int length){
+    public void setLength(int length) {
         this.length = length;
     }
 
     @Override
-    public String toString(){
-        String sb = sourceName + ":" +
-        "offset=" + offset + "," +
-        "length=" + length + "," +
-        (type == Type.Error ? "error: " : "warning: ") +
-        message;
-        return sb;
+    public String toString() {
+        StringBuilder sb = new StringBuilder(200);
+        sb.append(sourceName).append(":");
+        sb.append("offset=").append(offset).append(",");
+        sb.append("length=").append(length).append(",");
+        sb.append(type == Type.Error ? "error: " : "warning: ");
+        sb.append(message);
+        return sb.toString();
     }
 }

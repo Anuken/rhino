@@ -1,0 +1,132 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import rhino.RhinoException;
+import rhino.TopLevel;
+import rhino.testutils.Utils;
+
+/**
+ * Unit tests for <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=549604">bug 549604</a>. This
+ * tests verify the properties of a JS exception and ensures that they don't change with different
+ * optimization levels.
+ *
+ * @author Marc Guillemot
+ */
+public class ErrorPropertiesTest {
+    static final String LS = System.getProperty("line.separator");
+
+    private void testScriptStackTrace(final String script, final String expectedStackTrace) {
+        testScriptStackTrace(script, expectedStackTrace, false);
+        testScriptStackTrace(script, expectedStackTrace, true);
+    }
+
+    private void testScriptStackTrace(
+            final String script, final String expectedStackTrace, final boolean interpreted) {
+        try {
+            Utils.executeScript(script, interpreted);
+        } catch (final RhinoException e) {
+            Assertions.assertEquals(expectedStackTrace, e.getScriptStackTrace());
+        }
+    }
+
+    @Test
+    public void fileName() {
+        testIt("try { null.method() } catch (e) { e.fileName }", "myScript.js");
+        testIt("try { null.property } catch (e) { e.fileName }", "myScript.js");
+    }
+
+    @Test
+    public void lineNumber() {
+        testIt("try { null.method() } catch (e) { e.lineNumber }", 1);
+        testIt("try {\n null.method() \n} catch (e) { e.lineNumber }", 2);
+        testIt("\ntry \n{\n null.method() \n} catch (e) { e.lineNumber }", 4);
+
+        testIt("function f() {\n null.method(); \n}\n try { f() } catch (e) { e.lineNumber }", 2);
+    }
+
+    @Test
+    public void defaultStack() {
+        var errorStyle = RhinoException.getStackStyle();
+        try {
+            RhinoException.useMozillaStackStyle(false);
+            testScriptStackTrace("null.method()", "\tat myScript.js:1" + LS);
+            final String script = "function f() \n{\n  null.method();\n}\nf();\n";
+            testScriptStackTrace(script, "\tat myScript.js:3 (f)" + LS + "\tat myScript.js:5" + LS);
+            testIt("try { null.method() } catch (e) { e.stack }", "\tat myScript.js:1" + LS);
+            final String expectedStack = "\tat myScript.js:2 (f)" + LS + "\tat myScript.js:4" + LS;
+            testIt(
+                    "function f() {\n null.method(); \n}\n try { f() } catch (e) { e.stack }",
+                    expectedStack);
+        } finally {
+            RhinoException.setStackStyle(errorStyle);
+        }
+    }
+
+    @Test
+    public void mozillaStack() {
+        var errorStyle = RhinoException.getStackStyle();
+        try {
+            RhinoException.useMozillaStackStyle(true);
+            testScriptStackTrace("null.method()", "@myScript.js:1" + LS);
+            final String script = "function f() \n{\n  null.method();\n}\nf();\n";
+            testScriptStackTrace(script, "f()@myScript.js:3" + LS + "@myScript.js:5" + LS);
+            testIt("try { null.method() } catch (e) { e.stack }", "@myScript.js:1" + LS);
+            final String expectedStack = "f()@myScript.js:2" + LS + "@myScript.js:4" + LS;
+            testIt(
+                    "function f() {\n null.method(); \n}\n try { f() } catch (e) { e.stack }",
+                    expectedStack);
+        } finally {
+            RhinoException.setStackStyle(errorStyle);
+        }
+    }
+
+    @Test
+    public void stackWithPlainObjectAsPrototype() {
+        Utils.assertWithAllModes_ES6(
+                "string",
+                "function E() {}\n"
+                        + "E.prototype = Object.create(Error.prototype);\n"
+                        + "var e = new Error('m');\n"
+                        + "Object.setPrototypeOf(e, E.prototype);\n"
+                        + "typeof e.stack");
+    }
+
+    @Test
+    public void stackWithNullPrototype() {
+        Utils.assertWithAllModes_ES6(
+                "string",
+                "var e = new Error('m');\n"
+                        + "Object.setPrototypeOf(e, null);\n"
+                        + "typeof e.stack");
+    }
+
+    @Test
+    public void stackWithProxyAsPrototype() {
+        Utils.assertWithAllModes_ES6(
+                "string",
+                "var e = new Error('m');\n"
+                        + "Object.setPrototypeOf(e, new Proxy({}, {}));\n"
+                        + "typeof e.stack");
+    }
+
+    private void testIt(final String script, final Object expected) {
+        Utils.runWithAllModes(
+                cx -> {
+                    try {
+                        TopLevel scope = cx.initStandardObjects();
+                        final Object o = cx.evaluateString(scope, script, "myScript.js", 1, null);
+                        Assertions.assertEquals(expected, o);
+                        return o;
+                    } catch (final RuntimeException e) {
+                        throw e;
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+}

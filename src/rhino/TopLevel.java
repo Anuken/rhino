@@ -1,40 +1,47 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-import java.util.*;
+import static rhino.UniqueTag.NOT_FOUND;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.util.EnumMap;
+import rhino.lc.type.TypeInfoFactory;
 
 /**
- * A top-level scope object that provides special means to cache and preserve
- * the initial values of the built-in constructor properties for better
- * ECMAScript compliance.
+ * A top-level scope object that provides special means to cache and preserve the initial values of
+ * the built-in constructor properties for better ECMAScript compliance.
  *
- * <p>ECMA 262 requires that most constructors used internally construct
- * objects with the original prototype object as value of their [[Prototype]]
- * internal property. Since built-in global constructors are defined as
- * writable and deletable, this means they should be cached to protect against
- * redefinition at runtime.</p>
+ * <p>ECMA 262 requires that most constructors used internally construct objects with the original
+ * prototype object as value of their [[Prototype]] internal property. Since built-in global
+ * constructors are defined as writable and deletable, this means they should be cached to protect
+ * against redefinition at runtime.
  *
- * <p>In order to implement this efficiently, this class provides a mechanism
- * to access the original built-in global constructors and their prototypes
- * via numeric class-ids. To make use of this, the new
- * {@link ScriptRuntime#newBuiltinObject ScriptRuntime.newBuiltinObject} and
- * {@link ScriptRuntime#setBuiltinProtoAndParent ScriptRuntime.setBuiltinProtoAndParent}
- * methods should be used to create and initialize objects of built-in classes
- * instead of their generic counterparts.</p>
+ * <p>In order to implement this efficiently, this class provides a mechanism to access the original
+ * built-in global constructors and their prototypes via numeric class-ids. To make use of this, the
+ * new {@link ScriptRuntime#newBuiltinObject ScriptRuntime.newBuiltinObject} and {@link
+ * ScriptRuntime#setBuiltinProtoAndParent ScriptRuntime.setBuiltinProtoAndParent} methods should be
+ * used to create and initialize objects of built-in classes instead of their generic counterparts.
  *
- * <p>Calling {@link Context#initStandardObjects()}
- * with an instance of this class as argument will automatically cache
- * built-in classes after initialization. For other setups involving
- * top-level scopes that inherit global properties from their proptotypes
- * (e.g. with dynamic scopes) embeddings should explicitly call
- *  to initialize the class cache for each top-level
- * scope.</p>
+ * <p>Calling {@link rhino.Context#initStandardObjects()} with an instance of this
+ * class as argument will automatically cache built-in classes after initialization. For other
+ * setups involving top-level scopes that inherit global properties from their prototypes (e.g. with
+ * dynamic scopes) embeddings should explicitly call {@link #cacheBuiltins(boolean)} to initialize
+ * the class cache for each top-level scope.
  */
-public class TopLevel extends IdScriptableObject{
+public class TopLevel extends ScopeObject {
 
-    /**
-     * An enumeration of built-in ECMAScript objects.
-     */
-    public enum Builtins{
+    @Serial private static final long serialVersionUID = -4648046356662472260L;
+
+    /** An enumeration of built-in ECMAScript objects. */
+    public enum Builtins {
         /** The built-in Object type. */
         Object,
         /** The built-in Array type. */
@@ -54,13 +61,42 @@ public class TopLevel extends IdScriptableObject{
         /** The built-in Symbol type. */
         Symbol,
         /** The built-in GeneratorFunction type. */
-        GeneratorFunction
+        GeneratorFunction,
+        /** The built-in AsyncFunction type. */
+        AsyncFunction,
+        /** The built-in AsyncGeneratorFunction type. */
+        AsyncGeneratorFunction,
+        /** The built-in BigInt type. */
+        BigInt,
+        /** The built-in Promise type. */
+        Promise,
+        Date,
+        Map,
+        Set,
+        WeakMap,
+        WeakSet,
+        Proxy,
+        ArrayBuffer,
+        SharedArrayBuffer,
+        Int8Array,
+        Uint8Array,
+        Uint8ClampedArray,
+        Int16Array,
+        Uint16Array,
+        Int32Array,
+        Uint32Array,
+        BigInt64Array,
+        BigUint64Array,
+        Float16Array,
+        Float32Array,
+        Float64Array,
+        DataView
     }
 
-    /**
-     * An enumeration of built-in native errors. [ECMAScript 5 - 15.11.6]
-     */
-    enum NativeErrors{
+    /** An enumeration of built-in native errors. [ECMAScript 5 - 15.11.6] */
+    enum NativeErrors {
+        /** The AggregateError */
+        AggregateError,
         /** Basic Error */
         Error,
         /** The native EvalError. */
@@ -81,94 +117,225 @@ public class TopLevel extends IdScriptableObject{
         JavaException
     }
 
+    public static class GlobalThis extends ScriptableObject {
+
+        @Override
+        public String getClassName() {
+            return "global";
+        }
+    }
+
     private EnumMap<Builtins, BaseFunction> ctors;
     private EnumMap<NativeErrors, BaseFunction> errors;
+    private transient ScriptableObject globalThis;
+    // associated values that LiveConnect needs for every wrapped Java object, cached once present
+    private transient volatile ClassCache classCache;
+    private transient volatile TypeInfoFactory typeInfoFactory;
 
-    @Override
-    public String getClassName(){
-        return "global";
+    /** Returns the associated {@link ClassCache}, or null if there is none yet. */
+    ClassCache getClassCache() {
+        var cache = classCache;
+        if (cache == null) {
+            cache = (ClassCache) getAssociatedValue(ClassCache.AKEY);
+            classCache = cache;
+        }
+        return cache;
     }
 
     /**
-     * Cache the built-in ECMAScript objects to protect them against
-     * modifications by the script. This method is called automatically by
-     * {@link ScriptRuntime#initStandardObjects ScriptRuntime.initStandardObjects}
-     * if the scope argument is an instance of this class. It only has to be
-     * called by the embedding if a top-level scope is not initialized through
-     * <code>initStandardObjects()</code>.
+     * Returns the associated {@link TypeInfoFactory}, or null if there is none yet.
+     *
+     * @see TypeInfoFactory#getOrElse(VarScope, TypeInfoFactory)
      */
-    public void cacheBuiltins(Scriptable scope, boolean sealed){
+    public TypeInfoFactory getTypeInfoFactory() {
+        var factory = typeInfoFactory;
+        if (factory == null) {
+            factory = (TypeInfoFactory) getAssociatedValue(TypeInfoFactory.ASSOCIATION_KEY);
+            typeInfoFactory = factory;
+        }
+        return factory;
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        Context.checkSerializationEnabled();
+        out.defaultWriteObject();
+        out.writeObject(globalThis);
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        Context.checkDeserializationEnabled();
+        in.defaultReadObject();
+        globalThis = (ScriptableObject) in.readObject();
+    }
+
+    public TopLevel() {
+        this(new GlobalThis());
+    }
+
+    public TopLevel(ScriptableObject customGlobal) {
+        super(null);
+        globalThis = customGlobal;
+    }
+
+    public static TopLevel createIsolate(TopLevel parent) {
+        var newGlobal = new NativeObject();
+        newGlobal.setPrototype(parent.getGlobalThis());
+        newGlobal.setParentScope(null);
+        newGlobal.put("globalThis", newGlobal, newGlobal);
+        newGlobal.setAttributes("globalThis", ScriptableObject.DONTENUM);
+        newGlobal.put("global", newGlobal, newGlobal);
+        newGlobal.setAttributes("global", ScriptableObject.DONTENUM);
+        var isolate = new TopLevel(newGlobal);
+        isolate.copyAssociatedValue(parent);
+        isolate.copyBuiltins(parent, false);
+        return isolate;
+    }
+
+    public static TopLevel createIsolate(TopLevel parent, ScriptableObject customGlobal) {
+        customGlobal.setParentScope(null);
+        customGlobal.setPrototype(parent.getGlobalThis());
+        var isolate = new TopLevel(customGlobal);
+        isolate.copyAssociatedValue(parent);
+        isolate.copyBuiltins(parent, false);
+        return isolate;
+    }
+
+    /**
+     * Only use this function if you have already set the customGlobal's prototype chain to point to
+     * this top level's global object. This should only be done if you know for certain that no
+     * other use will be made of this prototype chain.
+     */
+    public static TopLevel createIsolateCustomPrototypeChain(
+            TopLevel parent, ScriptableObject customGlobal) {
+        customGlobal.setParentScope(null);
+        var isolate = new TopLevel(customGlobal);
+        isolate.copyAssociatedValue(parent);
+        isolate.copyBuiltins(parent, false);
+        return isolate;
+    }
+
+    /**
+     * Cache the built-in ECMAScript objects to protect them against modifications by the script.
+     * This method is called automatically by {@link ScriptRuntime#initStandardObjects
+     * ScriptRuntime.initStandardObjects} if the scope argument is an instance of this class. It
+     * only has to be called by the embedding if a top-level scope is not initialized through {@code
+     * initStandardObjects()}.
+     *
+     * <p>This method is deprecated and kept for compatibility. Please use either {@link
+     * cacheBuiltins(boolean)} or {@link copyBuiltins(TopLevel, boolean)} instead.
+     */
+    @Deprecated
+    public void cacheBuiltins(TopLevel scope, boolean sealed) {
+        cacheBuiltins(sealed);
+    }
+
+    public void cacheBuiltins(boolean sealed) {
         ctors = new EnumMap<>(Builtins.class);
-        for(Builtins builtin : Builtins.values()){
+        for (Builtins builtin : Builtins.values()) {
             Object value = ScriptableObject.getProperty(this, builtin.name());
-            if(value instanceof BaseFunction){
-                ctors.put(builtin, (BaseFunction)value);
-            }else if(builtin == Builtins.GeneratorFunction){
+            if (value instanceof BaseFunction) {
+                ctors.put(builtin, (BaseFunction) value);
+            } else if (builtin == Builtins.GeneratorFunction) {
                 // Handle weird situation of "GeneratorFunction" being a real constructor
                 // which is never registered in the top-level scope
-                ctors.put(builtin, (BaseFunction)BaseFunction.initAsGeneratorFunction(scope, sealed));
+                ctors.put(
+                        builtin,
+                        (BaseFunction)
+                                BaseFunction.initAsGeneratorFunction(
+                                        Context.getCurrentContext(), this, sealed));
+            } else if (builtin == Builtins.AsyncFunction) {
+                // AsyncFunction is not a global either
+                ctors.put(
+                        builtin,
+                        (BaseFunction)
+                                BaseFunction.initAsAsyncFunction(
+                                        Context.getCurrentContext(), this, sealed));
+            } else if (builtin == Builtins.AsyncGeneratorFunction) {
+                ctors.put(
+                        builtin,
+                        (BaseFunction)
+                                BaseFunction.initAsAsyncGeneratorFunction(
+                                        Context.getCurrentContext(), this, sealed));
             }
         }
         errors = new EnumMap<>(NativeErrors.class);
-        for(NativeErrors error : NativeErrors.values()){
+        for (NativeErrors error : NativeErrors.values()) {
             Object value = ScriptableObject.getProperty(this, error.name());
-            if(value instanceof BaseFunction){
-                errors.put(error, (BaseFunction)value);
+            if (value instanceof BaseFunction) {
+                errors.put(error, (BaseFunction) value);
             }
         }
     }
 
+    public void copyBuiltins(TopLevel other, boolean sealed) {
+        ctors = other.ctors;
+        errors = other.errors;
+    }
+
+    /** Clears the cache; this is necessary, when standard objects are reinitialized. */
+    void clearCache() {
+        ctors = null;
+        errors = null;
+    }
+
     /**
-     * Static helper method to get a built-in object constructor with the given
-     * <code>type</code> from the given <code>scope</code>. If the scope is not
-     * an instance of this class or does have a cache of built-ins,
-     * the constructor is looked up via normal property lookup.
+     * Static helper method to get a built-in object constructor with the given {@code type} from
+     * the given {@code scope}. If the scope is not an instance of this class or does have a cache
+     * of built-ins, the constructor is looked up via normal property lookup.
+     *
      * @param cx the current Context
      * @param scope the top-level scope
      * @param type the built-in type
      * @return the built-in constructor
      */
-    public static Function getBuiltinCtor(Context cx,
-                                          Scriptable scope,
-                                          Builtins type){
+    public static Function getBuiltinCtor(Context cx, VarScope scope, Builtins type) {
         // must be called with top level scope
         assert scope.getParentScope() == null;
-        if(scope instanceof TopLevel){
-            Function result = ((TopLevel)scope).getBuiltinCtor(type);
-            if(result != null){
+        if (scope instanceof TopLevel) {
+            Function result = ((TopLevel) scope).getBuiltinCtor(type);
+            if (result != null) {
                 return result;
             }
         }
         // fall back to normal constructor lookup
-        String typeName;
-        if(type == Builtins.GeneratorFunction){
+        Object typeName;
+        if (type == Builtins.GeneratorFunction) {
             // GeneratorFunction isn't stored in scope with that name, but in case
             // we end up falling back to this value then we have to
             // look this up using a hidden name.
             typeName = BaseFunction.GENERATOR_FUNCTION_CLASS;
-        }else{
+        } else if (type == Builtins.AsyncFunction) {
+            typeName = BaseFunction.ASYNC_FUNCTION_CLASS;
+        } else if (type == Builtins.AsyncGeneratorFunction) {
+            typeName = BaseFunction.ASYNC_GENERATOR_FUNCTION_CLASS;
+        } else {
             typeName = type.name();
         }
-        return ScriptRuntime.getExistingCtor(cx, scope, typeName);
+        if (typeName instanceof String) {
+            return ScriptRuntime.getExistingCtor(cx, scope, (String) typeName);
+        } else {
+            return ScriptRuntime.getExistingCtor(cx, scope, (SymbolKey) typeName);
+        }
     }
 
     /**
-     * Static helper method to get a native error constructor with the given
-     * <code>type</code> from the given <code>scope</code>. If the scope is not
-     * an instance of this class or does have a cache of native errors,
-     * the constructor is looked up via normal property lookup.
+     * Static helper method to get a native error constructor with the given {@code type} from the
+     * given {@code scope}. If the scope is not an instance of this class or does have a cache of
+     * native errors, the constructor is looked up via normal property lookup.
+     *
      * @param cx the current Context
      * @param scope the top-level scope
      * @param type the native error type
      * @return the native error constructor
      */
-    static Function getNativeErrorCtor(Context cx, Scriptable scope,
-                                       NativeErrors type){
+    static Function getNativeErrorCtor(Context cx, VarScope scope, NativeErrors type) {
         // must be called with top level scope
         assert scope.getParentScope() == null;
-        if(scope instanceof TopLevel){
-            Function result = ((TopLevel)scope).getNativeErrorCtor(type);
-            if(result != null){
+        if (scope instanceof TopLevel) {
+            Function result = ((TopLevel) scope).getNativeErrorCtor(type);
+            if (result != null) {
                 return result;
             }
         }
@@ -177,71 +344,220 @@ public class TopLevel extends IdScriptableObject{
     }
 
     /**
-     * Static helper method to get a built-in object prototype with the given
-     * <code>type</code> from the given <code>scope</code>. If the scope is not
-     * an instance of this class or does have a cache of built-ins,
-     * the prototype is looked up via normal property lookup.
+     * Static helper method to get a built-in object prototype with the given {@code type} from the
+     * given {@code scope}. If the scope is not an instance of this class or does have a cache of
+     * built-ins, the prototype is looked up via normal property lookup.
+     *
      * @param scope the top-level scope
      * @param type the built-in type
      * @return the built-in prototype
      */
-    public static Scriptable getBuiltinPrototype(Scriptable scope,
-                                                 Builtins type){
+    @SuppressWarnings("AmbiguousMethodReference")
+    public static Scriptable getBuiltinPrototype(TopLevel scope, Builtins type) {
         // must be called with top level scope
-        assert scope.getParentScope() == null;
-        if(scope instanceof TopLevel){
-            Scriptable result = ((TopLevel)scope)
-            .getBuiltinPrototype(type);
-            if(result != null){
-                return result;
-            }
+        Scriptable result = ((TopLevel) scope).getBuiltinPrototype(type);
+        if (result != null) {
+            return result;
         }
-        // fall back to normal prototype lookup
-        String typeName;
-        if(type == Builtins.GeneratorFunction){
+
+        Object typeName;
+        if (type == Builtins.GeneratorFunction) {
             // GeneratorFunction isn't stored in scope with that name, but in case
             // we end up falling back to this value then we have to
             // look this up using a hidden name.
             typeName = BaseFunction.GENERATOR_FUNCTION_CLASS;
-        }else{
+        } else if (type == Builtins.AsyncFunction) {
+            typeName = BaseFunction.ASYNC_FUNCTION_CLASS;
+        } else if (type == Builtins.AsyncGeneratorFunction) {
+            typeName = BaseFunction.ASYNC_GENERATOR_FUNCTION_CLASS;
+        } else {
             typeName = type.name();
         }
-        return ScriptableObject.getClassPrototype(scope, typeName);
+        if (typeName instanceof String) {
+            return ScriptableObject.getClassPrototype(scope, (String) typeName);
+        } else {
+            return ScriptableObject.getClassPrototype(scope, (SymbolKey) typeName);
+        }
     }
 
     /**
-     * Get the cached built-in object constructor from this scope with the
-     * given <code>type</code>. Returns null if  has not
-     * been called on this object.
+     * Static helper method to get a built-in object prototype with the given {@code type} from the
+     * given {@code scope}. If the scope is not an instance of this class or does not have a cache
+     * of built-ins, the prototype is looked up via normal property lookup.
+     *
+     * @param scope the top-level scope
+     * @param type the built-in type
+     * @return the built-in prototype
+     */
+    @SuppressWarnings("AmbiguousMethodReference")
+    static Scriptable getBuiltinPrototype(TopLevel scope, NativeErrors type) {
+        // must be called with top level scope
+        Scriptable result = ((TopLevel) scope).getBuiltinPrototype(type);
+        if (result != null) {
+            return result;
+        }
+
+        Object typeName;
+        typeName = type.name();
+        if (typeName instanceof String) {
+            return ScriptableObject.getClassPrototype(scope, (String) typeName);
+        } else {
+            return ScriptableObject.getClassPrototype(scope, (SymbolKey) typeName);
+        }
+    }
+
+    /**
+     * Get the cached built-in object constructor from this scope with the given {@code type}.
+     * Returns null if {@link #cacheBuiltins(boolean)} has not been called on this object.
+     *
      * @param type the built-in type
      * @return the built-in constructor
      */
-    public BaseFunction getBuiltinCtor(Builtins type){
+    public BaseFunction getBuiltinCtor(Builtins type) {
         return ctors != null ? ctors.get(type) : null;
     }
 
     /**
-     * Get the cached native error constructor from this scope with the
-     * given <code>type</code>. Returns null if  has not
-     * been called on this object.
+     * Get the cached native error constructor from this scope with the given {@code type}. Returns
+     * null if {@link #cacheBuiltins(boolean)} has not been called on this object.
+     *
      * @param type the native error type
      * @return the native error constructor
      */
-    BaseFunction getNativeErrorCtor(NativeErrors type){
+    BaseFunction getNativeErrorCtor(NativeErrors type) {
         return errors != null ? errors.get(type) : null;
     }
 
     /**
-     * Get the cached built-in object prototype from this scope with the
-     * given <code>type</code>. Returns null if  has not
-     * been called on this object.
+     * Get the cached built-in object prototype from this scope with the given {@code type}. Returns
+     * null if {@link #cacheBuiltins(boolean)} has not been called on this object.
+     *
      * @param type the built-in type
      * @return the built-in prototype
      */
-    public Scriptable getBuiltinPrototype(Builtins type){
+    @SuppressWarnings("AmbiguousMethodReference")
+    public Scriptable getBuiltinPrototype(Builtins type) {
         BaseFunction func = getBuiltinCtor(type);
         Object proto = func != null ? func.getPrototypeProperty() : null;
-        return proto instanceof Scriptable ? (Scriptable)proto : null;
+        return proto instanceof Scriptable ? (Scriptable) proto : null;
     }
 
+    /**
+     * Get the cached built-in object prototype from this scope with the given {@code type}. Returns
+     * null if {@link #cacheBuiltins(boolean)} has not been called on this object.
+     *
+     * @param type the built-in type
+     * @return the built-in prototype
+     */
+    @SuppressWarnings("AmbiguousMethodReference")
+    public Scriptable getBuiltinPrototype(NativeErrors type) {
+        BaseFunction func = getNativeErrorCtor(type);
+        Object proto = func != null ? func.getPrototypeProperty() : null;
+        return proto instanceof Scriptable ? (Scriptable) proto : null;
+    }
+
+    public ScriptableObject getGlobalThis() {
+        return globalThis;
+    }
+
+    @Override
+    public Object get(String name, VarScope start) {
+        var res = super.get(name, start);
+        if (res != NOT_FOUND) {
+            return res;
+        }
+        return ScriptableObject.getProperty(globalThis, name);
+    }
+
+    @Override
+    public void put(String name, VarScope start, Object value) {
+        if (super.has(name, start)) {
+            super.put(name, start, value);
+        } else {
+            ScriptableObject.putProperty(globalThis, name, value);
+        }
+    }
+
+    @Override
+    public boolean has(String name, VarScope start) {
+        return super.has(name, start) || ScriptableObject.hasProperty(globalThis, name);
+    }
+
+    @Override
+    public void delete(String name) {
+        globalThis.delete(name);
+    }
+
+    @Override
+    public void sealObject() {
+        globalThis.sealObject();
+        super.sealObject();
+    }
+
+    @Override
+    public void defineProperty(String propertyName, Object value, int attributes) {
+        globalThis.defineProperty(propertyName, value, attributes);
+    }
+
+    @Override
+    void addLazilyInitializedValue(
+            String name, int index, LazilyLoadedCtor<VarScope> init, int attributes) {
+        globalThis.addLazilyInitializedValue(name, index, init, attributes);
+    }
+
+    @Override
+    public void setAttributes(String name, int attributes) {
+        if (super.get(name, this) != NOT_FOUND) {
+            super.setAttributes(name, attributes);
+        } else {
+            globalThis.setAttributes(name, attributes);
+        }
+    }
+
+    @Override
+    public int getAttributes(String name) {
+        if (super.get(name, this) != NOT_FOUND) {
+            return super.getAttributes(name);
+        } else {
+            return globalThis.getAttributes(name);
+        }
+    }
+
+    // Technically this is wrong, but there are currently tests that
+    // depend const variable being defined on globalThis.
+    //
+    // In a compliant implementation const declarations should bind
+    // the values on the global scope but not on the global object.
+
+    @Override
+    public boolean isConst(Context cx, String name) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            return super.isConst(cx, name);
+        } else {
+            return globalThis.isConst(cx, name);
+        }
+    }
+
+    @Override
+    public void putConst(Context cx, String name, VarScope start, Object value) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            super.putConst(cx, name, start, value);
+        } else {
+            globalThis.putConst(cx, name, globalThis, value);
+        }
+    }
+
+    @Override
+    public void defineConst(Context cx, String name, VarScope start) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            super.defineConst(cx, name, start);
+        } else {
+            globalThis.defineConst(cx, name, globalThis);
+        }
+    }
+
+    public void defineFunctionProperties(
+            VarScope scope, String[] names, Class<?> clazz, int attributes) {
+        getGlobalThis().defineFunctionProperties(scope, names, clazz, attributes);
+    }
 }

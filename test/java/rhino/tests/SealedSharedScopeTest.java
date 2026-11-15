@@ -1,0 +1,144 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Locale;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.EcmaError;
+import rhino.EvaluatorException;
+import rhino.ImporterTopLevel;
+import rhino.JSFunction;
+import rhino.TopLevel;
+import rhino.VarScope;
+import rhino.Wrapper;
+
+public class SealedSharedScopeTest {
+
+    private Context ctx;
+    private ImporterTopLevel sharedScope;
+    private VarScope scope1;
+    private VarScope scope2;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        try (Context tmpCtx = Context.enter()) {
+            sharedScope = new ImporterTopLevel(tmpCtx, true);
+            sharedScope.sealObject();
+        }
+
+        ctx = Context.enter();
+        ctx.setLanguageVersion(Context.VERSION_DEFAULT);
+        scope1 = TopLevel.createIsolate(sharedScope);
+        scope2 = TopLevel.createIsolate(sharedScope);
+    }
+
+    @AfterEach
+    public void tearDown() throws Exception {
+        Context.exit();
+    }
+
+    private Object evaluateString(VarScope scope, String source) {
+        Object o = ctx.evaluateString(scope, source, "test", 1, null);
+        if (o instanceof Wrapper) {
+            o = ((Wrapper) o).unwrap();
+        }
+        return o;
+    }
+
+    /**
+     * Test should verify if JavaImporter can import java.util.Date/java.sql.Date without colliding
+     * with internal Date function.
+     */
+    @Test
+    public void importClassWithImporter() throws Exception {
+        Object o;
+        evaluateString(
+                scope1, "var imp1 = new JavaImporter();\n" + "imp1.importClass(java.util.Date);");
+        evaluateString(
+                scope1, "var imp2 = new JavaImporter();\n" + "imp2.importClass(java.sql.Date);");
+        o = evaluateString(scope1, "imp1.Date");
+        assertEquals(java.util.Date.class, o);
+
+        o = evaluateString(scope1, "imp2.Date");
+        assertEquals(java.sql.Date.class, o);
+
+        o = evaluateString(scope1, "Date"); // JavaScript "Statement" function
+        assertTrue(o instanceof JSFunction);
+
+        o = evaluateString(scope2, "typeof imp1"); // scope 2 has
+        // no imp1
+        assertEquals("undefined", o);
+    }
+
+    /**
+     * Test should verify if JavaImporter can import java.util.Date/java.sql.Date without colliding
+     * with internal Date function.
+     */
+    @Test
+    public void importPackageWithImporter() throws Exception {
+        Object o;
+        evaluateString(
+                scope1, "var imp1 = new JavaImporter();\n" + "imp1.importPackage(java.util);");
+        evaluateString(
+                scope1, "var imp2 = new JavaImporter();\n" + "imp2.importPackage(java.sql);");
+        o = evaluateString(scope1, "imp1.Date");
+        assertEquals(java.util.Date.class, o);
+
+        o = evaluateString(scope1, "imp2.Date");
+        assertEquals(java.sql.Date.class, o);
+
+        o = evaluateString(scope1, "Date"); // JavaScript "Statement" function
+        assertTrue(o instanceof JSFunction);
+
+        o = evaluateString(scope2, "typeof imp1 == 'undefined'"); // scope 2 has
+        // no imp1
+        assertTrue((Boolean) o);
+    }
+
+    @Test
+    public void globalScope() throws FileNotFoundException, IOException {
+        evaluateString(scope1, "importPackage(Packages.java.io);");
+
+        // Loading object via direct class type evaluate and then checking with typeof
+        // works
+        Object o = evaluateString(scope1, "File");
+        assertEquals(java.io.File.class, o);
+        o = evaluateString(scope1, "typeof File");
+        assertEquals("function", o);
+
+        // Direct checking with typeof fails
+        evaluateString(scope2, "importPackage(Packages.java.io);");
+        o = evaluateString(scope2, "typeof File");
+        assertEquals("function", o);
+    }
+
+
+    @Test
+    public void importClassFailsOnSealedScope() throws Exception {
+        assertThrows(
+                EvaluatorException.class,
+                () -> evaluateString(sharedScope, "importClass(java.util.Locale);"));
+    }
+
+    @Test
+    public void importClassSucceedsOnScope() throws Exception {
+        evaluateString(scope1, "importClass(java.util.Locale);");
+        Object o = evaluateString(scope1, "Locale.getDefault()");
+        assertEquals(Locale.getDefault(), o);
+        try {
+            evaluateString(scope2, "Locale.getDefault()");
+            fail("EcmaError expected");
+        } catch (EcmaError e) {
+            assertEquals("ReferenceError: \"Locale\" is not defined. (test#1)", e.getMessage());
+        }
+    }
+}

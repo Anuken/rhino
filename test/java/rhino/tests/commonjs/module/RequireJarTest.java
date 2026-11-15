@@ -1,0 +1,142 @@
+package rhino.tests.commonjs.module;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.util.Collections;
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.ScriptableObject;
+import rhino.TopLevel;
+import rhino.VarScope;
+import rhino.module.Require;
+import rhino.module.provider.StrongCachingModuleScriptProvider;
+import rhino.module.provider.UrlModuleSourceProvider;
+import rhino.testutils.TestSource;
+
+/**
+ * @author Attila Szegedi
+ * @version $Id: RequireTest.java,v 1.1 2011/04/07 22:24:37 hannes%helma.at Exp $
+ */
+public class RequireJarTest extends RequireTest {
+
+    @Test
+    @Override
+    public void sandboxed() throws Exception {
+        try (Context cx = createContext()) {
+            final Require require = getSandboxedRequire(cx);
+            require.requireMain(cx, "testSandboxed");
+            // Also, test idempotent double-require of same main:
+            require.requireMain(cx, "testSandboxed");
+            // Also, test failed require of different main:
+            try {
+                require.requireMain(cx, "blah");
+                fail();
+            } catch (IllegalStateException e) {
+                // Expected, success
+            }
+        }
+    }
+
+    private static Context createContext() {
+        final Context cx = Context.enter();
+        cx.setInterpretedMode(true);
+        return cx;
+    }
+
+    @Test
+    @Override
+    public void nonSandboxed() throws Exception {
+        try (Context cx = createContext()) {
+            TopLevel scope = cx.initStandardObjects();
+            final Require require = getSandboxedRequire(cx, scope, false);
+            final String jsFile =
+                    Path.of(TestSource.resolve("testsrc/commonjs/module/testNonSandboxed.js"))
+                            .toUri()
+                            .toString();
+            ScriptableObject.putProperty(scope, "moduleUri", jsFile);
+            require.requireMain(cx, "testNonSandboxed");
+        }
+    }
+
+    @Test
+    @Override
+    public void variousUsageErrors() throws Exception {
+        testWithSandboxedRequire("testNoArgsRequire");
+    }
+
+    @Test
+    @Override
+    public void relativeId() throws Exception {
+        try (Context cx = createContext()) {
+            TopLevel scope = cx.initStandardObjects();
+            final Require require = getSandboxedRequire(cx, scope, false);
+            require.install(scope);
+            cx.evaluateReader(scope, getReader("testRelativeId.js"), "testRelativeId.js", 1, null);
+        }
+    }
+
+    @Test
+    @Override
+    public void setMainForAlreadyLoadedModule() throws Exception {
+        try (Context cx = createContext()) {
+            TopLevel scope = cx.initStandardObjects();
+            final Require require = getSandboxedRequire(cx, scope, false);
+            require.install(scope);
+            cx.evaluateReader(
+                    scope,
+                    getReader("testSetMainForAlreadyLoadedModule.js"),
+                    "testSetMainForAlreadyLoadedModule.js",
+                    1,
+                    null);
+            try {
+                require.requireMain(cx, "assert");
+                fail();
+            } catch (IllegalStateException e) {
+                assertEquals(e.getMessage(), "Attempt to set main module after it was loaded");
+            }
+        }
+    }
+
+    private Reader getReader(String name) {
+        try {
+            return new FileReader(TestSource.resolve("testsrc/commonjs/module/" + name));
+        } catch (IOException ioe) {
+            throw new AssertionError(ioe);
+        }
+    }
+
+    private void testWithSandboxedRequire(String moduleId) throws Exception {
+        try (Context cx = createContext()) {
+            getSandboxedRequire(cx).requireMain(cx, moduleId);
+        }
+    }
+
+    private Require getSandboxedRequire(final Context cx) throws URISyntaxException {
+        return getSandboxedRequire(cx, cx.initStandardObjects(), true);
+    }
+
+    private Require getSandboxedRequire(Context cx, VarScope scope, boolean sandboxed)
+            throws URISyntaxException {
+        return new Require(
+                cx,
+                cx.initStandardObjects(),
+                new StrongCachingModuleScriptProvider(
+                        new UrlModuleSourceProvider(Collections.singleton(getDirectory()), null)),
+                null,
+                null,
+                true);
+    }
+
+    private URI getDirectory() throws URISyntaxException {
+        String jarFileLoc = TestSource.resolve("testsrc/commonjs/module/modules.jar");
+        String jarParent = "jar:file:./" + jarFileLoc + "!/";
+        return new URI(jarParent);
+    }
+}

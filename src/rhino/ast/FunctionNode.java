@@ -1,12 +1,23 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import rhino.Node;
+import rhino.Token;
 
 /**
  * A JavaScript function declaration or expression.
- * <p>Node type is {@link Token#FUNCTION}.</p>
+ *
+ * <p>Node type is {@link Token#FUNCTION}.
  *
  * <pre><i>FunctionDeclaration</i> :
  *        <b>function</b> Identifier ( FormalParameterListopt ) { FunctionBody }
@@ -25,39 +36,43 @@ import java.util.*;
  * <i>SourceElement</i> :
  *        Statement
  *        FunctionDeclaration</pre>
- * <p>
+ *
  * JavaScript 1.8 introduces "function closures" of the form
+ *
  * <pre>function ([params] ) Expression</pre>
- * <p>
- * In this case the FunctionNode node will have no body but will have an
- * expression.
+ *
+ * In this case the FunctionNode node will have no body but will have an expression.
  */
-public class FunctionNode extends ScriptNode{
+public class FunctionNode extends ScriptNode {
 
     /**
-     * There are three types of functions that can be defined. The first
-     * is a function statement. This is a function appearing as a top-level
-     * statement (i.e., not nested inside some other statement) in either a
-     * script or a function.<p>
-     * <p>
-     * The second is a function expression, which is a function appearing in
-     * an expression except for the third type, which is...<p>
-     * <p>
-     * The third type is a function expression where the expression is the
-     * top-level expression in an expression statement.<p>
-     * <p>
-     * The three types of functions have different treatment and must be
-     * distinguished.
+     * There are three types of functions that can be defined. The first is a function statement.
+     * This is a function appearing as a top-level statement (i.e., not nested inside some other
+     * statement) in either a script or a function.
+     *
+     * <p>The second is a function expression, which is a function appearing in an expression except
+     * for the third type, which is...
+     *
+     * <p>The third type is a function expression where the expression is the top-level expression
+     * in an expression statement.
+     *
+     * <p>The three types of functions have different treatment and must be distinguished.
      */
     public static final int FUNCTION_STATEMENT = 1;
+
     public static final int FUNCTION_EXPRESSION = 2;
     public static final int FUNCTION_EXPRESSION_STATEMENT = 3;
     public static final int ARROW_FUNCTION = 4;
+    public static final int FUNCTION_BLOCK_SCOPED = 5;
 
-    public enum Form{FUNCTION, GETTER, SETTER, METHOD}
+    public static enum Form {
+        FUNCTION,
+        GETTER,
+        SETTER,
+        METHOD
+    }
 
-    private static final List<AstNode> NO_PARAMS =
-    Collections.unmodifiableList(new ArrayList<>());
+    private static final List<AstNode> NO_PARAMS = Collections.unmodifiableList(new ArrayList<>());
 
     private Name functionName;
     private List<AstNode> params;
@@ -66,92 +81,131 @@ public class FunctionNode extends ScriptNode{
     private Form functionForm = Form.FUNCTION;
     private int lp = -1;
     private int rp = -1;
+    private boolean hasRestParameter;
+    private boolean isShorthand;
+    private int classRole;
+    private boolean isAsync;
+    private boolean isAsyncGenerator;
+
+    @Override
+    public List<Object> getDefaultParams() {
+        return defaultParams;
+    }
+
+    public void putDefaultParams(Object left, Object right) {
+        if (defaultParams == null) {
+            defaultParams = new ArrayList<>();
+        }
+        defaultParams.add(left);
+        defaultParams.add(right);
+    }
+
+    @Override
+    public List<Node[]> getDestructuringRvalues() {
+        return destructuringRvalues;
+    }
+
+    @Override
+    public void putDestructuringRvalues(Node left, Node right) {
+        if (destructuringRvalues == null) {
+            destructuringRvalues = new ArrayList<>();
+        }
+        destructuringRvalues.add(new Node[] {left, right});
+    }
+
+    ArrayList<Object> defaultParams;
+    ArrayList<Node[]> destructuringRvalues;
 
     // codegen variables
     private int functionType;
     private boolean needsActivation;
+    private boolean requiresArgumentObject;
     private boolean isGenerator;
     private boolean isES6Generator;
+    // ES2024, B.3.2.1: block-scoped function that should also be var-hoisted
+    private boolean annexBHoisted;
     private List<Node> generatorResumePoints;
     private Map<Node, int[]> liveLocals;
+    private Node generatorParamInitBlock; // IR block for default parameters init in generators
     private AstNode memberExprNode;
 
     {
         type = Token.FUNCTION;
     }
 
-    public FunctionNode(){
-    }
+    public FunctionNode() {}
 
-    public FunctionNode(int pos){
+    public FunctionNode(int pos) {
         super(pos);
     }
 
-    public FunctionNode(int pos, Name name){
+    public FunctionNode(int pos, Name name) {
         super(pos);
         setFunctionName(name);
     }
 
     /**
      * Returns function name
+     *
      * @return function name, {@code null} for anonymous functions
      */
-    public Name getFunctionName(){
+    public Name getFunctionName() {
         return functionName;
     }
 
     /**
      * Sets function name, and sets its parent to this node.
+     *
      * @param name function name, {@code null} for anonymous functions
      */
-    public void setFunctionName(Name name){
+    public void setFunctionName(Name name) {
         functionName = name;
-        if(name != null)
-            name.setParent(this);
+        if (name != null) name.setParent(this);
     }
 
     /**
      * Returns the function name as a string
+     *
      * @return the function name, {@code ""} if anonymous
      */
-    public String getName(){
+    public String getName() {
         return functionName != null ? functionName.getIdentifier() : "";
     }
 
     /**
      * Returns the function parameter list
-     * @return the function parameter list.  Returns an immutable empty
-     * list if there are no parameters.
+     *
+     * @return the function parameter list. Returns an immutable empty list if there are no
+     *     parameters.
      */
-    public List<AstNode> getParams(){
+    public List<AstNode> getParams() {
         return params != null ? params : NO_PARAMS;
     }
 
     /**
-     * Sets the function parameter list, and sets the parent for
-     * each element of the list.
+     * Sets the function parameter list, and sets the parent for each element of the list.
+     *
      * @param params the function parameter list, or {@code null} if no params
      */
-    public void setParams(List<AstNode> params){
-        if(params == null){
+    public void setParams(List<AstNode> params) {
+        if (params == null) {
             this.params = null;
-        }else{
-            if(this.params != null)
-                this.params.clear();
-            for(AstNode param : params)
-                addParam(param);
+        } else {
+            if (this.params != null) this.params.clear();
+            for (AstNode param : params) addParam(param);
         }
     }
 
     /**
-     * Adds a parameter to the function parameter list.
-     * Sets the parent of the param node to this node.
+     * Adds a parameter to the function parameter list. Sets the parent of the param node to this
+     * node.
+     *
      * @param param the parameter
      * @throws IllegalArgumentException if param is {@code null}
      */
-    public void addParam(AstNode param){
+    public void addParam(AstNode param) {
         assertNotNull(param);
-        if(params == null){
+        if (params == null) {
             params = new ArrayList<>();
         }
         params.add(param);
@@ -159,287 +213,428 @@ public class FunctionNode extends ScriptNode{
     }
 
     /**
-     * Returns true if the specified {@link AstNode} node is a parameter
-     * of this Function node.  This provides a way during AST traversal
-     * to disambiguate the function name node from the parameter nodes.
+     * Returns true if the specified {@link AstNode} node is a parameter of this Function node. This
+     * provides a way during AST traversal to disambiguate the function name node from the parameter
+     * nodes.
      */
-    public boolean isParam(AstNode node){
-        return params != null && params.contains(node);
+    public boolean isParam(AstNode node) {
+        return params == null ? false : params.contains(node);
     }
 
     /**
-     * Returns function body.  Normally a {@link CodeBlock}, but can be a plain
-     * {@link AstNode} if it's a function closure.
-     * @return the body.  Can be {@code null} only if the AST is malformed.
+     * Returns function body. Normally a {@link Block}, but can be a plain {@link AstNode} if it's a
+     * function closure.
+     *
+     * @return the body. Can be {@code null} only if the AST is malformed.
      */
-    public AstNode getBody(){
+    public AstNode getBody() {
         return body;
     }
 
     /**
-     * Sets function body, and sets its parent to this node.
-     * Also sets the encoded source bounds based on the body bounds.
-     * Assumes the function node absolute position has already been set,
-     * and the body node's absolute position and length are set.<p>
-     * @param body function body.  Its parent is set to this node, and its
-     * position is updated to be relative to this node.
+     * Sets function body, and sets its parent to this node. Also sets the encoded source bounds
+     * based on the body bounds. Assumes the function node absolute position has already been set,
+     * and the body node's absolute position and length are set.
+     *
+     * @param body function body. Its parent is set to this node, and its position is updated to be
+     *     relative to this node.
      * @throws IllegalArgumentException if body is {@code null}
      */
-    public void setBody(AstNode body){
+    public void setBody(AstNode body) {
         assertNotNull(body);
         this.body = body;
-        if(Boolean.TRUE.equals(body.getProp(Node.EXPRESSION_CLOSURE_PROP))){
+        if (Boolean.TRUE.equals(body.getProp(Node.EXPRESSION_CLOSURE_PROP))) {
             setIsExpressionClosure(true);
         }
         int absEnd = body.getPosition() + body.getLength();
         body.setParent(this);
         this.setLength(absEnd - this.position);
-        setEncodedSourceBounds(this.position, absEnd);
+        setRawSourceBounds(this.position, absEnd);
     }
 
-    /**
-     * Returns left paren position, -1 if missing
-     */
-    public int getLp(){
+    /** Returns left paren position, -1 if missing */
+    public int getLp() {
         return lp;
     }
 
-    /**
-     * Sets left paren position
-     */
-    public void setLp(int lp){
+    /** Sets left paren position */
+    public void setLp(int lp) {
         this.lp = lp;
     }
 
-    /**
-     * Returns right paren position, -1 if missing
-     */
-    public int getRp(){
+    /** Returns right paren position, -1 if missing */
+    public int getRp() {
         return rp;
     }
 
-    /**
-     * Sets right paren position
-     */
-    public void setRp(int rp){
+    /** Sets right paren position */
+    public void setRp(int rp) {
         this.rp = rp;
     }
 
-    /**
-     * Sets both paren positions
-     */
-    public void setParens(int lp, int rp){
+    /** Sets both paren positions */
+    public void setParens(int lp, int rp) {
         this.lp = lp;
         this.rp = rp;
     }
 
-    /**
-     * Returns whether this is a 1.8 function closure
-     */
-    public boolean isExpressionClosure(){
+    /** Returns whether this is a 1.8 function closure */
+    public boolean isExpressionClosure() {
         return isExpressionClosure;
     }
 
-    /**
-     * Sets whether this is a 1.8 function closure
-     */
-    public void setIsExpressionClosure(boolean isExpressionClosure){
+    /** Sets whether this is a 1.8 function closure */
+    public void setIsExpressionClosure(boolean isExpressionClosure) {
         this.isExpressionClosure = isExpressionClosure;
     }
 
     /**
-     * Return true if this function requires an Ecma-262 Activation object.
-     * The Activation object is implemented by
-     * {@link NativeCall}, and is fairly expensive
-     * to create, so when possible, the interpreter attempts to use a plain
-     * call frame instead.
-     * @return true if this function needs activation.  It could be needed
-     * if there is a lexical closure, or in a number of other situations.
+     * Return true if this function requires an Ecma-262 Activation object. The Activation object is
+     * implemented by {@link rhino.NativeCall}, and is fairly expensive to create,
+     * so when possible, the interpreter attempts to use a plain call frame instead.
+     *
+     * @return true if this function needs activation. It could be needed if there is a lexical
+     *     closure, or in a number of other situations.
      */
-    public boolean requiresActivation(){
+    public boolean requiresActivation() {
         return needsActivation;
     }
 
-    public void setRequiresActivation(){
+    public void setRequiresActivation() {
         needsActivation = true;
     }
 
-    public boolean isGenerator(){
+    public boolean isAnnexBHoisted() {
+        return annexBHoisted;
+    }
+
+    public void setAnnexBHoisted(boolean hoisted) {
+        this.annexBHoisted = hoisted;
+    }
+
+    public boolean requiresArgumentObject() {
+        return requiresArgumentObject;
+    }
+
+    public void setRequiresArgumentObject() {
+        this.requiresArgumentObject = true;
+    }
+
+    public boolean isGenerator() {
         return isGenerator;
     }
 
-    public void setIsGenerator(){
+    public void setIsGenerator() {
         isGenerator = true;
     }
 
-    public boolean isES6Generator(){
+    public boolean isES6Generator() {
         return isES6Generator;
     }
 
-    public void setIsES6Generator(){
+    public void setIsES6Generator() {
         isES6Generator = true;
         isGenerator = true;
-    }
-
-    public void addResumptionPoint(Node target){
-        if(generatorResumePoints == null)
-            generatorResumePoints = new ArrayList<>();
-        generatorResumePoints.add(target);
-    }
-
-    public List<Node> getResumptionPoints(){
-        return generatorResumePoints;
-    }
-
-    public Map<Node, int[]> getLiveLocals(){
-        return liveLocals;
-    }
-
-    public void addLiveLocals(Node node, int[] locals){
-        if(liveLocals == null)
-            liveLocals = new HashMap<>();
-        liveLocals.put(node, locals);
+        // Generators always need activation, because their calling convention is always
+        // different. Make sure that this is set now, even if the generator does not
+        // have any "yield" statements.
+        needsActivation = true;
     }
 
     @Override
-    public int addFunction(FunctionNode fnNode){
+    public boolean hasRestParameter() {
+        return hasRestParameter;
+    }
+
+    public void setHasRestParameter(boolean hasRestParameter) {
+        this.hasRestParameter = hasRestParameter;
+    }
+
+    @Override
+    public boolean isShorthand() {
+        return isShorthand;
+    }
+
+    public void setIsShorthand() {
+        isShorthand = true;
+    }
+
+    private static final int CLASS_MEMBER = 1,
+            CLASS_CONSTRUCTOR = 2,
+            DERIVED_CONSTRUCTOR = 4,
+            DEFAULT_CONSTRUCTOR = 8;
+
+    /**
+     * Returns whether this is a method, accessor, field initializer or static block of a class.
+     * These are not constructors, and their home object is bound when the class is defined rather
+     * than by an enclosing object literal.
+     */
+    public boolean isClassMember() {
+        return (classRole & CLASS_MEMBER) != 0;
+    }
+
+    public void setIsClassMember() {
+        classRole |= CLASS_MEMBER;
+    }
+
+    /** Returns whether this is the constructor of a class. */
+    public boolean isClassConstructor() {
+        return (classRole & CLASS_CONSTRUCTOR) != 0;
+    }
+
+    /** Returns whether this is the constructor of a class with an {@code extends} clause. */
+    public boolean isDerivedClassConstructor() {
+        return (classRole & DERIVED_CONSTRUCTOR) != 0;
+    }
+
+    /** Returns whether this constructor was synthesized for a class body without one. */
+    public boolean isDefaultClassConstructor() {
+        return (classRole & DEFAULT_CONSTRUCTOR) != 0;
+    }
+
+    /** Returns whether this is an async function, arrow function or method. */
+    public boolean isAsync() {
+        return isAsync;
+    }
+
+    public void setIsAsync() {
+        isAsync = true;
+    }
+
+    /** Returns whether this is an async generator function or method. */
+    public boolean isAsyncGenerator() {
+        return isAsyncGenerator;
+    }
+
+    public void setIsAsyncGenerator() {
+        isAsyncGenerator = true;
+    }
+
+    public void setIsClassConstructor(boolean derived, boolean isDefault) {
+        classRole |=
+                CLASS_CONSTRUCTOR
+                        | (derived ? DERIVED_CONSTRUCTOR : 0)
+                        | (isDefault ? DEFAULT_CONSTRUCTOR : 0);
+    }
+
+    public void addResumptionPoint(Node target) {
+        if (generatorResumePoints == null) generatorResumePoints = new ArrayList<>();
+        generatorResumePoints.add(target);
+    }
+
+    public List<Node> getResumptionPoints() {
+        return generatorResumePoints;
+    }
+
+    public Map<Node, int[]> getLiveLocals() {
+        return liveLocals;
+    }
+
+    public void addLiveLocals(Node node, int[] locals) {
+        if (liveLocals == null) liveLocals = new HashMap<>();
+        liveLocals.put(node, locals);
+    }
+
+    public Node getGeneratorParamInitBlock() {
+        return generatorParamInitBlock;
+    }
+
+    public void setGeneratorParamInitBlock(Node block) {
+        generatorParamInitBlock = block;
+    }
+
+    @Override
+    public int addFunction(FunctionNode fnNode) {
         int result = super.addFunction(fnNode);
-        if(getFunctionCount() > 0){
+        if (getFunctionCount() > 0) {
             needsActivation = true;
         }
         return result;
     }
 
-    /**
-     * Returns the function type (statement, expr, statement expr)
-     */
-    public int getFunctionType(){
+    /** Returns the function type (statement, expr, statement expr) */
+    public int getFunctionType() {
         return functionType;
     }
 
-    public void setFunctionType(int type){
+    public void setFunctionType(int type) {
         functionType = type;
     }
 
-    public boolean isMethod(){
-        return functionForm == Form.GETTER || functionForm == Form.SETTER || functionForm == Form.METHOD;
+    public boolean isMethod() {
+        return functionForm == Form.GETTER
+                || functionForm == Form.SETTER
+                || functionForm == Form.METHOD;
     }
 
-    public boolean isGetterMethod(){
+    public boolean isGetterMethod() {
         return functionForm == Form.GETTER;
     }
 
-    public boolean isSetterMethod(){
+    public boolean isSetterMethod() {
         return functionForm == Form.SETTER;
     }
 
-    public boolean isNormalMethod(){
+    public boolean isNormalMethod() {
         return functionForm == Form.METHOD;
     }
 
-    public void setFunctionIsGetterMethod(){
+    public void setFunctionIsGetterMethod() {
         functionForm = Form.GETTER;
     }
 
-    public void setFunctionIsSetterMethod(){
+    public void setFunctionIsSetterMethod() {
         functionForm = Form.SETTER;
     }
 
-    public void setFunctionIsNormalMethod(){
+    public void setFunctionIsNormalMethod() {
         functionForm = Form.METHOD;
     }
 
     /**
-     * Rhino supports a nonstandard Ecma extension that allows you to
-     * say, for instance, function a.b.c(arg1, arg) {...}, and it will
-     * be rewritten at codegen time to:  a.b.c = function(arg1, arg2) {...}
-     * If we detect an expression other than a simple Name in the position
-     * where a function name was expected, we record that expression here.
-     * <p>
-     * This extension is only available by setting the CompilerEnv option
+     * Rhino supports a nonstandard Ecma extension that allows you to say, for instance, function
+     * a.b.c(arg1, arg) {...}, and it will be rewritten at codegen time to: a.b.c = function(arg1,
+     * arg2) {...} If we detect an expression other than a simple Name in the position where a
+     * function name was expected, we record that expression here.
+     *
+     * <p>This extension is only available by setting the CompilerEnv option
      * "isAllowMemberExprAsFunctionName" in the Parser.
      */
-    public void setMemberExprNode(AstNode node){
+    public void setMemberExprNode(AstNode node) {
         memberExprNode = node;
-        if(node != null)
-            node.setParent(this);
+        if (node != null) node.setParent(this);
     }
 
-    public AstNode getMemberExprNode(){
+    public AstNode getMemberExprNode() {
         return memberExprNode;
     }
 
     @Override
-    public String toSource(int depth){
+    public String toSource(int depth) {
         StringBuilder sb = new StringBuilder();
         boolean isArrow = functionType == ARROW_FUNCTION;
-        if(!isMethod()){
+        if (!isMethod()) {
             sb.append(makeIndent(depth));
-            if(!isArrow){
+            if (!isArrow) {
                 sb.append("function");
             }
         }
-        if(functionName != null){
+        if (functionName != null) {
             sb.append(" ");
             sb.append(functionName.toSource(0));
         }
-        if(params == null){
+        if (params == null) {
             sb.append("() ");
-        }else if(isArrow && lp == -1){
+        } else if (isArrow && lp == -1) {
             // no paren
             printList(params, sb);
             sb.append(" ");
-        }else{
+        } else {
             sb.append("(");
             printList(params, sb);
+            if (getIntProp(TRAILING_COMMA, 0) == 1) {
+                sb.append(", ");
+            }
             sb.append(") ");
         }
-        if(isArrow){
+        if (isArrow) {
             sb.append("=> ");
         }
-        if(isExpressionClosure){
+        if (isExpressionClosure) {
             AstNode body = getBody();
-            if(body.getLastChild() instanceof ReturnStatement){
+            if (body.getLastChild() instanceof ReturnStatement) {
                 // omit "return" keyword, just print the expression
-                body = ((ReturnStatement)body.getLastChild()).getReturnValue();
+                body = ((ReturnStatement) body.getLastChild()).getReturnValue();
                 sb.append(body.toSource(0));
-                if(functionType == FUNCTION_STATEMENT){
+                if (functionType == FUNCTION_STATEMENT) {
                     sb.append(";");
                 }
-            }else{
+            } else {
                 // should never happen
                 sb.append(" ");
                 sb.append(body.toSource(0));
             }
-        }else{
+        } else {
             sb.append(getBody().toSource(depth).trim());
         }
-        if(functionType == FUNCTION_STATEMENT || isMethod()){
+        if (functionType == FUNCTION_STATEMENT || isMethod()) {
             sb.append("\n");
         }
         return sb.toString();
     }
 
     /**
-     * Visits this node, the function name node if supplied,
-     * the parameters, and the body.  If there is a member-expr node,
-     * it is visited last.
+     * Visits this node, the function name node if supplied, the parameters, and the body. If there
+     * is a member-expr node, it is visited last.
      */
     @Override
-    public void visit(NodeVisitor v){
-        if(v.visit(this)){
-            if(functionName != null){
+    public void visit(NodeVisitor v) {
+        if (v.visit(this)) {
+            if (functionName != null) {
                 functionName.visit(v);
             }
-            for(AstNode param : getParams()){
+            for (AstNode param : getParams()) {
                 param.visit(v);
             }
             getBody().visit(v);
-            if(!isExpressionClosure){
-                if(memberExprNode != null){
+            if (!isExpressionClosure) {
+                if (memberExprNode != null) {
                     memberExprNode.visit(v);
                 }
             }
         }
+    }
+
+    /**
+     * Calculate the arity (function.length) for a function. According to ECMAScript spec, the
+     * length property should only count parameters up to (but not including) the first one with a
+     * default value.
+     *
+     * <p>Ref: ECMA 2026, 15.1.5 Static Semantics: ExpectedArgumentCount
+     *
+     * @param scriptOrFn the function or script node
+     * @return the arity (number of parameters before first default parameter)
+     */
+    public static int calculateFunctionArity(ScriptNode scriptOrFn) {
+        int paramCount = scriptOrFn.getParamCount();
+        int arity = paramCount;
+
+        if (scriptOrFn instanceof FunctionNode) {
+            FunctionNode fnNode = (FunctionNode) scriptOrFn;
+            java.util.List<Object> defaultParams = fnNode.getDefaultParams();
+
+            if (defaultParams != null && !defaultParams.isEmpty()) {
+                // defaultParams stores pairs: [paramName (String), defaultValue (AstNode), ...]
+                // count up to the first parameter that has a default value
+                java.util.List<AstNode> params = fnNode.getParams();
+                String paramWithDefault = null;
+                if (params != null && !params.isEmpty()) {
+                    for (int i = 0; i < defaultParams.size(); i += 2) {
+                        if (defaultParams.get(i) instanceof String) {
+                            paramWithDefault = (String) defaultParams.get(i);
+
+                            for (int paramIndex = 0; paramIndex < params.size(); paramIndex++) {
+                                AstNode param = params.get(paramIndex);
+                                if (param instanceof Name) {
+                                    String paramName = ((Name) param).getIdentifier();
+                                    if (paramName.equals(paramWithDefault)) {
+                                        arity = paramIndex;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (arity != paramCount) break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Rest parameters don't count toward length
+        if (scriptOrFn.hasRestParameter() && arity == paramCount) {
+            arity = Math.max(0, arity - 1);
+        }
+
+        return arity;
     }
 }

@@ -1,87 +1,116 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.typedarrays;
 
-import rhino.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import rhino.ClassDescriptor;
+import rhino.Context;
+import rhino.JSFunction;
+import rhino.ScriptRuntimeES6;
+import rhino.SymbolKey;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
 /**
- * An array view that stores 16-bit quantities and implements the JavaScript "Uint16Array" interface.
- * It also implements List&lt;Integer&gt; for direct manipulation in Java.
+ * An array view that stores 16-bit quantities and implements the JavaScript "Uint16Array"
+ * interface. It also implements List&lt;Integer&gt; for direct manipulation in Java.
  */
+public class NativeUint16Array extends NativeTypedArrayView<Integer> {
+    @Serial private static final long serialVersionUID = 7700018949434240321L;
 
-public class NativeUint16Array
-extends NativeTypedArrayView<Integer>{
     private static final String CLASS_NAME = "Uint16Array";
     private static final int BYTES_PER_ELEMENT = 2;
 
-    public NativeUint16Array(){
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                3,
+                                NativeTypedArrayView::typeError,
+                                NativeUint16Array::js_constructor)
+                        .withProp(CTOR, "BYTES_PER_ELEMENT", value(2))
+                        .withProp(PROTO, "BYTES_PER_ELEMENT", value(2))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
     }
 
-    public NativeUint16Array(NativeArrayBuffer ab, int off, int len){
+    public NativeUint16Array() {}
+
+    public NativeUint16Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len * BYTES_PER_ELEMENT);
     }
 
-    public NativeUint16Array(int len){
+    public NativeUint16Array(int len) {
         this(new NativeArrayBuffer(len * BYTES_PER_ELEMENT), 0, len);
     }
 
     @Override
-    public String getClassName(){
+    public String getClassName() {
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        NativeUint16Array a = new NativeUint16Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    public static JSFunction init(Context cx, VarScope scope, boolean sealed) {
+        return NativeTypedArrayView.initSubClass(cx, scope, DESCRIPTOR, sealed);
     }
 
     @Override
-    protected NativeUint16Array construct(NativeArrayBuffer ab, int off, int len){
-        return new NativeUint16Array(ab, off, len);
-    }
-
-    @Override
-    public int getBytesPerElement(){
+    public int getBytesPerElement() {
         return BYTES_PER_ELEMENT;
     }
 
-    @Override
-    protected NativeUint16Array realThis(Scriptable thisObj, IdFunctionObject f){
-        if(!(thisObj instanceof NativeUint16Array)){
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint16Array)thisObj;
+    private static Object js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return NativeTypedArrayView.js_constructor(
+                cx,
+                f,
+                nt,
+                s,
+                thisObj,
+                args,
+                NativeUint16Array::new,
+                2,
+                TopLevel.Builtins.Uint16Array);
     }
 
     @Override
-    protected Object js_get(int index){
-        if(checkIndex(index)){
+    protected Object js_get(int index) {
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readUint16(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
+        short shortBits = arrayBuffer.buffer.getShort((index * BYTES_PER_ELEMENT) + offset);
+        return Conversions.shortBitsToUint(shortBits);
     }
 
     @Override
-    protected Object js_set(int index, Object c){
-        if(checkIndex(index)){
+    protected Object js_set(int index, Object c) {
+        short val = Conversions.toUint16(c);
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        int val = Conversions.toUint16(c);
-        ByteIo.writeUint16(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
+        arrayBuffer.buffer.putShort((index * BYTES_PER_ELEMENT) + offset, val);
         return null;
     }
 
     @Override
-    public Integer get(int i){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Integer)js_get(i);
+    public Integer get(int i) {
+        ensureIndex(i);
+        return (Integer) js_get(i);
     }
 
     @Override
-    public Integer set(int i, Integer aByte){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Integer)js_set(i, aByte);
+    public Integer set(int i, Integer aByte) {
+        ensureIndex(i);
+        return (Integer) js_set(i, aByte);
     }
 }

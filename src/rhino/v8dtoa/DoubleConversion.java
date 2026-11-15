@@ -30,7 +30,7 @@
 
 package rhino.v8dtoa;
 
-public final class DoubleConversion{
+public final class DoubleConversion {
     private static final long kSignMask = 0x8000000000000000L;
     private static final long kExponentMask = 0x7FF0000000000000L;
     private static final long kSignificandMask = 0x000FFFFFFFFFFFFFL;
@@ -40,45 +40,50 @@ public final class DoubleConversion{
     private static final int kExponentBias = 0x3FF + kPhysicalSignificandSize;
     private static final int kDenormalExponent = -kExponentBias + 1;
 
-    private DoubleConversion(){
-    }
+    private DoubleConversion() {}
 
-    private static int exponent(long d64){
-        if(isDenormal(d64))
-            return kDenormalExponent;
+    private static int exponent(long d64) {
+        if (isDenormal(d64)) return kDenormalExponent;
 
-        int biased_e = (int)((d64 & kExponentMask) >> kPhysicalSignificandSize);
+        int biased_e = (int) ((d64 & kExponentMask) >> kPhysicalSignificandSize);
         return biased_e - kExponentBias;
     }
 
-    private static long significand(long d64){
+    private static long significand(long d64) {
         long significand = d64 & kSignificandMask;
-        if(!isDenormal(d64)){
+        if (!isDenormal(d64)) {
             return significand + kHiddenBit;
         }
         return significand;
     }
 
     // Returns true if the double is a denormal.
-    private static boolean isDenormal(long d64){
+    private static boolean isDenormal(long d64) {
         return (d64 & kExponentMask) == 0;
     }
 
-    private static int sign(long d64){
+    private static int sign(long d64) {
         return (d64 & kSignMask) == 0 ? 1 : -1;
     }
 
-    public static int doubleToInt32(double x){
-        int i = (int)x;
-        if((double)i == x){
+    public static int doubleToInt32(double x) {
+        int i = (int) x;
+        if ((double) i == x) {
             return i;
         }
         long d64 = Double.doubleToLongBits(x);
         int exponent = exponent(d64);
-        if(exponent <= -kSignificandSize || exponent > 31){
+        if (exponent <= -kSignificandSize || exponent > 31) {
             return 0;
         }
         long s = significand(d64);
-        return sign(d64) * (int)(exponent < 0 ? s >> -exponent : s << exponent);
+        return sign(d64) * (int) (exponent < 0 ? s >> -exponent : s << exponent);
+    }
+
+    public static double truncate(double x) {
+        if (Double.isInfinite(x) || Double.isNaN(x)) {
+            return x;
+        }
+        return x < 0.0 ? Math.ceil(x) : Math.floor(x);
     }
 }

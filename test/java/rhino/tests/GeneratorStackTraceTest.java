@@ -1,0 +1,170 @@
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import rhino.*;
+import rhino.testutils.Utils;
+
+public class GeneratorStackTraceTest {
+
+    static final String LS = System.getProperty("line.separator");
+
+    @Test
+    public void testGeneratorStackTraces() {
+        String script =
+                "function* f2() { yield 1; throw 'hello'; yield 3; }; var g = f2(); g.next(); g.next();";
+        String expected = "\tat test.js:0 (f2)" + LS + "\tat test.js:0" + LS;
+        runWithExpectedStackTrace(script, expected);
+    }
+
+    private static void runWithExpectedStackTrace(final String _source, final String expected) {
+        Utils.runWithAllModes(
+                cx -> {
+                    TopLevel scope = cx.initStandardObjects();
+                    try {
+                        cx.evaluateString(scope, _source, "test.js", 0, null);
+                    } catch (final JavaScriptException e) {
+                        assertEquals(expected, e.getScriptStackTrace());
+                        return null;
+                    }
+                    throw new RuntimeException("Exception expected!");
+                });
+    }
+
+    @Test
+    public void testNestedGeneratorsException() {
+        String jsCode =
+                ""
+                        + "function* innerGen() {\n"
+                        + "    yield 1;\n"
+                        + "    throw new Error('Inner Exception'); // Line 4\n"
+                        + "}\n"
+                        + "function* outerGen() {\n"
+                        + "    var f = innerGen();\n"
+                        + "    yield f.next().value;\n"
+                        + "    yield f.next().value;\n"
+                        + "}\n"
+                        + "var g = outerGen();\n"
+                        + "g.next();\n"
+                        + "g.next();"; // This should throw
+
+        Utils.runWithAllModes(
+                context -> {
+                    try {
+                        TopLevel scope = context.initStandardObjects();
+                        context.evaluateString(scope, jsCode, "nestedGeneratorTest.js", 1, null);
+                        Assertions.fail("Expected exception from nested generator not thrown.");
+                    } catch (JavaScriptException e) {
+                        String stack = e.getScriptStackTrace();
+
+                        // Validate that both generator functions appear in the stack
+                        Assertions.assertTrue(
+                                stack.contains("innerGen"), "Stack trace should include innerGen");
+                        Assertions.assertTrue(
+                                stack.contains("outerGen"), "Stack trace should include outerGen");
+
+                        // Validate line number for the throw
+                        assertEquals(3, e.lineNumber(), "Line number of exception should be 3");
+
+                        System.out.println("Nested Generator Exception Stack: \n" + stack);
+                    }
+                    return null;
+                });
+    }
+
+    // Doesn't work due to our implementation of yield*.
+    @Test
+    public void testNestedGeneratorsYieldStarException() {
+        assertThrows(
+                AssertionError.class,
+                () -> {
+                    String jsCode =
+                            ""
+                                    + "function* innerGen() {\n"
+                                    + "    yield 1;\n"
+                                    + "    throw new Error('Inner Exception'); // Line 4\n"
+                                    + "}\n"
+                                    + "function* outerGen() {\n"
+                                    + "    yield* innerGen();\n"
+                                    + "}\n"
+                                    + "var g = outerGen();\n"
+                                    + "g.next();\n"
+                                    + "g.next();"; // This should throw
+
+                    Utils.runWithAllModes(
+                            context -> {
+                                try {
+                                    TopLevel scope = context.initStandardObjects();
+                                    context.evaluateString(
+                                            scope, jsCode, "nestedGeneratorTest.js", 1, null);
+                                    Assertions.fail(
+                                            "Expected exception from nested generator not thrown.");
+                                } catch (JavaScriptException e) {
+                                    String stack = e.getScriptStackTrace();
+
+                                    // Validate that both generator functions appear in the stack
+                                    Assertions.assertTrue(
+                                            stack.contains("innerGen"),
+                                            "Stack trace should include innerGen");
+                                    Assertions.assertTrue(
+                                            stack.contains("outerGen"),
+                                            "Stack trace should include outerGen");
+
+                                    // Validate line number for the throw
+                                    assertEquals(
+                                            3,
+                                            e.lineNumber(),
+                                            "Line number of exception should be 3");
+
+                                    System.out.println(
+                                            "Nested Generator Exception Stack: \n" + stack);
+                                }
+                                return null;
+                            });
+                });
+    }
+
+    @Test
+    public void testJavaCallbackThrowsFromGenerator() {
+        Utils.runWithAllModes(
+                context -> {
+                    TopLevel scope = context.initStandardObjects();
+                    LambdaFunction f =
+                            new LambdaFunction(
+                                    scope,
+                                    "javaHelper",
+                                    0,
+                                    (ctx, scope2, thisObj, args) -> {
+                                        throw new RuntimeException("Java-side failure!");
+                                    });
+                    ScriptableObject.putProperty(scope, "javaHelper", f);
+
+                    String jsCode =
+                            ""
+                                    + "function* generatorWithCallback() {\n"
+                                    + "    yield 1;\n"
+                                    + "    javaHelper();\n"
+                                    + // This should throw from Java
+                                    "}\n"
+                                    + "var g = generatorWithCallback();\n"
+                                    + "g.next();\n"
+                                    + // Move to the first yield
+                                    "g.next();"; // This should throw
+
+                    try {
+                        context.evaluateString(scope, jsCode, "javaCallbackTest.js", 1, null);
+                        Assertions.fail("Expected Java exception not thrown.");
+                    } catch (RuntimeException e) {
+                        // Rhino should surface the Java exception directly
+                        Assertions.assertTrue(
+                                e.getMessage().contains("Java-side failure!"),
+                                "Exception message should contain 'Java-side failure!'");
+                        System.out.println("Caught Java Exception from JS: " + e.getMessage());
+                    }
+                    return null;
+                });
+    }
+}

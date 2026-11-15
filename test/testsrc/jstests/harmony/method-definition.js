@@ -1,0 +1,93 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+load("testsrc/assert.js");
+
+var obj;
+
+obj = {
+  a() {
+    return 123;
+  }
+};
+assertEquals(123, obj.a());
+assertEquals("a", obj.a.name);
+assertEquals(undefined, obj.a.prototype);
+assertEquals(undefined, Object.getOwnPropertyDescriptor(obj.a, 'prototype'));
+
+// Generator methods do have a prototype property, with %GeneratorPrototype% as its prototype
+var GeneratorPrototype = Object.getPrototypeOf(function* () {}).prototype;
+var genMethod = { *m() {} }.m;
+assertEquals("object", typeof genMethod.prototype);
+assertTrue(Object.getPrototypeOf(genMethod.prototype) === GeneratorPrototype);
+var genDesc = Object.getOwnPropertyDescriptor(genMethod, 'prototype');
+assertEquals(true, genDesc.writable);
+assertEquals(false, genDesc.enumerable);
+assertEquals(false, genDesc.configurable);
+assertEquals(true, genMethod().next().done);
+
+assertEquals("abcefg", {
+  abc() {
+    return "abc";
+  },
+  efg() {
+    return this.abc() + "efg";
+  }
+}.efg());
+
+obj = {
+  get() {
+    return 123;
+  }
+};
+assertEquals(123, obj.get());
+// assertEquals("get", obj.get.name);
+
+obj = {
+  set() {
+    return 123;
+  }
+};
+assertEquals(123, obj.set());
+// assertEquals("set", obj.set.name);
+
+assertEquals("function() { +{ f() { print(1); }}; }", (function() { +{ f() { print(1); }}; }).toString());
+
+// Allow reserved word
+assertEquals(123, {
+  if() {
+    return 123;
+  }
+}.if());
+
+// Allow NumericLiteral
+assertEquals(123, {
+  123() {
+    return 123;
+  }
+}[123]());
+
+// Allow StringLiteral
+assertEquals(123, {
+  'abc'() {
+    return 123;
+  }
+}.abc());
+
+// Method is the kind of function, that is non-constructor.
+assertThrows(function() {
+  new (({ a() {} }).a)
+}, TypeError);
+assertNotNull(new (({ notAMethod: function() {} }).notAMethod));
+
+var desc = Object.getOwnPropertyDescriptor({
+  a() {
+    return 123;
+  }
+}, 'a');
+assertEquals(true, desc.writable);
+assertEquals(true, desc.enumerable);
+assertEquals(true, desc.configurable);
+
+"success";

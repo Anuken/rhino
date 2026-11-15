@@ -1,0 +1,41 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tools.shell;
+
+import java.io.Serial;
+import java.nio.charset.Charset;
+import rhino.Context;
+import rhino.NativeConsole;
+import rhino.ScriptStackElement;
+import rhino.VarScope;
+
+/** Provide a printer use in console API */
+class ShellConsolePrinter implements NativeConsole.ConsolePrinter {
+    @Serial private static final long serialVersionUID = 5869832740127501857L;
+
+    @Override
+    public void print(
+            Context cx,
+            VarScope scope,
+            NativeConsole.Level level,
+            Object[] args,
+            ScriptStackElement[] stack) {
+        if (args.length == 0) {
+            return;
+        }
+
+        String msg = NativeConsole.format(cx, scope, args);
+        var console = Main.getGlobal().getConsole(Charset.defaultCharset());
+        console.println(level + " " + msg);
+
+        if (stack != null) {
+            for (ScriptStackElement element : stack) {
+                console.println(element.toString());
+            }
+        }
+
+        console.flush();
+    }
+}

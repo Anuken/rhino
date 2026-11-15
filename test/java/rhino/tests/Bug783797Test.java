@@ -1,0 +1,773 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static rhino.testutils.Utils.runWithAllModes;
+
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.ContextAction;
+import rhino.ScopeWrapper;
+import rhino.TopLevel;
+import rhino.VarScope;
+
+/**
+ * @author André Bargull
+ */
+public class Bug783797Test {
+
+    private interface Action {
+        void run(Context cx, TopLevel scope1, TopLevel scope2);
+    }
+
+    private static ContextAction<Void> action(final String fn, final Action a) {
+        return cx -> {
+            cx.setLanguageVersion(Context.VERSION_DEFAULT);
+            TopLevel scope1 = cx.initStandardObjects();
+            TopLevel scope2 = cx.initStandardObjects();
+            scope1.put("scope2", scope1, scope2.getGlobalThis());
+
+            eval(cx, scope2, fn);
+            a.run(cx, scope1, scope2);
+            return null;
+        };
+    }
+
+    private static Object eval(Context cx, VarScope scope, String source) {
+        return cx.evaluateString(scope, source, "<eval>", 1, null);
+    }
+
+    private static void assertTRUE(Object actual) {
+        assertSame(Boolean.TRUE, actual);
+    }
+
+    private static void assertFALSE(Object actual) {
+        assertSame(Boolean.FALSE, actual);
+    }
+
+    @Test
+    public void getElem() {
+        String fn = "function test(){ return ''['foo'] }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope1, "String.prototype.foo = 'scope1'");
+                                eval(cx, scope2, "String.prototype.foo = 'scope2'");
+
+                                assertEquals("scope2", eval(cx, scope2, "test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test.call(null)"));
+                                assertEquals("scope2", eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertEquals(
+                                        "scope2",
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void getProp() {
+        String fn = "function test(){ return ''.foo }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope1, "String.prototype.foo = 'scope1'");
+                                eval(cx, scope2, "String.prototype.foo = 'scope2'");
+
+                                assertEquals("scope2", eval(cx, scope2, "test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test.call(null)"));
+                                assertEquals("scope2", eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertEquals(
+                                        "scope2",
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void getPropNoWarn1() {
+        String fn = "function test(){ if (''.foo) return true; return false; }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope1, "String.prototype.foo = 'scope1'");
+
+                                assertFALSE(eval(cx, scope2, "test()"));
+                                assertFALSE(eval(cx, scope1, "scope2.test()"));
+                                assertFALSE(eval(cx, scope1, "scope2.test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertFALSE(eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void getPropNoWarn2() {
+        String fn = "function test(){ if (''.foo) return true; return false; }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope2, "String.prototype.foo = 'scope2'");
+
+                                assertTRUE(eval(cx, scope2, "test()"));
+                                assertTRUE(eval(cx, scope1, "scope2.test()"));
+                                assertTRUE(eval(cx, scope1, "scope2.test.call(null)"));
+                                assertTRUE(eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertTRUE(eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setElem() {
+        String fn = "function test(){ ''['foo'] = '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setProp() {
+        String fn = "function test(){ ''.foo = '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setElemIncDec() {
+        String fn = "function test(){ ''['foo']++ }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setPropIncDec() {
+        String fn = "function test(){ ''.foo++ }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setElemOp1() {
+        String fn = "function test(){ return ''['foo'] += '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setPropOp1() {
+        String fn = "function test(){ return ''.foo += '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code += "String.prototype.d = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ },"
+                                                + "  get: function(v){ this.__proto__.d++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.d"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.d"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setElemOp2() {
+        String fn = "function test(){ return ''['foo'] += '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                String code = "";
+                                code += "String.prototype.c = 0;";
+                                code += "String.prototype.d = 0;";
+                                code +=
+                                        "Object.defineProperty(String.prototype, 'foo', {"
+                                                + "  set: function(v){ this.__proto__.c++ },"
+                                                + "  get: function(v){ this.__proto__.d++ }})";
+                                eval(cx, scope1, code);
+                                eval(cx, scope2, code);
+
+                                eval(cx, scope2, "test()");
+                                eval(cx, scope1, "scope2.test()");
+                                eval(cx, scope1, "scope2.test.call(null)");
+                                eval(cx, scope1, "var t=scope2.test; t()");
+                                eval(cx, scope1, "var t=scope2.test; t.call(null)");
+
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.c"));
+                                assertTRUE(eval(cx, scope1, "0 == String.prototype.d"));
+                                assertTRUE(eval(cx, scope2, "5 == String.prototype.d"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void setPropOp2() {
+        String fn = "function test(){ return ''.foo += '_' }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope1, "String.prototype.foo = 'scope1'");
+                                eval(cx, scope2, "String.prototype.foo = 'scope2'");
+
+                                assertEquals("scope2_", eval(cx, scope2, "test()"));
+                                assertEquals("scope2_", eval(cx, scope1, "scope2.test()"));
+                                assertEquals("scope2_", eval(cx, scope1, "scope2.test.call(null)"));
+                                assertEquals("scope2_", eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertEquals(
+                                        "scope2_",
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void getElemCall() {
+        String fn = "function test(){ return ''['foo']() }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(
+                                        cx,
+                                        scope1,
+                                        "String.prototype.foo = function(){ return 'scope1' }");
+                                eval(
+                                        cx,
+                                        scope2,
+                                        "String.prototype.foo = function(){ return 'scope2' }");
+
+                                assertEquals("scope2", eval(cx, scope2, "test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test.call(null)"));
+                                assertEquals("scope2", eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertEquals(
+                                        "scope2",
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void getPropCall() {
+        String fn = "function test(){ return ''.foo() }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(
+                                        cx,
+                                        scope1,
+                                        "String.prototype.foo = function(){ return 'scope1' }");
+                                eval(
+                                        cx,
+                                        scope2,
+                                        "String.prototype.foo = function(){ return 'scope2' }");
+
+                                assertEquals("scope2", eval(cx, scope2, "test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test()"));
+                                assertEquals("scope2", eval(cx, scope1, "scope2.test.call(null)"));
+                                assertEquals("scope2", eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertEquals(
+                                        "scope2",
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void enum1() {
+        String fn =
+                "function test(){ for (var k in '') if (k == 'foo') return true; return false; }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope1, "String.prototype.foo = 'scope1'");
+
+                                assertFALSE(eval(cx, scope2, "test()"));
+                                assertFALSE(eval(cx, scope1, "scope2.test()"));
+                                assertFALSE(eval(cx, scope1, "scope2.test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertFALSE(eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void enum2() {
+        String fn =
+                "function test(){ for (var k in '') if (k == 'foo') return true; return false; }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                eval(cx, scope2, "String.prototype.foo = 'scope1'");
+
+                                assertTRUE(eval(cx, scope2, "test()"));
+                                assertTRUE(eval(cx, scope1, "scope2.test()"));
+                                assertTRUE(eval(cx, scope1, "scope2.test.call(null)"));
+                                assertTRUE(eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertTRUE(eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void parent() {
+        String fn = "function test(){}";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                Object parent = eval(cx, scope2, "test.__parent__");
+                                if (parent instanceof ScopeWrapper) {
+                                    parent = ((ScopeWrapper) parent).getScope();
+                                }
+                                assertSame(scope2, parent);
+                                parent = eval(cx, scope1, "scope2.test.__parent__");
+                                if (parent instanceof ScopeWrapper) {
+                                    parent = ((ScopeWrapper) parent).getScope();
+                                }
+                                assertSame(scope2, parent);
+                                parent = eval(cx, scope1, "var t=scope2.test; t.__parent__");
+                                if (parent instanceof ScopeWrapper) {
+                                    parent = ((ScopeWrapper) parent).getScope();
+                                }
+                                assertSame(scope2, parent);
+                            }
+                        }));
+    }
+
+    @Test
+    public void returnThis() {
+        String fn = "function test(){ return this }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                var globalThis1 = ((TopLevel) scope1).getGlobalThis();
+                                var globalThis2 = ((TopLevel) scope2).getGlobalThis();
+                                assertSame(globalThis2, eval(cx, scope2, "test()"));
+                                assertSame(globalThis2, eval(cx, scope2, "test.call(null)"));
+                                assertSame(globalThis2, eval(cx, scope1, "scope2.test()"));
+                                assertSame(globalThis2, eval(cx, scope1, "scope2.test.call(null)"));
+                                assertSame(globalThis2, eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertSame(
+                                        globalThis2,
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void returnThisNested() {
+        String fn = "function test(){ return (function(){ return this })() }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                var globalThis = ((TopLevel) scope2).getGlobalThis();
+                                assertSame(globalThis, eval(cx, scope2, "test()"));
+                                assertSame(globalThis, eval(cx, scope2, "test.call(null)"));
+                                assertSame(globalThis, eval(cx, scope1, "scope2.test()"));
+                                assertSame(globalThis, eval(cx, scope1, "scope2.test.call(null)"));
+                                assertSame(globalThis, eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertSame(
+                                        globalThis,
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void returnThisNestedCall() {
+        String fn = "function test(o){ return (function(){ return this }).call(o) }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                var globalThis1 = ((TopLevel) scope1).getGlobalThis();
+                                var globalThis2 = ((TopLevel) scope2).getGlobalThis();
+                                assertSame(globalThis2, eval(cx, scope2, "test()"));
+                                assertSame(globalThis2, eval(cx, scope2, "test(null)"));
+                                assertSame(globalThis2, eval(cx, scope2, "test.call(null)"));
+                                assertSame(globalThis2, eval(cx, scope2, "test.call(null, null)"));
+
+                                assertSame(globalThis2, eval(cx, scope1, "scope2.test()"));
+                                assertSame(globalThis2, eval(cx, scope1, "scope2.test(null)"));
+                                assertSame(globalThis2, eval(cx, scope1, "scope2.test.call(null)"));
+                                assertSame(
+                                        globalThis2,
+                                        eval(cx, scope1, "scope2.test.call(null, null)"));
+
+                                assertSame(globalThis2, eval(cx, scope1, "var t=scope2.test; t()"));
+                                assertSame(
+                                        globalThis2,
+                                        eval(cx, scope1, "var t=scope2.test; t(null)"));
+                                assertSame(
+                                        globalThis2,
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null)"));
+                                assertSame(
+                                        globalThis2,
+                                        eval(cx, scope1, "var t=scope2.test; t.call(null, null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void nameStringPrototype() {
+        String fn = "function test(){ return String.prototype }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype === scope2.test.call(null)"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void nameStringPrototypeNested() {
+        String fn = "function test(){ return (function(){ return String.prototype })() }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype === scope2.test.call(null)"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void thisStringPrototype() {
+        String fn = "function test(){ return this.String.prototype }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertTRUE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype !== scope2.test.call(null)"));
+                                assertTRUE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype !== t()"));
+                                assertTRUE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype !== t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void stringLiteralProto() {
+        String fn = "function test(){ return ''.__proto__ }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype === scope2.test.call(null)"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void thisProtoNested() {
+        String fn = "function test(){ return (function(){ return this.__proto__ }).call('') }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype === scope2.test.call(null)"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t.call(null)"));
+                            }
+                        }));
+    }
+
+    @Test
+    public void stringLiteralProtoNested() {
+        String fn = "function test(){ return (function(){ return ''.__proto__ })() }";
+        runWithAllModes(
+                action(
+                        fn,
+                        new Action() {
+                            @Override
+                            public void run(Context cx, TopLevel scope1, TopLevel scope2) {
+                                assertTRUE(eval(cx, scope2, "String.prototype === test()"));
+                                assertTRUE(
+                                        eval(cx, scope2, "String.prototype === test.call(null)"));
+                                assertFALSE(eval(cx, scope1, "String.prototype === scope2.test()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "String.prototype === scope2.test.call(null)"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t()"));
+                                assertFALSE(
+                                        eval(
+                                                cx,
+                                                scope1,
+                                                "var t=scope2.test; String.prototype === t.call(null)"));
+                            }
+                        }));
+    }
+}

@@ -1,30 +1,53 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.module;
 
-import rhino.*;
-
-import java.net.*;
+import java.io.Serial;
+import java.net.URI;
+import rhino.DeclarationScope;
+import rhino.ScopeObject;
+import rhino.TopLevel;
+import rhino.VarScope;
 
 /**
- * A top-level module scope. This class provides methods to retrieve the
- * module's source and base URIs in order to resolve relative module IDs
- * and check sandbox constraints.
+ * A top-level module scope. This class provides methods to retrieve the module's source and base
+ * URIs in order to resolve relative module IDs and check sandbox constraints.
  */
-public class ModuleScope extends TopLevel{
+public class ModuleScope extends DeclarationScope {
+    @Serial private static final long serialVersionUID = -877901398709024429L;
     private final URI uri;
     private final URI base;
 
-    public ModuleScope(Scriptable prototype, URI uri, URI base){
+    private ModuleScope(ScopeObject scope, URI uri, URI base) {
+        super(scope);
         this.uri = uri;
         this.base = base;
-        setPrototype(prototype);
-        cacheBuiltins(prototype, false);
     }
 
-    public URI getUri(){
+    public static ScopeObject createModuleScope(TopLevel global, URI uri, URI base) {
+        var moduleScope = new ModuleScope(global, uri, base);
+        return moduleScope;
+    }
+
+    public URI getUri() {
         return uri;
     }
 
-    public URI getBase(){
+    public URI getBase() {
         return base;
+    }
+
+    /** Search up the chain of scopes to find a module scope. */
+    public static ModuleScope findModuleScope(VarScope scope) {
+        VarScope current = scope;
+        while (current != null) {
+            if (current instanceof ModuleScope) {
+                return (ModuleScope) current;
+            }
+            current = current.getParentScope();
+        }
+        return null;
     }
 }

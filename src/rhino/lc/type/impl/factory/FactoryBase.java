@@ -1,0 +1,137 @@
+package rhino.lc.type.impl.factory;
+
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import rhino.lc.type.ParameterizedTypeInfo;
+import rhino.lc.type.TypeInfo;
+import rhino.lc.type.TypeInfoFactory;
+import rhino.lc.type.VariableTypeInfo;
+import rhino.lc.type.impl.ArrayTypeInfo;
+import rhino.lc.type.impl.ParameterizedTypeInfoImpl;
+
+/**
+ * @author ZZZank
+ */
+public interface FactoryBase extends TypeInfoFactory {
+
+    @Override
+    default TypeInfo create(GenericArrayType genericArrayType) {
+        return toArray(create(genericArrayType.getGenericComponentType()));
+    }
+
+    @Override
+    default TypeInfo create(ParameterizedType parameterizedType) {
+        return new ParameterizedTypeInfoImpl(
+                create(parameterizedType.getOwnerType()),
+                create(parameterizedType.getRawType()),
+                createList(parameterizedType.getActualTypeArguments()));
+    }
+
+    @Override
+    default TypeInfo create(WildcardType wildcardType) {
+        var upper = wildcardType.getUpperBounds();
+        if (upper.length != 0 && upper[0] != Object.class) {
+            return create(upper[0]);
+        }
+
+        var lower = wildcardType.getLowerBounds();
+        if (lower.length != 0) {
+            return create(lower[0]);
+        }
+        return TypeInfo.NONE;
+    }
+
+    @Override
+    default TypeInfo toArray(TypeInfo component) {
+        return new ArrayTypeInfo(component);
+    }
+
+    @Override
+    default TypeInfo attachParam(TypeInfo base, List<TypeInfo> params) {
+        if (base instanceof ParameterizedTypeInfo) {
+            var parameterized = (ParameterizedTypeInfo) base;
+            return new ParameterizedTypeInfoImpl(
+                    parameterized.ownerType(), parameterized.rawType(), params);
+        }
+        return new ParameterizedTypeInfoImpl(TypeInfo.NONE, base, params);
+    }
+
+    /** Used by {@link #getConsolidationMapping(java.lang.Class)} */
+    default Map<VariableTypeInfo, TypeInfo> computeConsolidationMapping(Class<?> type) {
+        var mapping = new HashMap<VariableTypeInfo, TypeInfo>();
+
+        // in our E.class example, this will collect mapping from B<Te>, forming Tb -> Te
+        extractSuperMapping(type.getGenericSuperclass(), mapping);
+
+        // in our E.class example, this will collect mapping from D<String>, forming Td -> String
+        for (var genericInterface : type.getGenericInterfaces()) {
+            extractSuperMapping(genericInterface, mapping);
+        }
+
+        // extract mappings for superclasses/interfaces
+        // in our E.class example, super mapping will include Ta -> Tb
+        var superMapping = getConsolidationMapping(type.getSuperclass());
+
+        // in our E.class example, interface mapping will include Tc -> Td
+        var interfaces = type.getInterfaces();
+        var interfaceMappings = new ArrayList<Map<VariableTypeInfo, TypeInfo>>(interfaces.length);
+        for (var interface_ : interfaces) {
+            interfaceMappings.add(getConsolidationMapping(interface_));
+        }
+
+        boolean allEmpty = superMapping.isEmpty();
+        for (var interfaceMapping : interfaceMappings) {
+            allEmpty &= interfaceMapping.isEmpty();
+        }
+        if (allEmpty) {
+            return Collections.unmodifiableMap(new HashMap<>(mapping));
+        }
+
+        // transform super mapping to make it able to directly map a type to types used by E.class,
+        // then merge them together
+        // Example: Ta -> Tb (from `superMapping`) will be transformed by Tb -> Te (from `mapping`),
+        // forming Ta -> Te
+        var merged = new HashMap<>(TypeInfoFactory.transformMapping(superMapping, mapping));
+        for (var interfaceMapping : interfaceMappings) {
+            merged.putAll(TypeInfoFactory.transformMapping(interfaceMapping, mapping));
+        }
+        merged.putAll(mapping);
+
+        // Result: `Ta -> Te`, `Tb -> Te`, `Tc -> String`, `Td -> String`
+        // This means that all type variables from superclass / interface (Ta, Tb, Tc, Td) can be
+        // eliminated by applying the mapping ONCE, which will be important for performance
+        return Collections.unmodifiableMap(merged);
+    }
+
+    private void extractSuperMapping(Type superType, Map<VariableTypeInfo, TypeInfo> pushTo) {
+        if (!(superType instanceof ParameterizedType)) {
+            return;
+        }
+        var parameterized = (ParameterizedType) superType;
+        if (!(parameterized.getRawType() instanceof Class<?>)) {
+            return;
+        }
+        var parent = (Class<?>) parameterized.getRawType();
+
+        final var params = parent.getTypeParameters(); // T
+        final var args = parameterized.getActualTypeArguments(); // T is mapped to
+
+        if (params.length != args.length) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "typeParameters.length != actualTypeArguments.length (%s != %s)",
+                            params.length, args.length));
+        }
+
+        for (int i = 0; i < args.length; i++) {
+            pushTo.put((VariableTypeInfo) create(params[i]), create(args[i]));
+        }
+    }
+}

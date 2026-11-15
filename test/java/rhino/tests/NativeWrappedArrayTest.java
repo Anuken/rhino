@@ -1,0 +1,199 @@
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import rhino.BuiltInSlot;
+import rhino.Context;
+import rhino.Function;
+import rhino.RhinoException;
+import rhino.ScriptRuntime;
+import rhino.Scriptable;
+import rhino.ScriptableObject;
+import rhino.VarScope;
+import rhino.testutils.TestSource;
+import rhino.tools.shell.Global;
+
+/**
+ * This is a set of tests for the case in which functions of the built-in Array type are used with a
+ * native Java class.
+ */
+public class NativeWrappedArrayTest {
+
+    private Context cx;
+    private Global global;
+
+    @BeforeEach
+    public void init() {
+        cx = Context.enter();
+        cx.setLanguageVersion(Context.VERSION_ES6);
+        cx.getWrapFactory().setJavaPrimitiveWrap(false);
+        global = new Global(cx);
+        global.setFileLoadPrefix(TestSource.getPrefix());
+    }
+
+    @AfterEach
+    public void terminate() {
+        Context.exit();
+    }
+
+    @Test
+    public void nativeArray() throws IOException {
+        final String setFunc = "function makeTestArray() { return makeNativeArray(); }";
+        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+
+        try (InputStreamReader rdr =
+                new InputStreamReader(
+                        new FileInputStream(
+                                TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            assertEquals("success", ret);
+        } catch (RhinoException re) {
+            fail(re.getMessage() + '\n' + re.getScriptStackTrace());
+        }
+    }
+
+    @Test
+    public void arrayLikeArray() throws IOException {
+        final String setFunc = "function makeTestArray() { return makeArrayLikeArray(); }";
+        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+
+        try (InputStreamReader rdr =
+                new InputStreamReader(
+                        new FileInputStream(
+                                TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            assertEquals("success", ret);
+        } catch (RhinoException re) {
+            fail(re.getMessage() + '\n' + re.getScriptStackTrace());
+        }
+    }
+
+    @Test
+    public void javaArray() throws IOException {
+        final String setFunc = "function makeTestArray() { return makeJavaArray(); }";
+        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+
+        try (InputStreamReader rdr =
+                new InputStreamReader(
+                        new FileInputStream(
+                                TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            assertEquals("success", ret);
+        } catch (RhinoException re) {
+            fail(re.getMessage() + '\n' + re.getScriptStackTrace());
+        }
+    }
+
+    @Test
+    public void customArray() throws IOException {
+        global.getGlobalThis()
+                .defineFunctionProperties(
+                        global, new String[] {"makeCustomArray"}, NativeWrappedArrayTest.class, 0);
+
+        final String setFunc = "function makeTestArray() { return makeCustomArray(); }";
+        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+
+        try (InputStreamReader rdr =
+                new InputStreamReader(
+                        new FileInputStream(
+                                TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            assertEquals("success", ret);
+        } catch (RhinoException re) {
+            fail(re.getMessage() + '\n' + re.getScriptStackTrace());
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static Object makeCustomArray(
+            Context cx, Scriptable thisObj, Object[] args, Function fn) {
+        ArrayList<String> a = new ArrayList<>(4);
+        a.add("one");
+        a.add("two");
+        a.add("three");
+        a.add("four");
+        return new WrappedArray(fn.getDeclarationScope(), a);
+    }
+
+    static class WrappedArray extends ScriptableObject {
+
+        private final ArrayList<String> list;
+        private int length;
+
+        WrappedArray(VarScope scope, ArrayList<String> l) {
+            super(scope, ScriptableObject.getArrayPrototype(scope));
+            this.list = l;
+            this.length = l.size();
+            createLengthProp();
+        }
+
+        @Override
+        public String getClassName() {
+            return null;
+        }
+
+        @Override
+        public Object get(int ix, Scriptable start) {
+            return list.get(ix);
+        }
+
+        @Override
+        public void put(int ix, Scriptable start, Object val) {
+            // Ensure enough capacity for array expansion
+            // by automatically expanding the array like JavaScript sort of does.
+            for (int ax = list.size(); ax <= ix; ax++) {
+                list.add(null);
+            }
+            list.set(ix, val.toString());
+        }
+
+        @Override
+        public void delete(int ix) {
+            list.set(ix, null);
+        }
+
+        @Override
+        public Object[] getIds() {
+            Object[] ids = new Object[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                ids[i] = i;
+            }
+            return ids;
+        }
+
+        private void createLengthProp() {
+            ScriptableObject.defineBuiltInProperty(
+                    this,
+                    DONTENUM | PERMANENT,
+                    new BuiltInSlot.Descriptor<>(
+                            "length",
+                            WrappedArray::lengthGetter,
+                            WrappedArray::lengthSetter,
+                            WrappedArray::lengthAttrSetter));
+        }
+
+        private static Object lengthGetter(WrappedArray array, Scriptable start) {
+            return ScriptRuntime.wrapNumber(array.length);
+        }
+
+        private static boolean lengthSetter(
+                WrappedArray builtIn,
+                Object value,
+                Scriptable owner,
+                Scriptable start,
+                boolean isThrow) {
+            builtIn.length = ScriptRuntime.toInt32(value);
+            return true;
+        }
+
+        private static void lengthAttrSetter(WrappedArray builtIn, int attrs) {}
+    }
+}

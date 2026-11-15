@@ -1,8 +1,13 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.classfile;
 
-final class ClassFileMethod{
-    ClassFileMethod(String name, short nameIndex, String type, short typeIndex,
-                    short flags){
+final class ClassFileMethod {
+    ClassFileMethod(String name, int nameIndex, String type, int typeIndex, short flags) {
         itsName = name;
         itsNameIndex = nameIndex;
         itsType = type;
@@ -10,43 +15,41 @@ final class ClassFileMethod{
         itsFlags = flags;
     }
 
-    void setCodeAttribute(byte[] codeAttribute){
+    void setCodeAttribute(byte[] codeAttribute) {
         itsCodeAttribute = codeAttribute;
     }
 
-    int write(byte[] data, int offset){
+    int write(byte[] data, int offset) {
         offset = ClassFileWriter.putInt16(itsFlags, data, offset);
         offset = ClassFileWriter.putInt16(itsNameIndex, data, offset);
         offset = ClassFileWriter.putInt16(itsTypeIndex, data, offset);
         // Code attribute only
         offset = ClassFileWriter.putInt16(1, data, offset);
-        System.arraycopy(itsCodeAttribute, 0, data, offset,
-        itsCodeAttribute.length);
+        System.arraycopy(itsCodeAttribute, 0, data, offset, itsCodeAttribute.length);
         offset += itsCodeAttribute.length;
         return offset;
     }
 
-    int getWriteSize(){
+    int getWriteSize() {
         return 2 * 4 + itsCodeAttribute.length;
     }
 
-    String getName(){
+    String getName() {
         return itsName;
     }
 
-    String getType(){
+    String getType() {
         return itsType;
     }
 
-    short getFlags(){
+    short getFlags() {
         return itsFlags;
     }
 
-    private final String itsName;
-    private final String itsType;
-    private final short itsNameIndex;
-    private final short itsTypeIndex;
-    private final short itsFlags;
+    private String itsName;
+    private String itsType;
+    private int itsNameIndex;
+    private int itsTypeIndex;
+    private short itsFlags;
     private byte[] itsCodeAttribute;
-
 }

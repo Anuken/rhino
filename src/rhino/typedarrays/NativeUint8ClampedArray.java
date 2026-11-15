@@ -1,87 +1,117 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.typedarrays;
 
-import rhino.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import rhino.ClassDescriptor;
+import rhino.Context;
+import rhino.JSFunction;
+import rhino.ScriptRuntimeES6;
+import rhino.SymbolKey;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
 /**
- * An array view that stores 8-bit quantities and implements the JavaScript "Uint8ClampedArray" interface.
- * It also implements List&lt;Integer&gt; for direct manipulation in Java. Bytes inserted that fall out of the range
- * (0 &lt;= X &lt; 256) will be adjusted so that they match before insertion.
+ * An array view that stores 8-bit quantities and implements the JavaScript "Uint8ClampedArray"
+ * interface. It also implements List&lt;Integer&gt; for direct manipulation in Java. Bytes inserted
+ * that fall out of the range (0 &lt;= X &lt; 256) will be adjusted so that they match before
+ * insertion.
  */
+public class NativeUint8ClampedArray extends NativeTypedArrayView<Integer> {
+    @Serial private static final long serialVersionUID = -1383405116607004281L;
 
-public class NativeUint8ClampedArray
-extends NativeTypedArrayView<Integer>{
     private static final String CLASS_NAME = "Uint8ClampedArray";
 
-    public NativeUint8ClampedArray(){
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                3,
+                                NativeTypedArrayView::typeError,
+                                NativeUint8ClampedArray::js_constructor)
+                        .withProp(CTOR, "BYTES_PER_ELEMENT", value(1))
+                        .withProp(PROTO, "BYTES_PER_ELEMENT", value(1))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
     }
 
-    public NativeUint8ClampedArray(NativeArrayBuffer ab, int off, int len){
+    public NativeUint8ClampedArray() {}
+
+    public NativeUint8ClampedArray(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len);
     }
 
-    public NativeUint8ClampedArray(int len){
+    public NativeUint8ClampedArray(int len) {
         this(new NativeArrayBuffer(len), 0, len);
     }
 
     @Override
-    public String getClassName(){
+    public String getClassName() {
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        NativeUint8ClampedArray a = new NativeUint8ClampedArray();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    public static JSFunction init(Context cx, VarScope scope, boolean sealed) {
+        return NativeTypedArrayView.initSubClass(cx, scope, DESCRIPTOR, sealed);
     }
 
     @Override
-    protected NativeUint8ClampedArray construct(NativeArrayBuffer ab, int off, int len){
-        return new NativeUint8ClampedArray(ab, off, len);
-    }
-
-    @Override
-    public int getBytesPerElement(){
+    public int getBytesPerElement() {
         return 1;
     }
 
-    @Override
-    protected NativeUint8ClampedArray realThis(Scriptable thisObj, IdFunctionObject f){
-        if(!(thisObj instanceof NativeUint8ClampedArray)){
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint8ClampedArray)thisObj;
+    private static Object js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return NativeTypedArrayView.js_constructor(
+                cx,
+                f,
+                nt,
+                s,
+                thisObj,
+                args,
+                NativeUint8ClampedArray::new,
+                1,
+                TopLevel.Builtins.Uint8ClampedArray);
     }
 
     @Override
-    protected Object js_get(int index){
-        if(checkIndex(index)){
+    protected Object js_get(int index) {
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readUint8(arrayBuffer.buffer, index + offset);
+        int byteBits = arrayBuffer.buffer.get(index + offset);
+        return Conversions.byteBitsToUint(byteBits);
     }
 
     @Override
-    protected Object js_set(int index, Object c){
-        if(checkIndex(index)){
-            return Undefined.instance;
-        }
+    protected Object js_set(int index, Object c) {
         int val = Conversions.toUint8Clamp(c);
-        ByteIo.writeUint8(arrayBuffer.buffer, index + offset, val);
+        if (checkIndex(index)) {
+            return Undefined.instance;
+        }
+        arrayBuffer.buffer.put(index + offset, (byte) val);
         return null;
     }
 
     @Override
-    public Integer get(int i){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Integer)js_get(i);
+    public Integer get(int i) {
+        ensureIndex(i);
+        return (Integer) js_get(i);
     }
 
     @Override
-    public Integer set(int i, Integer aByte){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Integer)js_set(i, aByte);
+    public Integer set(int i, Integer aByte) {
+        ensureIndex(i);
+        return (Integer) js_set(i, aByte);
     }
 }

@@ -1,19 +1,34 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import rhino.Node;
+import rhino.Token;
 
 /**
- * Represents a scope in the lexical scope chain.  Base type for
- * all {@link AstNode} implementations that can introduce a new scope.
+ * Represents a scope in the lexical scope chain. Base type for all {@link AstNode} implementations
+ * that can introduce a new scope.
  */
-public class Scope extends Jump{
+public class Scope extends Jump {
 
     // Use LinkedHashMap so that the iteration order is the insertion order
     protected Map<String, Symbol> symbolTable;
+    // Tracks var- and function-hoisted names that are declared anywhere within
+    // this scope's subtree, up to (and including) the enclosing function/script.
+    // Separate from symbolTable so block-scoped (let/const) declarations are
+    // never mixed in.
+    protected Map<String, Symbol> varSymbolTable;
     protected Scope parentScope;
-    protected ScriptNode top;     // current script or function scope
+    protected ScriptNode top; // current script or function scope
 
     private List<Scope> childScopes;
 
@@ -21,53 +36,48 @@ public class Scope extends Jump{
         this.type = Token.BLOCK;
     }
 
-    public Scope(){
-    }
+    public Scope() {}
 
-    public Scope(int pos){
+    public Scope(int pos) {
         this.position = pos;
     }
 
-    public Scope(int pos, int len){
+    public Scope(int pos, int len) {
         this(pos);
         this.length = len;
     }
 
-    public Scope getParentScope(){
+    public Scope getParentScope() {
         return parentScope;
     }
 
-    /**
-     * Sets parent scope
-     */
-    public void setParentScope(Scope parentScope){
+    /** Sets parent scope */
+    public void setParentScope(Scope parentScope) {
         this.parentScope = parentScope;
-        this.top = parentScope == null ? (ScriptNode)this : parentScope.top;
+        this.top = parentScope == null ? (ScriptNode) this : parentScope.top;
     }
 
-    /**
-     * Used only for code generation.
-     */
-    public void clearParentScope(){
+    /** Used only for code generation. */
+    public void clearParentScope() {
         this.parentScope = null;
     }
 
     /**
      * Return a list of the scopes whose parent is this scope.
+     *
      * @return the list of scopes we enclose, or {@code null} if none
      */
-    public List<Scope> getChildScopes(){
+    public List<Scope> getChildScopes() {
         return childScopes;
     }
 
     /**
-     * Add a scope to our list of child scopes.
-     * Sets the child's parent scope to this scope.
-     * @throws IllegalStateException if the child's parent scope is
-     * non-{@code null}
+     * Add a scope to our list of child scopes. Sets the child's parent scope to this scope.
+     *
+     * @throws IllegalStateException if the child's parent scope is non-{@code null}
      */
-    public void addChildScope(Scope child){
-        if(childScopes == null){
+    public void addChildScope(Scope child) {
+        if (childScopes == null) {
             childScopes = new ArrayList<>();
         }
         childScopes.add(child);
@@ -75,84 +85,109 @@ public class Scope extends Jump{
     }
 
     /**
-     * Used by the parser; not intended for typical use.
-     * Changes the parent-scope links for this scope's child scopes
-     * to the specified new scope.  Copies symbols from this scope
-     * into new scope.
-     * @param newScope the scope that will replace this one on the
-     * scope stack.
+     * Used by the parser; not intended for typical use. Changes the parent-scope links for this
+     * scope's child scopes to the specified new scope. Copies symbols from this scope into new
+     * scope.
+     *
+     * @param newScope the scope that will replace this one on the scope stack.
      */
-    public void replaceWith(Scope newScope){
-        if(childScopes != null){
-            for(Scope kid : childScopes){
-                newScope.addChildScope(kid);  // sets kid's parent
+    public void replaceWith(Scope newScope) {
+        if (childScopes != null) {
+            for (Scope kid : childScopes) {
+                newScope.addChildScope(kid); // sets kid's parent
             }
             childScopes.clear();
             childScopes = null;
         }
-        if(symbolTable != null && !symbolTable.isEmpty()){
+        if (symbolTable != null && !symbolTable.isEmpty()) {
             joinScopes(this, newScope);
+        }
+        if (varSymbolTable != null && !varSymbolTable.isEmpty()) {
+            joinVarScopes(this, newScope);
         }
     }
 
-    /**
-     * Returns current script or function scope
-     */
-    public ScriptNode getTop(){
+    /** Returns current script or function scope */
+    public ScriptNode getTop() {
         return top;
     }
 
-    /**
-     * Sets top current script or function scope
-     */
-    public void setTop(ScriptNode top){
+    /** Sets top current script or function scope */
+    public void setTop(ScriptNode top) {
         this.top = top;
     }
 
     /**
-     * Creates a new scope node, moving symbol table information
-     * from "scope" to the new node, and making "scope" a nested
-     * scope contained by the new node.
-     * Useful for injecting a new scope in a scope chain.
+     * Creates a new scope node, moving symbol table information from "scope" to the new node, and
+     * making "scope" a nested scope contained by the new node. Useful for injecting a new scope in
+     * a scope chain.
      */
-    public static Scope splitScope(Scope scope){
-        Scope result = new Scope(scope.getType());
+    public static Scope splitScope(Scope scope) {
+        Scope result = new Scope(scope.getPosition(), scope.getLength());
         result.symbolTable = scope.symbolTable;
         scope.symbolTable = null;
+        if (result.symbolTable != null) {
+            for (Symbol sym : result.symbolTable.values()) {
+                sym.setContainingTable(result);
+            }
+        }
+        if (scope.varSymbolTable != null) {
+            result.varSymbolTable = new LinkedHashMap<>(scope.varSymbolTable);
+        }
         result.parent = scope.parent;
         result.setParentScope(scope.getParentScope());
-        result.setParentScope(result);
         scope.parent = result;
         result.top = scope.top;
         return result;
     }
 
     /**
-     * Copies all symbols from source scope to dest scope.
+     * Moves a single symbol from this scope to the destination scope. Unlike {@link #putSymbol},
+     * this does not re-register the symbol with the top-level ScriptNode since it was already
+     * registered when first defined.
      */
-    public static void joinScopes(Scope source, Scope dest){
+    public void moveSymbol(String name, Scope dest) {
+        if (symbolTable == null) return;
+        Symbol sym = symbolTable.remove(name);
+        if (sym != null) {
+            sym.setContainingTable(dest);
+            dest.ensureSymbolTable();
+            dest.symbolTable.put(name, sym);
+        }
+    }
+
+    /** Copies all symbols from source scope to dest scope. */
+    public static void joinScopes(Scope source, Scope dest) {
         Map<String, Symbol> src = source.ensureSymbolTable();
         Map<String, Symbol> dst = dest.ensureSymbolTable();
-        if(!Collections.disjoint(src.keySet(), dst.keySet())){
+        if (!Collections.disjoint(src.keySet(), dst.keySet())) {
             codeBug();
         }
-        for(Map.Entry<String, Symbol> entry : src.entrySet()){
+        for (Map.Entry<String, Symbol> entry : src.entrySet()) {
             Symbol sym = entry.getValue();
             sym.setContainingTable(dest);
             dst.put(entry.getKey(), sym);
         }
     }
 
+    /** Copies all var-hoisted symbol entries from source scope to dest scope. */
+    public static void joinVarScopes(Scope source, Scope dest) {
+        if (source.varSymbolTable == null) return;
+        if (dest.varSymbolTable == null) dest.varSymbolTable = new LinkedHashMap<>(4);
+        dest.varSymbolTable.putAll(source.varSymbolTable);
+    }
+
     /**
      * Returns the scope in which this name is defined
+     *
      * @param name the symbol to look up
-     * @return this {@link Scope}, one of its parent scopes, or {@code null} if
-     * the name is not defined any this scope chain
+     * @return this {@link Scope}, one of its parent scopes, or {@code null} if the name is not
+     *     defined any this scope chain
      */
-    public Scope getDefiningScope(String name){
-        for(Scope s = this; s != null; s = s.parentScope){
+    public Scope getDefiningScope(String name) {
+        for (Scope s = this; s != null; s = s.parentScope) {
             Map<String, Symbol> symbolTable = s.getSymbolTable();
-            if(symbolTable != null && symbolTable.containsKey(name)){
+            if (symbolTable != null && symbolTable.containsKey(name)) {
                 return s;
             }
         }
@@ -161,19 +196,17 @@ public class Scope extends Jump{
 
     /**
      * Looks up a symbol in this scope.
+     *
      * @param name the symbol name
      * @return the Symbol, or {@code null} if not found
      */
-    public Symbol getSymbol(String name){
+    public Symbol getSymbol(String name) {
         return symbolTable == null ? null : symbolTable.get(name);
     }
 
-    /**
-     * Enters a symbol into this scope.
-     */
-    public void putSymbol(Symbol symbol){
-        if(symbol.getName() == null)
-            throw new IllegalArgumentException("null symbol name");
+    /** Enters a symbol into this scope. */
+    public void putSymbol(Symbol symbol) {
+        if (symbol.getName() == null) throw new IllegalArgumentException("null symbol name");
         ensureSymbolTable();
         symbolTable.put(symbol.getName(), symbol);
         symbol.setContainingTable(this);
@@ -182,52 +215,80 @@ public class Scope extends Jump{
 
     /**
      * Returns the symbol table for this scope.
-     * @return the symbol table.  May be {@code null}.
+     *
+     * @return the symbol table. May be {@code null}.
      */
-    public Map<String, Symbol> getSymbolTable(){
+    public Map<String, Symbol> getSymbolTable() {
         return symbolTable;
     }
 
-    /**
-     * Sets the symbol table for this scope.  May be {@code null}.
-     */
-    public void setSymbolTable(Map<String, Symbol> table){
+    /** Sets the symbol table for this scope. May be {@code null}. */
+    public void setSymbolTable(Map<String, Symbol> table) {
         symbolTable = table;
     }
 
-    private Map<String, Symbol> ensureSymbolTable(){
-        if(symbolTable == null){
+    /**
+     * Looks up a var-hoisted symbol recorded in this scope.
+     *
+     * @param name the symbol name
+     * @return the Symbol, or {@code null} if not found
+     */
+    public Symbol getVarSymbol(String name) {
+        return varSymbolTable == null ? null : varSymbolTable.get(name);
+    }
+
+    /**
+     * Records a var- or function-hoisted symbol in this scope's secondary index. Does not affect
+     * the master symbol list on the enclosing {@link ScriptNode}; that registration is handled by
+     * the normal {@link #putSymbol} call.
+     */
+    public void putVarSymbol(Symbol symbol) {
+        if (symbol.getName() == null) throw new IllegalArgumentException("null symbol name");
+        if (varSymbolTable == null) varSymbolTable = new LinkedHashMap<>(4);
+        varSymbolTable.put(symbol.getName(), symbol);
+    }
+
+    /**
+     * Returns the var symbol table for this scope.
+     *
+     * @return the var symbol table. May be {@code null}.
+     */
+    public Map<String, Symbol> getVarSymbolTable() {
+        return varSymbolTable;
+    }
+
+    private Map<String, Symbol> ensureSymbolTable() {
+        if (symbolTable == null) {
             symbolTable = new LinkedHashMap<>(5);
         }
         return symbolTable;
     }
 
     /**
-     * Returns a copy of the child list, with each child cast to an
-     * {@link AstNode}.
-     * @throws ClassCastException if any non-{@code AstNode} objects are
-     * in the child list, e.g. if this method is called after the code
-     * generator begins the tree transformation.
+     * Returns a copy of the child list, with each child cast to an {@link AstNode}.
+     *
+     * @throws ClassCastException if any non-{@code AstNode} objects are in the child list, e.g. if
+     *     this method is called after the code generator begins the tree transformation.
      */
-    public List<AstNode> getStatements(){
+    public List<AstNode> getStatements() {
         List<AstNode> stmts = new ArrayList<>();
         Node n = getFirstChild();
-        while(n != null){
-            stmts.add((AstNode)n);
+        while (n != null) {
+            stmts.add((AstNode) n);
             n = n.getNext();
         }
         return stmts;
     }
 
     @Override
-    public String toSource(int depth){
+    public String toSource(int depth) {
         StringBuilder sb = new StringBuilder();
         sb.append(makeIndent(depth));
         sb.append("{\n");
-        for(Node kid : this){
-            AstNode astNodeKid = (AstNode)kid;
+        for (Node kid : this) {
+            AstNode astNodeKid = (AstNode) kid;
             sb.append(astNodeKid.toSource(depth + 1));
-            if(astNodeKid.getType() == Token.COMMENT){
+            if (astNodeKid.getType() == Token.COMMENT) {
                 sb.append("\n");
             }
         }
@@ -237,10 +298,10 @@ public class Scope extends Jump{
     }
 
     @Override
-    public void visit(NodeVisitor v){
-        if(v.visit(this)){
-            for(Node kid : this){
-                if(kid instanceof AstNode) ((AstNode)kid).visit(v);
+    public void visit(NodeVisitor v) {
+        if (v.visit(this)) {
+            for (Node kid : this) {
+                ((AstNode) kid).visit(v);
             }
         }
     }

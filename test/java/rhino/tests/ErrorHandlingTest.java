@@ -1,0 +1,183 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import rhino.EcmaError;
+import rhino.JavaScriptException;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.WrappedException;
+import rhino.testutils.Utils;
+
+/**
+ * Unit tests to check error handling. Especially, we expect to get a correct cause, when an error
+ * happened in Java.
+ *
+ * @author Roland Praml
+ */
+public class ErrorHandlingTest {
+
+    public static void generateJavaError() {
+        throw new java.lang.RuntimeException("foo");
+    }
+
+    // string contains stack element with correct line number. e.g:
+    // ' at
+    // rhino.tests.ErrorHandlingTest.generateJavaError(ErrorHandlingTest.java:30)'
+    private static final String EXPECTED_LINE_IN_STACK = findLine();
+
+    @Test
+    public void throwError() {
+        testIt(
+                "\n" // 1
+                        + "throw new Error('foo')", // 2
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals("Error: foo (myScript.js#2)", e.getMessage());
+                });
+        testIt(
+                "\n" // 1
+                        + "throw new EvalError('foo')",
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals("EvalError: foo (myScript.js#2)", e.getMessage());
+                });
+        testIt(
+                "try {\n" // 1
+                        + " throw new Error('foo')\n" // 2
+                        + "} catch (e) {\n" // 3
+                        + " throw e\n" // 4
+                        + "}", // 5
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals("Error: foo (myScript.js#4)", e.getMessage());
+                });
+        testIt(
+                "\n" // 1
+                        + "null.toString()", // 2
+                e -> {
+                    Assertions.assertEquals(EcmaError.class, e.getClass());
+                    Assertions.assertEquals(
+                            "TypeError: Cannot call method \"toString\" of null (myScript.js#2)",
+                            e.getMessage());
+                });
+    }
+
+    @Test
+    public void throwErrorOnProp() {
+        Utils.assertWithAllModes(
+                "TypeError: Cannot call method \"toString\" of null\tat test.js:3"
+                        + System.lineSeparator(),
+                "var ret\n" // 1
+                        + "try {\n" // 2
+                        + "    null.toString()\n" // 3
+                        + "} catch (e) {\n" // 4
+                        + "    ret = e + e.stack\n" // 5
+                        + "}\n" // 6
+                        + "ret"); // 7
+    }
+
+    @Test
+    public void javaErrorFromInvocation() {
+
+        testIt(
+                "Packages.rhino.tests.ErrorHandlingTest.generateJavaError()",
+                e -> {
+                    Assertions.assertEquals(WrappedException.class, e.getClass());
+                    Assertions.assertEquals(
+                            "Wrapped java.lang.RuntimeException: foo (myScript.js#1)",
+                            e.getMessage());
+                    Assertions.assertEquals(RuntimeException.class, e.getCause().getClass());
+                    Assertions.assertEquals("foo", e.getCause().getMessage());
+                    Assertions.assertTrue(stackToLines(e).contains(EXPECTED_LINE_IN_STACK));
+                });
+        testIt(
+                "try { Packages.rhino.tests.ErrorHandlingTest.generateJavaError() } catch (e) { throw e }",
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals(
+                            "JavaException: java.lang.RuntimeException: foo (myScript.js#1)",
+                            e.getMessage());
+                    Assertions.assertEquals(RuntimeException.class, e.getCause().getClass());
+                    Assertions.assertEquals("foo", e.getCause().getMessage());
+                    Assertions.assertTrue(stackToLines(e).contains(EXPECTED_LINE_IN_STACK));
+                });
+    }
+
+    @Test
+    public void javaErrorThrown() {
+
+        testIt(
+                "throw new java.lang.RuntimeException('foo')",
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals(
+                            "java.lang.RuntimeException: foo (myScript.js#1)", e.getMessage());
+                    Assertions.assertEquals(RuntimeException.class, e.getCause().getClass());
+                    Assertions.assertEquals("foo", e.getCause().getMessage());
+                });
+        testIt(
+                "try { throw new java.lang.RuntimeException('foo') } catch (e) { throw e }",
+                e -> {
+                    Assertions.assertEquals(JavaScriptException.class, e.getClass());
+                    Assertions.assertEquals(
+                            "java.lang.RuntimeException: foo (myScript.js#1)", e.getMessage());
+                    Assertions.assertEquals(RuntimeException.class, e.getCause().getClass());
+                    Assertions.assertEquals("foo", e.getCause().getMessage());
+                });
+    }
+
+    @Test
+    public void stackProvider() {
+        String nl = System.lineSeparator();
+        Utils.assertWithAllModes(Undefined.instance, "Error.stack");
+        Utils.assertWithAllModes("\tat test.js:1" + nl, "new Error().stack");
+        Utils.assertWithAllModes(Undefined.instance, "EvalError.stack");
+        Utils.assertWithAllModes("\tat test.js:1" + nl, "new EvalError('foo').stack");
+    }
+
+    private void testIt(final String script, final Consumer<Throwable> exception) {
+        Utils.runWithAllModes(
+                cx -> {
+                    try {
+                        TopLevel scope = cx.initStandardObjects();
+                        cx.evaluateString(scope, script, "myScript.js", 1, null);
+                        Assertions.fail("No error was thrown");
+                    } catch (final Throwable t) {
+                        exception.accept(t);
+                    }
+                    return null;
+                });
+    }
+
+    static List<String> stackToLines(Throwable t) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        t.printStackTrace(pw);
+        String[] tmp = sw.toString().replace("\r\n", "\n").split("\n");
+        return Arrays.asList(tmp);
+    }
+
+    private static String findLine() {
+        try {
+            generateJavaError();
+        } catch (Throwable t) {
+            for (String line : stackToLines(t)) {
+                if (line.contains("generateJavaError")) {
+                    System.out.println(line);
+                    return line;
+                }
+            }
+        }
+        throw new UnsupportedOperationException("Did not find expected line");
+    }
+}

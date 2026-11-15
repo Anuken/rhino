@@ -1,0 +1,62 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
+import rhino.Callable;
+import rhino.Context;
+import rhino.Context.EvaluationMethod;
+import rhino.Interpreter;
+import rhino.NativeContinuation;
+import rhino.ScriptableObject;
+import rhino.TopLevel;
+
+public class ContinuationComparisonTest {
+
+    @Test
+    public void test1() throws Exception {
+        // Create two identical executions
+        NativeContinuation c1 = createContinuation();
+        NativeContinuation c2 = createContinuation();
+
+        assertTrue(NativeContinuation.equalImplementations(c1, c2));
+    }
+
+    private NativeContinuation createContinuation() throws Exception {
+        try (Context cx = Context.enter()) {
+            cx.setLanguageVersion(Context.VERSION_DEFAULT);
+            cx.setEvaluationMethod(EvaluationMethod.Interpreter);
+            TopLevel global = cx.initStandardObjects();
+            final AtomicReference<NativeContinuation> captured = new AtomicReference<>();
+            ScriptableObject.putProperty(
+                    global,
+                    "capture",
+                    (Callable)
+                            (c, scope, thisObj, args) -> {
+                                captured.set(Interpreter.captureContinuation(c));
+                                return null;
+                            });
+
+            // Evaluate program
+            try (Reader r =
+                    new InputStreamReader(
+                            getClass().getResourceAsStream("ContinuationComparisonTest.js"))) {
+                cx.executeScriptWithContinuations(
+                        cx.compileReader(r, "ContinuationComparisonTest.js", 1, null), global);
+            }
+            // Make the global standard again
+            global.delete("capture");
+
+            return captured.get();
+        }
+    }
+}

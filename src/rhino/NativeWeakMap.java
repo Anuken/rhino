@@ -1,222 +1,160 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-import java.util.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
+import java.util.WeakHashMap;
 
 /**
- * This is an implementation of the ES6 WeakMap class. As per the spec, keys must be
- * ordinary objects. Since there is no defined "equality" for objects, comparisions
- * are done strictly by object equality. Both ES6 and the java.util.WeakHashMap class
- * have the same basic structure -- entries are removed automatically when the sole
- * remaining reference to the key is a weak reference. Therefore, we can use
- * WeakHashMap as the basis of this implementation and preserve the same semantics.
+ * This is an implementation of the ES6 WeakMap class. As per the spec, keys must be ordinary
+ * objects. Since there is no defined "equality" for objects, comparisons are done strictly by
+ * object equality. Both ES6 and the java.util.WeakHashMap class have the same basic structure --
+ * entries are removed automatically when the sole remaining reference to the key is a weak
+ * reference. Therefore, we can use WeakHashMap as the basis of this implementation and preserve the
+ * same semantics.
  */
-public class NativeWeakMap extends IdScriptableObject{
-    private static final Object MAP_TAG = "WeakMap";
+public class NativeWeakMap extends ScriptableObject {
+    @Serial private static final long serialVersionUID = 8670434366883930453L;
+
+    private static final String CLASS_NAME = "WeakMap";
+
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                0,
+                                ClassDescriptor.typeError(),
+                                NativeWeakMap::jsConstructor)
+                        .withMethod(PROTO, "set", 2, NativeWeakMap::js_set)
+                        .withMethod(PROTO, "delete", 1, NativeWeakMap::js_delete)
+                        .withMethod(PROTO, "get", 1, NativeWeakMap::js_get)
+                        .withMethod(PROTO, "has", 1, NativeWeakMap::js_has)
+                        .withProp(
+                                PROTO,
+                                SymbolKey.TO_STRING_TAG,
+                                value(CLASS_NAME, DONTENUM | READONLY))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
+    }
 
     private boolean instanceOfWeakMap = false;
 
-    private transient WeakHashMap<Scriptable, Object> map = new WeakHashMap<>();
+    private transient WeakHashMap<Object, Object> map = new WeakHashMap<>();
 
     private static final Object NULL_VALUE = new Object();
 
-    static void init(Scriptable scope, boolean sealed){
-        NativeWeakMap m = new NativeWeakMap();
-        m.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    static Object init(Context cx, VarScope scope, boolean sealed) {
+        return DESCRIPTOR.buildConstructor(cx, scope, new NativeObject(), sealed);
     }
 
     @Override
-    public String getClassName(){
-        return "WeakMap";
+    public String getClassName() {
+        return CLASS_NAME;
     }
 
-    @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args){
-
-        if(!f.hasTag(MAP_TAG)){
-            return super.execIdCall(f, cx, scope, thisObj, args);
+    private static Scriptable jsConstructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        NativeWeakMap nm = new NativeWeakMap();
+        nm.instanceOfWeakMap = true;
+        if (args.length > 0) {
+            NativeMap.loadFromIterable(cx, f.getDeclarationScope(), nm, NativeMap.key(args));
         }
-        int id = f.methodId();
-        switch(id){
-            case Id_constructor:
-                if(thisObj == null){
-                    NativeWeakMap nm = new NativeWeakMap();
-                    nm.instanceOfWeakMap = true;
-                    if(args.length > 0){
-                        NativeMap.loadFromIterable(cx, scope, nm, args[0]);
-                    }
-                    return nm;
-                }
-                throw ScriptRuntime.typeError1("msg.no.new", "WeakMap");
-            case Id_delete:
-                return realThis(thisObj, f).js_delete(args.length > 0 ? args[0] : Undefined.instance);
-            case Id_get:
-                return realThis(thisObj, f).js_get(args.length > 0 ? args[0] : Undefined.instance);
-            case Id_has:
-                return realThis(thisObj, f).js_has(args.length > 0 ? args[0] : Undefined.instance);
-            case Id_set:
-                return realThis(thisObj, f).js_set(
-                args.length > 0 ? args[0] : Undefined.instance,
-                args.length > 1 ? args[1] : Undefined.instance);
-        }
-        throw new IllegalArgumentException("WeakMap.prototype has no method: " + f.getFunctionName());
+        ScriptRuntime.setBuiltinProtoAndParent(nm, f, nt, s, TopLevel.Builtins.WeakMap);
+        return nm;
     }
 
-    private Object js_delete(Object key){
-        if(!ScriptRuntime.isObject(key)){
-            return false;
-        }
-        final Object oldVal = map.remove(key);
-        return (oldVal != null);
+    private static Object js_delete(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return realThis(thisObj, "delete").js_delete(NativeMap.key(args));
     }
 
-    private Object js_get(Object key){
-        if(!ScriptRuntime.isObject(key)){
+    private Object js_delete(Object key) {
+        if (!isValidKey(key)) {
+            return Boolean.FALSE;
+        }
+        return map.remove(key) != null;
+    }
+
+    private static Object js_get(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return realThis(thisObj, "get").js_get(NativeMap.key(args));
+    }
+
+    private Object js_get(Object key) {
+        if (!isValidKey(key)) {
             return Undefined.instance;
         }
         Object result = map.get(key);
-        if(result == null){
+        if (result == null) {
             return Undefined.instance;
-        }else if(result == NULL_VALUE){
+        } else if (result == NULL_VALUE) {
             return null;
         }
         return result;
     }
 
-    private Object js_has(Object key){
-        if(!ScriptRuntime.isObject(key)){
-            return false;
+    private static Object js_has(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return realThis(thisObj, "has").js_has(NativeMap.key(args));
+    }
+
+    private Object js_has(Object key) {
+        if (!isValidKey(key)) {
+            return Boolean.FALSE;
         }
         return map.containsKey(key);
     }
 
-    private Object js_set(Object key, Object v){
+    private static Object js_set(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return realThis(thisObj, "set")
+                .js_set(NativeMap.key(args), args.length > 1 ? args[1] : Undefined.instance);
+    }
+
+    private Object js_set(Object key, Object v) {
         // As the spec says, only a true "Object" can be the key to a WeakMap.
         // Use the default object equality here. ScriptableObject does not override
         // equals or hashCode, which means that in effect we are only keying on object identity.
         // This is all correct according to the ECMAscript spec.
-        if(!ScriptRuntime.isObject(key)){
-            throw ScriptRuntime.typeError1("msg.arg.not.object", ScriptRuntime.typeof(key));
+        if (!isValidKey(key)) {
+            throw ScriptRuntime.typeErrorById("msg.arg.not.object", ScriptRuntime.typeof(key));
         }
         // Map.get() does not distinguish between "not found" and a null value. So,
         // replace true null here with a marker so that we can re-convert in "get".
         final Object value = (v == null ? NULL_VALUE : v);
-        map.put((Scriptable)key, value);
+        map.put(key, value);
         return this;
     }
 
-    private NativeWeakMap realThis(Scriptable thisObj, IdFunctionObject f){
-        if(thisObj == null){
-            throw incompatibleCallError(f);
-        }
-        try{
-            final NativeWeakMap nm = (NativeWeakMap)thisObj;
-            if(!nm.instanceOfWeakMap){
-                // Check for "Map internal data tag"
-                throw incompatibleCallError(f);
-            }
-            return nm;
-        }catch(ClassCastException cce){
-            throw incompatibleCallError(f);
-        }
+    private static boolean isValidKey(Object key) {
+        return ScriptRuntime.isUnregisteredSymbol(key) || ScriptRuntime.isObject(key);
     }
 
-    @Override
-    protected void initPrototypeId(int id){
-        if(id == SymbolId_toStringTag){
-            initPrototypeValue(SymbolId_toStringTag, SymbolKey.TO_STRING_TAG,
-            getClassName(), DONTENUM | READONLY);
-            return;
+    private static NativeWeakMap realThis(Object thisObj, String name) {
+        NativeWeakMap nm = LambdaConstructor.convertThisObject(thisObj, NativeWeakMap.class);
+        if (!nm.instanceOfWeakMap) {
+            // Check for "Map internal data tag"
+            throw ScriptRuntime.typeErrorById("msg.incompat.call", name);
         }
 
-        String s, fnName = null;
-        int arity;
-        switch(id){
-            case Id_constructor:
-                arity = 0;
-                s = "constructor";
-                break;
-            case Id_delete:
-                arity = 1;
-                s = "delete";
-                break;
-            case Id_get:
-                arity = 1;
-                s = "get";
-                break;
-            case Id_has:
-                arity = 1;
-                s = "has";
-                break;
-            case Id_set:
-                arity = 2;
-                s = "set";
-                break;
-            default:
-                throw new IllegalArgumentException(String.valueOf(id));
-        }
-        initPrototypeMethod(MAP_TAG, id, s, fnName, arity);
+        return nm;
     }
 
-    @Override
-    protected int findPrototypeId(Symbol k){
-        if(SymbolKey.TO_STRING_TAG.equals(k)){
-            return SymbolId_toStringTag;
-        }
-        return 0;
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        Context.checkDeserializationEnabled();
+        stream.defaultReadObject();
+        map = new WeakHashMap<>();
     }
-
-// #string_id_map#
-
-    @Override
-    protected int findPrototypeId(String s){
-        int id;
-// #generated# Last update: 2018-08-24 15:27:45 PDT
-        L0:
-        {
-            id = 0;
-            String X = null;
-            int c;
-            int s_length = s.length();
-            if(s_length == 3){
-                c = s.charAt(0);
-                if(c == 'g'){
-                    if(s.charAt(2) == 't' && s.charAt(1) == 'e'){
-                        id = Id_get;
-                        break L0;
-                    }
-                }else if(c == 'h'){
-                    if(s.charAt(2) == 's' && s.charAt(1) == 'a'){
-                        id = Id_has;
-                        break L0;
-                    }
-                }else if(c == 's'){
-                    if(s.charAt(2) == 't' && s.charAt(1) == 'e'){
-                        id = Id_set;
-                        break L0;
-                    }
-                }
-            }else if(s_length == 6){
-                X = "delete";
-                id = Id_delete;
-            }else if(s_length == 11){
-                X = "constructor";
-                id = Id_constructor;
-            }
-            if(X != null && X != s && !X.equals(s)) id = 0;
-        }
-// #/generated#
-        return id;
-    }
-
-    private static final int
-    Id_constructor = 1,
-    Id_delete = 2,
-    Id_get = 3,
-    Id_has = 4,
-    Id_set = 5,
-    SymbolId_toStringTag = 6,
-    MAX_PROTOTYPE_ID = SymbolId_toStringTag;
-
-// #/string_id_map#
 }

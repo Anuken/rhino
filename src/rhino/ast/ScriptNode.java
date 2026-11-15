@@ -1,26 +1,40 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import rhino.Node;
+import rhino.Token;
 
 /**
- * Base type for {@link AstRoot} and {@link FunctionNode} nodes, which need to
- * collect much of the same information.
+ * Base type for {@link AstRoot} and {@link FunctionNode} nodes, which need to collect much of the
+ * same information.
  */
-public class ScriptNode extends Scope{
+public class ScriptNode extends Scope {
 
-    private int encodedSourceStart = -1;
-    private int encodedSourceEnd = -1;
+    private int rawSourceStart = -1;
+    private int rawSourceEnd = -1;
+    private String rawSource;
+
     private String sourceName;
-    private String encodedSource;
     private int endLineno = -1;
 
     private List<FunctionNode> functions;
     private List<RegExpLiteral> regexps;
-    private final List<FunctionNode> EMPTY_LIST = Collections.emptyList();
+    private List<TemplateLiteral> templateLiterals;
+    private List<FunctionNode> EMPTY_LIST = Collections.emptyList();
 
     private List<Symbol> symbols = new ArrayList<>(4);
+    // ES2024, B.3.2.1: block-level function declarations that are candidates
+    // for var-hoisting in non-strict mode. Each entry pairs a LET Symbol
+    // (the block-scoped binding) with its FunctionNode.
+    private List<Object[]> annexBFunctions;
     private int paramCount = 0;
     private String[] variableNames;
     private boolean[] isConsts;
@@ -28,6 +42,7 @@ public class ScriptNode extends Scope{
     private Object compilerData;
     private int tempNumber = 0;
     private boolean inStrictMode;
+    private boolean isMethodDefinition;
 
     {
         // during parsing, a ScriptNode or FunctionNode's top scope is itself
@@ -35,234 +50,313 @@ public class ScriptNode extends Scope{
         this.type = Token.SCRIPT;
     }
 
-    public ScriptNode(){
-    }
+    public ScriptNode() {}
 
-    public ScriptNode(int pos){
+    public ScriptNode(int pos) {
         super(pos);
     }
 
     /**
-     * Returns the URI, path or descriptive text indicating the origin
-     * of this script's source code.
+     * Returns the URI, path or descriptive text indicating the origin of this script's source code.
      */
-    public String getSourceName(){
+    public String getSourceName() {
         return sourceName;
     }
 
     /**
-     * Sets the URI, path or descriptive text indicating the origin
-     * of this script's source code.
+     * Sets the URI, path or descriptive text indicating the origin of this script's source code.
      */
-    public void setSourceName(String sourceName){
+    public void setSourceName(String sourceName) {
         this.sourceName = sourceName;
     }
 
     /**
-     * Returns the start offset of the encoded source.
-     * Only valid if {@link #getEncodedSource} returns non-{@code null}.
+     * Returns the start offset of the raw source. Only valid if {@link #getRawSource} returns
+     * non-{@code null}.
      */
-    public int getEncodedSourceStart(){
-        return encodedSourceStart;
+    public int getRawSourceStart() {
+        return rawSourceStart;
     }
 
     /**
      * Used by code generator.
-     * @see #getEncodedSource
+     *
+     * @see #getRawSource
      */
-    public void setEncodedSourceStart(int start){
-        this.encodedSourceStart = start;
+    public void setRawSourceStart(int start) {
+        this.rawSourceStart = start;
     }
 
     /**
-     * Returns the end offset of the encoded source.
-     * Only valid if {@link #getEncodedSource} returns non-{@code null}.
+     * Returns the end offset of the raw source. Only valid if {@link #getRawSource} returns
+     * non-{@code null}.
      */
-    public int getEncodedSourceEnd(){
-        return encodedSourceEnd;
-    }
-
-    /**
-     * Used by code generator.
-     * @see #getEncodedSource
-     */
-    public void setEncodedSourceEnd(int end){
-        this.encodedSourceEnd = end;
+    public int getRawSourceEnd() {
+        return rawSourceEnd;
     }
 
     /**
      * Used by code generator.
-     * @see #getEncodedSource
+     *
+     * @see #getRawSource
      */
-    public void setEncodedSourceBounds(int start, int end){
-        this.encodedSourceStart = start;
-        this.encodedSourceEnd = end;
+    public void setRawSourceEnd(int end) {
+        this.rawSourceEnd = end;
+    }
+
+    /**
+     * Used by code generator.
+     *
+     * @see #getRawSource
+     */
+    public void setRawSourceBounds(int start, int end) {
+        this.rawSourceStart = start;
+        this.rawSourceEnd = end;
     }
 
     /**
      * Used by the code generator.
-     * @see #getEncodedSource
+     *
+     * @see #getRawSource
      */
-    public void setEncodedSource(String encodedSource){
-        this.encodedSource = encodedSource;
+    public void setRawSource(String rawSource) {
+        this.rawSource = rawSource;
     }
 
     /**
-     * Returns a canonical version of the source for this script or function,
-     * for use in implementing the {@code Object.toSource} method of
-     * JavaScript objects.  This source encoding is only recorded during code
-     * generation.  It must be passed back to
-     * {@link Decompiler#decompile} to construct the
-     * human-readable source string.<p>
-     * <p>
-     * Given a parsed AST, you can always convert it to source code using the
-     * {@link AstNode#toSource} method, although it's not guaranteed to produce
-     * exactly the same results as {@code Object.toSource} with respect to
-     * formatting, parenthesization and other details.
-     * @return the encoded source, or {@code null} if it was not recorded.
+     * @return the raw source, or {@code null} if it was not recorded.
      */
-    public String getEncodedSource(){
-        return encodedSource;
+    public String getRawSource() {
+        return rawSource;
     }
 
-    public int getBaseLineno(){
+    public int getBaseLineno() {
         return lineno;
     }
 
     /**
-     * Sets base (starting) line number for this script or function.
-     * This is a one-time operation, and throws an exception if the
-     * line number has already been set.
+     * Sets base (starting) line number for this script or function. This is a one-time operation,
+     * and throws an exception if the line number has already been set.
      */
-    public void setBaseLineno(int lineno){
-        if(lineno < 0 || this.lineno >= 0) codeBug();
+    public void setBaseLineno(int lineno) {
+        if (lineno < 0 || this.lineno >= 0) codeBug();
         this.lineno = lineno;
     }
 
-    public int getEndLineno(){
+    public int getEndLineno() {
         return endLineno;
     }
 
-    public void setEndLineno(int lineno){
+    public void setEndLineno(int lineno) {
         // One time action
-        if(lineno < 0 || endLineno >= 0) codeBug();
+        if (lineno < 0 || endLineno >= 0) codeBug();
         endLineno = lineno;
     }
 
-    public int getFunctionCount(){
+    public int getFunctionCount() {
         return functions == null ? 0 : functions.size();
     }
 
-    public FunctionNode getFunctionNode(int i){
+    public FunctionNode getFunctionNode(int i) {
         return functions.get(i);
     }
 
-    public List<FunctionNode> getFunctions(){
+    public List<FunctionNode> getFunctions() {
         return functions == null ? EMPTY_LIST : functions;
     }
 
     /**
-     * Adds a {@link FunctionNode} to the functions table for codegen.
-     * Does not set the parent of the node.
+     * Adds a {@link FunctionNode} to the functions table for codegen. Does not set the parent of
+     * the node.
+     *
      * @return the index of the function within its parent
      */
-    public int addFunction(FunctionNode fnNode){
-        if(fnNode == null) codeBug();
-        if(functions == null)
-            functions = new ArrayList<>();
+    public int addFunction(FunctionNode fnNode) {
+        if (fnNode == null) codeBug();
+        if (functions == null) functions = new ArrayList<>();
         functions.add(fnNode);
         return functions.size() - 1;
     }
 
-    public int getRegexpCount(){
+    public int getRegexpCount() {
         return regexps == null ? 0 : regexps.size();
     }
 
-    public String getRegexpString(int index){
+    public String getRegexpString(int index) {
         return regexps.get(index).getValue();
     }
 
-    public String getRegexpFlags(int index){
+    public String getRegexpFlags(int index) {
         return regexps.get(index).getFlags();
     }
 
-    /**
-     * Called by IRFactory to add a RegExp to the regexp table.
-     */
-    public void addRegExp(RegExpLiteral re){
-        if(re == null) codeBug();
-        if(regexps == null)
-            regexps = new ArrayList<>();
+    /** Called by IRFactory to add a RegExp to the regexp table. */
+    public void addRegExp(RegExpLiteral re) {
+        if (re == null) codeBug();
+        if (regexps == null) regexps = new ArrayList<>();
         regexps.add(re);
         re.putIntProp(REGEXP_PROP, regexps.size() - 1);
     }
 
-    public int getIndexForNameNode(Node nameNode){
-        if(variableNames == null) codeBug();
+    public int getTemplateLiteralCount() {
+        return templateLiterals == null ? 0 : templateLiterals.size();
+    }
+
+    public List<TemplateCharacters> getTemplateLiteralStrings(int index) {
+        return templateLiterals.get(index).getTemplateStrings();
+    }
+
+    /** Called by IRFactory to add a Template Literal to the templateLiterals table. */
+    public void addTemplateLiteral(TemplateLiteral templateLiteral) {
+        if (templateLiteral == null) codeBug();
+        if (templateLiterals == null) templateLiterals = new ArrayList<>();
+        templateLiterals.add(templateLiteral);
+        templateLiteral.putIntProp(TEMPLATE_LITERAL_PROP, templateLiterals.size() - 1);
+    }
+
+    public int getIndexForNameNode(Node nameNode) {
+        if (variableNames == null) codeBug();
         Scope node = nameNode.getScope();
-        Symbol symbol = node == null
-        ? null
-        : node.getSymbol(((Name)nameNode).getIdentifier());
+        Symbol symbol = null;
+        if (node != null && nameNode instanceof Name) {
+            symbol = node.getSymbol(((Name) nameNode).getIdentifier());
+        }
         return (symbol == null) ? -1 : symbol.getIndex();
     }
 
-    public String getParamOrVarName(int index){
-        if(variableNames == null) codeBug();
+    public String getParamOrVarName(int index) {
+        if (variableNames == null) codeBug();
         return variableNames[index];
     }
 
-    public int getParamCount(){
+    public int getParamCount() {
         return paramCount;
     }
 
-    public int getParamAndVarCount(){
-        if(variableNames == null) codeBug();
+    public int getParamAndVarCount() {
+        if (variableNames == null) codeBug();
         return symbols.size();
     }
 
-    public String[] getParamAndVarNames(){
-        if(variableNames == null) codeBug();
+    public String[] getParamAndVarNames() {
+        if (variableNames == null) codeBug();
         return variableNames;
     }
 
-    public boolean[] getParamAndVarConst(){
-        if(variableNames == null) codeBug();
+    public boolean[] getParamAndVarConst() {
+        if (variableNames == null) codeBug();
         return isConsts;
     }
 
-    void addSymbol(Symbol symbol){
-        if(variableNames != null) codeBug();
-        if(symbol.getDeclType() == Token.LP){
+    public boolean hasRestParameter() {
+        return false;
+    }
+
+    public List<Object> getDefaultParams() {
+        return null;
+    }
+
+    public List<Node[]> getDestructuringRvalues() {
+        return null;
+    }
+
+    public boolean isShorthand() {
+        return false;
+    }
+
+    // Overridden in FunctionNode
+    public void putDestructuringRvalues(Node left, Node right) {}
+
+    public void addAnnexBFunction(Symbol letSymbol, FunctionNode fn) {
+        if (annexBFunctions == null) {
+            annexBFunctions = new ArrayList<>(4);
+        }
+        annexBFunctions.add(new Object[] {letSymbol, fn});
+    }
+
+    void addSymbol(Symbol symbol) {
+        if (variableNames != null) codeBug();
+        if (symbol.getDeclType() == Symbol.Type.LP) {
             paramCount++;
         }
         symbols.add(symbol);
     }
 
-    public List<Symbol> getSymbols(){
+    public List<Symbol> getSymbols() {
         return symbols;
     }
 
-    public void setSymbols(List<Symbol> symbols){
+    public void setSymbols(List<Symbol> symbols) {
         this.symbols = symbols;
     }
 
     /**
-     * Assign every symbol a unique integer index. Generate arrays of variable
-     * names and constness that can be indexed by those indices.
-     * @param flattenAllTables if true, flatten all symbol tables,
-     * included nested block scope symbol tables. If false, just flatten the
-     * script's or function's symbol table.
+     * Assign every symbol a unique integer index. Generate arrays of variable names and constness
+     * that can be indexed by those indices.
+     *
+     * @param flattenAllTables if true, flatten all symbol tables, included nested block scope
+     *     symbol tables. If false, just flatten the script's or function's symbol table.
      */
-    public void flattenSymbolTable(boolean flattenAllTables){
-        if(!flattenAllTables){
+    /**
+     * ES2024, B.3.2.1: resolve Annex B block function hoisting. For each non-strict candidate,
+     * check if a let/const/param conflict exists. No conflict: add a var-hoisted symbol and set
+     * annexBHoisted on the FunctionNode. Conflict: leave as block-scoped only.
+     */
+    public void doAnnexBHoisting() {
+        if (annexBFunctions == null) return;
+        for (Object[] entry : annexBFunctions) {
+            Symbol letSym = (Symbol) entry[0];
+            FunctionNode fn = (FunctionNode) entry[1];
+            if (!hasAnnexBConflict(letSym)) {
+                // No conflict: add var-hoisted slot and mark function.
+                Symbol varSym = new Symbol(Symbol.Type.FUNCTION_VAR, letSym.getName());
+                putSymbol(varSym);
+                fn.setAnnexBHoisted(true);
+            }
+        }
+    }
+
+    /**
+     * ES2024, B.3.2.1: checks whether an Annex B block function has a conflicting let/const/param
+     * binding or is named "arguments".
+     */
+    private boolean hasAnnexBConflict(Symbol sym) {
+        String name = sym.getName();
+        if ("arguments".equals(name)) {
+            return true;
+        }
+        // Walk from the symbol's containing scope's parent up to (and
+        // including) this function scope. Skip containingTable itself since
+        // it holds the function's own LET binding.
+        Scope start = sym.getContainingTable();
+        if (start != null && start != this) {
+            start = start.getParentScope();
+        }
+        for (Scope s = start; s != null; s = s.getParentScope()) {
+            Symbol existing = s.getSymbol(name);
+            if (existing != null && existing != sym) {
+                Symbol.Type dt = existing.getDeclType();
+                switch (dt) {
+                    case FUNCTION_LET, LET, CONST, LP -> {
+                        return true;
+                    }
+                    default -> {}
+                }
+            }
+            if (s == this) break;
+        }
+        return false;
+    }
+
+    public void flattenSymbolTable(boolean flattenAllTables) {
+        if (!flattenAllTables) {
             List<Symbol> newSymbols = new ArrayList<>();
-            if(this.symbolTable != null){
+            if (this.symbolTable != null) {
                 // Just replace "symbols" with the symbols in this object's
                 // symbol table. Can't just work from symbolTable map since
                 // we need to retain duplicate parameters.
-                for(int i = 0; i < symbols.size(); i++){
-                    Symbol symbol = symbols.get(i);
-                    if(symbol.getContainingTable() == this){
+                for (Symbol symbol : symbols) {
+                    if (symbol.getContainingTable() == this) {
                         newSymbols.add(symbol);
                     }
                 }
@@ -271,43 +365,50 @@ public class ScriptNode extends Scope{
         }
         variableNames = new String[symbols.size()];
         isConsts = new boolean[symbols.size()];
-        for(int i = 0; i < symbols.size(); i++){
+        for (int i = 0; i < symbols.size(); i++) {
             Symbol symbol = symbols.get(i);
             variableNames[i] = symbol.getName();
-            isConsts[i] = symbol.getDeclType() == Token.CONST;
+            isConsts[i] = symbol.getDeclType() == Symbol.Type.CONST;
             symbol.setIndex(i);
         }
     }
 
-    public Object getCompilerData(){
+    public Object getCompilerData() {
         return compilerData;
     }
 
-    public void setCompilerData(Object data){
+    public void setCompilerData(Object data) {
         assertNotNull(data);
         // Can only call once
-        if(compilerData != null)
-            throw new IllegalStateException();
+        if (compilerData != null) throw new IllegalStateException();
         compilerData = data;
     }
 
-    public String getNextTempName(){
+    public String getNextTempName() {
         return "$" + tempNumber++;
     }
 
-    public void setInStrictMode(boolean inStrictMode){
+    public void setInStrictMode(boolean inStrictMode) {
         this.inStrictMode = inStrictMode;
     }
 
-    public boolean isInStrictMode(){
+    public boolean isInStrictMode() {
         return inStrictMode;
     }
 
+    public boolean isMethodDefinition() {
+        return isMethodDefinition;
+    }
+
+    public void setMethodDefinition(boolean methodDefinition) {
+        isMethodDefinition = methodDefinition;
+    }
+
     @Override
-    public void visit(NodeVisitor v){
-        if(v.visit(this)){
-            for(Node kid : this){
-                if(kid instanceof AstNode) ((AstNode)kid).visit(v);
+    public void visit(NodeVisitor v) {
+        if (v.visit(this)) {
+            for (Node kid : this) {
+                ((AstNode) kid).visit(v);
             }
         }
     }

@@ -1,47 +1,119 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-import java.lang.reflect.*;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  * Avoid loading classes unless they are used.
  *
- * <p> This improves startup time and average memory usage.
+ * <p>This improves startup time and average memory usage.
  */
-public final class LazilyLoadedCtor{
+public final class LazilyLoadedCtor<T extends PropHolder<T>> implements Serializable {
+    @Serial private static final long serialVersionUID = -1531091529063000542L;
     private static final int STATE_BEFORE_INIT = 0;
     private static final int STATE_INITIALIZING = 1;
     private static final int STATE_WITH_VALUE = 2;
 
-    private final ScriptableObject scope;
+    private final SlotMapOwner<T> scope;
+    private final Initializable initializer;
     private final String propertyName;
-    private final String className;
     private final boolean sealed;
+    private final boolean privileged;
     private Object initializedValue;
     private int state;
 
-    LazilyLoadedCtor(ScriptableObject scope, String propertyName, String className, boolean sealed){
+    /**
+     * Create a constructor using a lambda function. The lambda should initialize the new value
+     * however it needs and then return the value. The lambda may also return null, which indicates
+     * that it stored the necessary property (and possibly other properties) in the scope itself.
+     * This is legacy behavior used by some initializers that register many objects in a single
+     * initialization function.
+     */
+    public LazilyLoadedCtor(
+            SlotMapOwner<T> scope,
+            String propertyName,
+            boolean sealed,
+            boolean privileged,
+            Initializable initializer) {
         this.scope = scope;
         this.propertyName = propertyName;
-        this.className = className;
         this.sealed = sealed;
+        this.privileged = privileged;
         this.state = STATE_BEFORE_INIT;
+        this.initializer = initializer;
 
         scope.addLazilyInitializedValue(propertyName, 0, this, ScriptableObject.DONTENUM);
     }
 
-    void init(){
-        synchronized(this){
-            if(state == STATE_INITIALIZING)
-                throw new IllegalStateException(
-                "Recursive initialization for " + propertyName);
-            if(state == STATE_BEFORE_INIT){
+    /**
+     * Create a constructor using a lambda function. The lambda should initialize the new value
+     * however it needs and then return the value. The lambda may also return null, which indicates
+     * that it stored the necessary property (and possibly other properties) in the scope itself.
+     * This is legacy behavior used by some initializers that register many objects in a single
+     * initialization function.
+     */
+    public LazilyLoadedCtor(
+            SlotMapOwner<T> scope,
+            String propertyName,
+            boolean sealed,
+            Initializable initializer,
+            boolean privileged) {
+        this(scope, propertyName, sealed, privileged, initializer);
+    }
+
+    /**
+     * Create a constructor that loads via reflection, looking for an "init" method on the class.
+     * This is a legacy mechanism.
+     */
+    public LazilyLoadedCtor(
+            SlotMapOwner<T> scope, String propertyName, String className, boolean sealed) {
+        this(scope, propertyName, className, sealed, false);
+    }
+
+    /**
+     * Create a constructor that loads via reflection, looking for an "init" method on the class.
+     * This is a legacy mechanism.
+     */
+    public LazilyLoadedCtor(
+            SlotMapOwner<T> scope,
+            String propertyName,
+            String className,
+            boolean sealed,
+            boolean privileged) {
+        this(
+                scope,
+                propertyName,
+                sealed,
+                privileged,
+                (Context lcx, VarScope lscope, boolean lsealed) ->
+                        buildUsingReflection(lscope, className, propertyName, lsealed));
+    }
+
+    void init() {
+        synchronized (this) {
+            if (state == STATE_INITIALIZING)
+                throw new IllegalStateException("Recursive initialization for " + propertyName);
+            if (state == STATE_BEFORE_INIT) {
                 state = STATE_INITIALIZING;
                 // Set value now to have something to set in finally block if
                 // buildValue throws.
                 Object value = Scriptable.NOT_FOUND;
-                try{
+                try {
                     value = buildValue();
-                }finally{
+                } finally {
                     initializedValue = value;
                     state = STATE_WITH_VALUE;
                 }
@@ -49,44 +121,77 @@ public final class LazilyLoadedCtor{
         }
     }
 
-    Object getValue(){
-        if(state != STATE_WITH_VALUE)
-            throw new IllegalStateException(propertyName);
+    Object getValue() {
+        if (state != STATE_WITH_VALUE) throw new IllegalStateException(propertyName);
         return initializedValue;
     }
 
-    private Object buildValue(){
-        return buildValue0();
+    private Object buildValue() {
+
+        if (privileged) {
+            return AccessController.doPrivileged(
+                    (PrivilegedAction<Object>) () -> buildValueInternal());
+        }
+        return buildValueInternal();
     }
 
-    private Object buildValue0(){
+    @SuppressWarnings("unchecked")
+    private Object buildValueInternal() {
+        Context cx = Context.getCurrentContext();
+        Object value = initializer.initialize(cx, (VarScope) scope, sealed);
+        if (value != null) {
+            return value;
+        }
+        return scope.get(propertyName, (T) scope);
+    }
+
+    private static Object buildUsingReflection(
+            VarScope scope, String className, String propertyName, boolean sealed) {
         Class<? extends Scriptable> cl = cast(Kit.classOrNull(className));
-        if(cl != null){
-            try{
-                Object value = ScriptableObject.buildClassCtor(scope, cl,
-                sealed, false);
-                if(value != null){
+        if (cl != null) {
+            try {
+                Object value = ScriptableObject.buildClassCtor(scope, cl, sealed, false);
+                if (value != null) {
                     return value;
                 }
                 // cl has own static initializer which is expected
                 // to set the property on its own.
                 value = scope.get(propertyName, scope);
-                if(value != Scriptable.NOT_FOUND)
-                    return value;
-            }catch(InvocationTargetException ex){
+                if (value != Scriptable.NOT_FOUND) return value;
+            } catch (InvocationTargetException ex) {
                 Throwable target = ex.getTargetException();
-                if(target instanceof RuntimeException){
-                    throw (RuntimeException)target;
+                if (target instanceof RuntimeException) {
+                    throw (RuntimeException) target;
                 }
-            }catch(Exception ex){
+            } catch (RhinoException
+                    | InstantiationException
+                    | IllegalAccessException
+                    | SecurityException ex) {
+                // Ignore, which is the legacy behavior
             }
         }
         return Scriptable.NOT_FOUND;
     }
 
-    @SuppressWarnings({"unchecked"})
-    private Class<? extends Scriptable> cast(Class<?> cl){
-        return (Class<? extends Scriptable>)cl;
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Scriptable> cast(Class<?> cl) {
+        return (Class<? extends Scriptable>) cl;
     }
 
+    @Serial
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        Context.checkDeserializationEnabled();
+        stream.defaultReadObject();
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream stream) throws IOException {
+        Context.checkSerializationEnabled();
+        stream.defaultWriteObject();
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("Missing serialized Rhino object data");
+    }
 }

@@ -1,302 +1,424 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-/**
- * Additional interpreter-specific codes
- */
-abstract class Icode{
+/** Additional interpreter-specific codes */
+abstract class Icode {
 
     static final int
 
-    // delete operator used on a name
-    Icode_DELNAME = 0,
+            // delete operator used on a name
+            DELNAME = 0,
 
-    // Stack: ... value1 -> ... value1 value1
-    Icode_DUP = -1,
+            // Stack: ... value1 -> ... value1 value1
+            DUP = DELNAME - 1,
 
-    // Stack: ... value2 value1 -> ... value2 value1 value2 value1
-    Icode_DUP2 = -2,
+            // Stack: ... value2 value1 -> ... value2 value1 value2 value1
+            DUP2 = DUP - 1,
 
-    // Stack: ... value2 value1 -> ... value1 value2
-    Icode_SWAP = -3,
+            // Stack: ... value2 value1 -> ... value1 value2
+            SWAP = DUP2 - 1,
 
-    // Stack: ... value1 -> ...
-    Icode_POP = -4,
+            // Stack: ... value1 -> ...
+            POP = SWAP - 1,
 
-    // Store stack top into return register and then pop it
-    Icode_POP_RESULT = -5,
+            // Store stack top into return register and then pop it
+            POP_RESULT = POP - 1,
 
-    // To jump conditionally and pop additional stack value
-    Icode_IFEQ_POP = -6,
+            // To jump conditionally and pop additional stack value
+            IFEQ_POP = POP_RESULT - 1,
 
-    // various types of ++/--
-    Icode_VAR_INC_DEC = -7,
-    Icode_NAME_INC_DEC = -8,
-    Icode_PROP_INC_DEC = -9,
-    Icode_ELEM_INC_DEC = -10,
-    Icode_REF_INC_DEC = -11,
+            // various types of ++/--
+            VAR_INC_DEC = IFEQ_POP - 1,
+            NAME_INC_DEC = VAR_INC_DEC - 1,
+            PROP_INC_DEC = NAME_INC_DEC - 1,
+            ELEM_INC_DEC = PROP_INC_DEC - 1,
+            REF_INC_DEC = ELEM_INC_DEC - 1,
 
-    // load/save scope from/to local
-    Icode_SCOPE_LOAD = -12,
-    Icode_SCOPE_SAVE = -13,
+            // load/save scope from/to local
+            SCOPE_LOAD = REF_INC_DEC - 1,
+            SCOPE_SAVE = SCOPE_LOAD - 1,
+            TYPEOFNAME = SCOPE_SAVE - 1,
 
-    Icode_TYPEOFNAME = -14,
+            // helper for function calls
+            NAME_AND_THIS = TYPEOFNAME - 1,
+            PROP_AND_THIS = NAME_AND_THIS - 1,
+            ELEM_AND_THIS = PROP_AND_THIS - 1,
+            VALUE_AND_THIS = ELEM_AND_THIS - 1,
+            NAME_AND_THIS_OPTIONAL = VALUE_AND_THIS - 1,
+            PROP_AND_THIS_OPTIONAL = NAME_AND_THIS_OPTIONAL - 1,
+            ELEM_AND_THIS_OPTIONAL = PROP_AND_THIS_OPTIONAL - 1,
+            VALUE_AND_THIS_OPTIONAL = ELEM_AND_THIS_OPTIONAL - 1,
 
-    // helper for function calls
-    Icode_NAME_AND_THIS = -15,
-    Icode_PROP_AND_THIS = -16,
-    Icode_ELEM_AND_THIS = -17,
-    Icode_VALUE_AND_THIS = -18,
+            // Create closure object for nested functions
+            CLOSURE_EXPR = VALUE_AND_THIS_OPTIONAL - 1,
+            CLOSURE_STMT = CLOSURE_EXPR - 1,
 
-    // Create closure object for nested functions
-    Icode_CLOSURE_EXPR = -19,
-    Icode_CLOSURE_STMT = -20,
+            // Special calls
+            CALLSPECIAL = CLOSURE_STMT - 1,
+            CALLSPECIAL_OPTIONAL = CALLSPECIAL - 1,
 
-    // Special calls
-    Icode_CALLSPECIAL = -21,
+            // To return undefined value
+            RETUNDEF = CALLSPECIAL_OPTIONAL - 1,
 
-    // To return undefined value
-    Icode_RETUNDEF = -22,
+            // Exception handling implementation
+            GOSUB = RETUNDEF - 1,
+            STARTSUB = GOSUB - 1,
+            RETSUB = STARTSUB - 1,
 
-    // Exception handling implementation
-    Icode_GOSUB = -23,
-    Icode_STARTSUB = -24,
-    Icode_RETSUB = -25,
+            // To indicating a line number change in icodes.
+            LINE = RETSUB - 1,
 
-    // To indicating a line number change in icodes.
-    Icode_LINE = -26,
+            // To store shorts and ints inline
+            SHORTNUMBER = LINE - 1,
+            INTNUMBER = SHORTNUMBER - 1,
 
-    // To store shorts and ints inline
-    Icode_SHORTNUMBER = -27,
-    Icode_INTNUMBER = -28,
+            // To create and populate array to hold values for [] and {} literals
+            LITERAL_NEW_OBJECT = INTNUMBER - 1,
+            LITERAL_NEW_ARRAY = LITERAL_NEW_OBJECT - 1,
+            LITERAL_SET = LITERAL_NEW_ARRAY - 1,
+            METHOD_EXPR = LITERAL_SET - 1,
 
-    // To create and populate array to hold values for [] and {} literals
-    Icode_LITERAL_NEW = -29,
-    Icode_LITERAL_SET = -30,
+            // Array literal with skipped index like [1,,2]
+            SPARE_ARRAYLIT = METHOD_EXPR - 1,
 
-    // Array literal with skipped index like [1,,2]
-    Icode_SPARE_ARRAYLIT = -31,
+            // Load index register to prepare for the following index operation
+            REG_IND_C0 = SPARE_ARRAYLIT - 1,
+            REG_IND_C1 = REG_IND_C0 - 1,
+            REG_IND_C2 = REG_IND_C1 - 1,
+            REG_IND_C3 = REG_IND_C2 - 1,
+            REG_IND_C4 = REG_IND_C3 - 1,
+            REG_IND_C5 = REG_IND_C4 - 1,
+            REG_IND1 = REG_IND_C5 - 1,
+            REG_IND2 = REG_IND1 - 1,
+            REG_IND4 = REG_IND2 - 1,
 
-    // Load index register to prepare for the following index operation
-    Icode_REG_IND_C0 = -32,
-    Icode_REG_IND_C1 = -33,
-    Icode_REG_IND_C2 = -34,
-    Icode_REG_IND_C3 = -35,
-    Icode_REG_IND_C4 = -36,
-    Icode_REG_IND_C5 = -37,
-    Icode_REG_IND1 = -38,
-    Icode_REG_IND2 = -39,
-    Icode_REG_IND4 = -40,
+            // Load string register to prepare for the following string operation
+            REG_STR_C0 = REG_IND4 - 1,
+            REG_STR_C1 = REG_STR_C0 - 1,
+            REG_STR_C2 = REG_STR_C1 - 1,
+            REG_STR_C3 = REG_STR_C2 - 1,
+            REG_STR1 = REG_STR_C3 - 1,
+            REG_STR2 = REG_STR1 - 1,
+            REG_STR4 = REG_STR2 - 1,
 
-    // Load string register to prepare for the following string operation
-    Icode_REG_STR_C0 = -41,
-    Icode_REG_STR_C1 = -42,
-    Icode_REG_STR_C2 = -43,
-    Icode_REG_STR_C3 = -44,
-    Icode_REG_STR1 = -45,
-    Icode_REG_STR2 = -46,
-    Icode_REG_STR4 = -47,
+            // Version of getvar/setvar that read var index directly from bytecode
+            GETVAR1 = REG_STR4 - 1,
+            SETVAR1 = GETVAR1 - 1,
 
-    // Version of getvar/setvar that read var index directly from bytecode
-    Icode_GETVAR1 = -48,
-    Icode_SETVAR1 = -49,
+            // Load undefined
+            UNDEF = SETVAR1 - 1,
+            ZERO = UNDEF - 1,
+            ONE = ZERO - 1,
 
-    // Load undefined
-    Icode_UNDEF = -50,
-    Icode_ZERO = -51,
-    Icode_ONE = -52,
+            // entrance and exit from .()
+            ENTERDQ = ONE - 1,
+            LEAVEDQ = ENTERDQ - 1,
+            TAIL_CALL = LEAVEDQ - 1,
 
-    // entrance and exit from .()
-    Icode_ENTERDQ = -53,
-    Icode_LEAVEDQ = -54,
+            // Clear local to allow GC its context
+            LOCAL_CLEAR = TAIL_CALL - 1,
 
-    Icode_TAIL_CALL = -55,
+            // Literal get/set
+            LITERAL_GETTER = LOCAL_CLEAR - 1,
+            LITERAL_SETTER = LITERAL_GETTER - 1,
 
-    // Clear local to allow GC its context
-    Icode_LOCAL_CLEAR = -56,
+            // const
+            SETCONST = LITERAL_SETTER - 1,
+            SETCONSTVAR = SETCONST - 1,
+            SETCONSTVAR1 = SETCONSTVAR - 1,
 
-    // Literal get/set
-    Icode_LITERAL_GETTER = -57,
-    Icode_LITERAL_SETTER = -58,
+            // Generator opcodes (along with Token.YIELD)
+            GENERATOR = SETCONSTVAR1 - 1,
+            GENERATOR_END = GENERATOR - 1,
+            DEBUGGER = GENERATOR_END - 1,
+            GENERATOR_RETURN = DEBUGGER - 1,
+            YIELD_STAR = GENERATOR_RETURN - 1,
 
-    // const
-    Icode_SETCONST = -59,
-    Icode_SETCONSTVAR = -60,
-    Icode_SETCONSTVAR1 = -61,
+            // Load BigInt register to prepare for the following BigInt operation
+            REG_BIGINT_C0 = YIELD_STAR - 1,
+            REG_BIGINT_C1 = REG_BIGINT_C0 - 1,
+            REG_BIGINT_C2 = REG_BIGINT_C1 - 1,
+            REG_BIGINT_C3 = REG_BIGINT_C2 - 1,
+            REG_BIGINT1 = REG_BIGINT_C3 - 1,
+            REG_BIGINT2 = REG_BIGINT1 - 1,
+            REG_BIGINT4 = REG_BIGINT2 - 1,
 
-    // Generator opcodes (along with Token.YIELD)
-    Icode_GENERATOR = -62,
-    Icode_GENERATOR_END = -63,
+            // Call to GetTemplateLiteralCallSite
+            TEMPLATE_LITERAL_CALLSITE = REG_BIGINT4 - 1,
+            LITERAL_KEY_SET = TEMPLATE_LITERAL_CALLSITE - 1,
 
-    Icode_DEBUGGER = -64,
+            // Jump if stack head is null or undefined
+            IF_NULL_UNDEF = LITERAL_KEY_SET - 1,
+            IF_NOT_NULL_UNDEF = IF_NULL_UNDEF - 1,
 
-    Icode_GENERATOR_RETURN = -65,
-    Icode_YIELD_STAR = -66,
+            // Call a method on the super object, i.e. super.foo()
+            CALL_ON_SUPER = IF_NOT_NULL_UNDEF - 1,
 
-    // Last icode
-    MIN_ICODE = -66;
+            // delete super.prop
+            DELPROP_SUPER = CALL_ON_SUPER - 1,
 
-    static String bytecodeName(int bytecode){
-        if(!validBytecode(bytecode)){
+            // spread
+            SPREAD = DELPROP_SUPER - 1,
+
+            // object rest - create object excluding extracted keys
+            OBJECT_REST = SPREAD - 1,
+
+            // Create an uninitialized const binding in the current scope
+            DEF_CONST = OBJECT_REST - 1,
+
+            // block scoped bindings held in flattened slots
+            INITCONSTVAR = DEF_CONST - 1,
+            RESETVAR = INITCONSTVAR - 1,
+
+            // replace the current block scope with a copy of itself
+            SCOPE_REPLACE = RESETVAR - 1,
+
+            // ToNumeric of the top of the stack
+            TO_NUMERIC = SCOPE_REPLACE - 1,
+
+            // ++ or -- of the numeric value on top of the stack; operand is the ++/-- type
+            NUMERIC_INC_DEC = TO_NUMERIC - 1,
+
+            // Copy the top of the stack below the two values beneath it: [a, b, c] -> [c, a, b, c]
+            DUP_X1 = NUMERIC_INC_DEC - 1,
+            DUP_X2 = DUP_X1 - 1,
+
+            // Call an Intrinsics helper; operand is the intrinsic id byte
+            INTRINSIC = DUP_X2 - 1,
+
+            // Last icode
+            MIN_ICODE = INTRINSIC;
+
+    static String bytecodeName(int bytecode) {
+        if (!validBytecode(bytecode)) {
             throw new IllegalArgumentException(String.valueOf(bytecode));
         }
 
-        if(!Token.printICode){
+        if (!Token.printICode) {
             return String.valueOf(bytecode);
         }
 
-        if(validTokenCode(bytecode)){
+        if (validTokenCode(bytecode)) {
             return Token.name(bytecode);
         }
 
-        switch(bytecode){
-            case Icode_DUP:
+        switch (bytecode) {
+            case DELNAME:
+                return "DELNAME";
+            case DUP:
                 return "DUP";
-            case Icode_DUP2:
+            case DUP2:
                 return "DUP2";
-            case Icode_SWAP:
+            case DUP_X1:
+                return "DUP_X1";
+            case DUP_X2:
+                return "DUP_X2";
+            case INTRINSIC:
+                return "INTRINSIC";
+            case SWAP:
                 return "SWAP";
-            case Icode_POP:
+            case POP:
                 return "POP";
-            case Icode_POP_RESULT:
+            case POP_RESULT:
                 return "POP_RESULT";
-            case Icode_IFEQ_POP:
+            case IFEQ_POP:
                 return "IFEQ_POP";
-            case Icode_VAR_INC_DEC:
+            case VAR_INC_DEC:
                 return "VAR_INC_DEC";
-            case Icode_NAME_INC_DEC:
+            case NAME_INC_DEC:
                 return "NAME_INC_DEC";
-            case Icode_PROP_INC_DEC:
+            case PROP_INC_DEC:
                 return "PROP_INC_DEC";
-            case Icode_ELEM_INC_DEC:
+            case ELEM_INC_DEC:
                 return "ELEM_INC_DEC";
-            case Icode_REF_INC_DEC:
+            case REF_INC_DEC:
                 return "REF_INC_DEC";
-            case Icode_SCOPE_LOAD:
+            case SCOPE_LOAD:
                 return "SCOPE_LOAD";
-            case Icode_SCOPE_SAVE:
+            case SCOPE_SAVE:
                 return "SCOPE_SAVE";
-            case Icode_TYPEOFNAME:
+            case TYPEOFNAME:
                 return "TYPEOFNAME";
-            case Icode_NAME_AND_THIS:
+            case NAME_AND_THIS:
                 return "NAME_AND_THIS";
-            case Icode_PROP_AND_THIS:
+            case PROP_AND_THIS:
                 return "PROP_AND_THIS";
-            case Icode_ELEM_AND_THIS:
+            case ELEM_AND_THIS:
                 return "ELEM_AND_THIS";
-            case Icode_VALUE_AND_THIS:
+            case VALUE_AND_THIS:
                 return "VALUE_AND_THIS";
-            case Icode_CLOSURE_EXPR:
+            case NAME_AND_THIS_OPTIONAL:
+                return "NAME_AND_THIS_OPTIONAL";
+            case PROP_AND_THIS_OPTIONAL:
+                return "PROP_AND_THIS_OPTIONAL";
+            case ELEM_AND_THIS_OPTIONAL:
+                return "ELEM_AND_THIS_OPTIONAL";
+            case VALUE_AND_THIS_OPTIONAL:
+                return "VALUE_AND_THIS_OPTIONAL";
+            case CLOSURE_EXPR:
                 return "CLOSURE_EXPR";
-            case Icode_CLOSURE_STMT:
+            case CLOSURE_STMT:
                 return "CLOSURE_STMT";
-            case Icode_CALLSPECIAL:
+            case CALLSPECIAL:
                 return "CALLSPECIAL";
-            case Icode_RETUNDEF:
+            case CALLSPECIAL_OPTIONAL:
+                return "CALLSPECIAL_OPTIONAL";
+            case RETUNDEF:
                 return "RETUNDEF";
-            case Icode_GOSUB:
+            case GOSUB:
                 return "GOSUB";
-            case Icode_STARTSUB:
+            case STARTSUB:
                 return "STARTSUB";
-            case Icode_RETSUB:
+            case RETSUB:
                 return "RETSUB";
-            case Icode_LINE:
+            case LINE:
                 return "LINE";
-            case Icode_SHORTNUMBER:
+            case SHORTNUMBER:
                 return "SHORTNUMBER";
-            case Icode_INTNUMBER:
+            case INTNUMBER:
                 return "INTNUMBER";
-            case Icode_LITERAL_NEW:
-                return "LITERAL_NEW";
-            case Icode_LITERAL_SET:
+            case LITERAL_NEW_OBJECT:
+                return "LITERAL_NEW_OBJECT";
+            case LITERAL_NEW_ARRAY:
+                return "LITERAL_NEW_ARRAY";
+            case LITERAL_SET:
                 return "LITERAL_SET";
-            case Icode_SPARE_ARRAYLIT:
+            case METHOD_EXPR:
+                return "METHOD_EXPR";
+            case SPARE_ARRAYLIT:
                 return "SPARE_ARRAYLIT";
-            case Icode_REG_IND_C0:
+            case REG_IND_C0:
                 return "REG_IND_C0";
-            case Icode_REG_IND_C1:
+            case REG_IND_C1:
                 return "REG_IND_C1";
-            case Icode_REG_IND_C2:
+            case REG_IND_C2:
                 return "REG_IND_C2";
-            case Icode_REG_IND_C3:
+            case REG_IND_C3:
                 return "REG_IND_C3";
-            case Icode_REG_IND_C4:
+            case REG_IND_C4:
                 return "REG_IND_C4";
-            case Icode_REG_IND_C5:
+            case REG_IND_C5:
                 return "REG_IND_C5";
-            case Icode_REG_IND1:
+            case REG_IND1:
                 return "LOAD_IND1";
-            case Icode_REG_IND2:
+            case REG_IND2:
                 return "LOAD_IND2";
-            case Icode_REG_IND4:
+            case REG_IND4:
                 return "LOAD_IND4";
-            case Icode_REG_STR_C0:
+            case REG_STR_C0:
                 return "REG_STR_C0";
-            case Icode_REG_STR_C1:
+            case REG_STR_C1:
                 return "REG_STR_C1";
-            case Icode_REG_STR_C2:
+            case REG_STR_C2:
                 return "REG_STR_C2";
-            case Icode_REG_STR_C3:
+            case REG_STR_C3:
                 return "REG_STR_C3";
-            case Icode_REG_STR1:
+            case REG_STR1:
                 return "LOAD_STR1";
-            case Icode_REG_STR2:
+            case REG_STR2:
                 return "LOAD_STR2";
-            case Icode_REG_STR4:
+            case REG_STR4:
                 return "LOAD_STR4";
-            case Icode_GETVAR1:
+            case GETVAR1:
                 return "GETVAR1";
-            case Icode_SETVAR1:
+            case SETVAR1:
                 return "SETVAR1";
-            case Icode_UNDEF:
+            case UNDEF:
                 return "UNDEF";
-            case Icode_ZERO:
+            case ZERO:
                 return "ZERO";
-            case Icode_ONE:
+            case ONE:
                 return "ONE";
-            case Icode_ENTERDQ:
+            case ENTERDQ:
                 return "ENTERDQ";
-            case Icode_LEAVEDQ:
+            case LEAVEDQ:
                 return "LEAVEDQ";
-            case Icode_TAIL_CALL:
+            case TAIL_CALL:
                 return "TAIL_CALL";
-            case Icode_LOCAL_CLEAR:
+            case LOCAL_CLEAR:
                 return "LOCAL_CLEAR";
-            case Icode_LITERAL_GETTER:
+            case LITERAL_GETTER:
                 return "LITERAL_GETTER";
-            case Icode_LITERAL_SETTER:
+            case LITERAL_SETTER:
                 return "LITERAL_SETTER";
-            case Icode_SETCONST:
+            case SETCONST:
                 return "SETCONST";
-            case Icode_SETCONSTVAR:
+            case SETCONSTVAR:
                 return "SETCONSTVAR";
-            case Icode_SETCONSTVAR1:
+            case SETCONSTVAR1:
                 return "SETCONSTVAR1";
-            case Icode_GENERATOR:
+            case INITCONSTVAR:
+                return "INITCONSTVAR";
+            case RESETVAR:
+                return "RESETVAR";
+            case SCOPE_REPLACE:
+                return "SCOPE_REPLACE";
+            case GENERATOR:
                 return "GENERATOR";
-            case Icode_GENERATOR_END:
+            case GENERATOR_END:
                 return "GENERATOR_END";
-            case Icode_DEBUGGER:
+            case DEBUGGER:
                 return "DEBUGGER";
-            case Icode_GENERATOR_RETURN:
+            case GENERATOR_RETURN:
                 return "GENERATOR_RETURN";
-            case Icode_YIELD_STAR:
+            case YIELD_STAR:
                 return "YIELD_STAR";
+            case REG_BIGINT_C0:
+                return "REG_BIGINT_C0";
+            case REG_BIGINT_C1:
+                return "REG_BIGINT_C1";
+            case REG_BIGINT_C2:
+                return "REG_BIGINT_C2";
+            case REG_BIGINT_C3:
+                return "REG_BIGINT_C3";
+            case REG_BIGINT1:
+                return "LOAD_BIGINT1";
+            case REG_BIGINT2:
+                return "LOAD_BIGINT2";
+            case REG_BIGINT4:
+                return "LOAD_BIGINT4";
+            case TEMPLATE_LITERAL_CALLSITE:
+                return "TEMPLATE_LITERAL_CALLSITE";
+            case LITERAL_KEY_SET:
+                return "LITERAL_KEY_SET";
+            case IF_NULL_UNDEF:
+                return "IF_NULL_UNDEF";
+            case IF_NOT_NULL_UNDEF:
+                return "IF_NOT_NULL_UNDEF";
+            case CALL_ON_SUPER:
+                return "CALL_ON_SUPER";
+            case DELPROP_SUPER:
+                return "DELPROP_SUPER";
+            case SPREAD:
+                return "SPREAD";
+            case OBJECT_REST:
+                return "OBJECT_REST";
+            case DEF_CONST:
+                return "DEF_CONST";
+            case TO_NUMERIC:
+                return "TO_NUMERIC";
+            case NUMERIC_INC_DEC:
+                return "NUMERIC_INC_DEC";
         }
 
         // icode without name
         throw new IllegalStateException(String.valueOf(bytecode));
     }
 
-    static boolean validIcode(int icode){
+    static boolean validIcode(int icode) {
         return MIN_ICODE <= icode && icode <= 0;
     }
 
-    static boolean validTokenCode(int token){
-        return Token.FIRST_BYTECODE_TOKEN <= token
-        && token <= Token.LAST_BYTECODE_TOKEN;
+    static boolean validTokenCode(int token) {
+        return Token.FIRST_BYTECODE_TOKEN <= token && token <= Token.LAST_BYTECODE_TOKEN;
     }
 
-    static boolean validBytecode(int bytecode){
+    static boolean validBytecode(int bytecode) {
         return validIcode(bytecode) || validTokenCode(bytecode);
     }
 }

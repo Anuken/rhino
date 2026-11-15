@@ -1,0 +1,36 @@
+package rhino.lc.type.impl;
+
+import rhino.lc.type.TypeFormatContext;
+
+public abstract class ClassTypeInfo extends TypeInfoBase {
+    private final Class<?> type;
+
+    ClassTypeInfo(Class<?> type) {
+        this.type = type;
+    }
+
+    @Override
+    public final Class<?> asClass() {
+        return type;
+    }
+
+    @Override
+    public boolean is(Class<?> c) {
+        return type == c;
+    }
+
+    @Override
+    public int hashCode() {
+        return type.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return (o == this) || ((o instanceof ClassTypeInfo) && (type == ((ClassTypeInfo) o).type));
+    }
+
+    @Override
+    public String toString(TypeFormatContext ctx) {
+        return ctx.getClassName(this.type);
+    }
+}

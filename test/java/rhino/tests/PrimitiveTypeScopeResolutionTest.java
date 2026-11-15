@@ -1,0 +1,148 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import org.junit.jupiter.api.Test;
+import rhino.Scriptable;
+import rhino.ScriptableObject;
+import rhino.TopLevel;
+import rhino.testutils.Utils;
+
+/**
+ * Unit tests for <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=374918">Bug 374918 - String
+ * primitive prototype wrongly resolved when used with many top scopes</a>
+ *
+ * @author Marc Guillemot
+ */
+public class PrimitiveTypeScopeResolutionTest {
+    /** */
+    @Test
+    public void functionCall() {
+        String str2 =
+                "function f() {\n"
+                        + "String.prototype.foo = function() { return 'from 2' }; \n"
+                        + "var s2 = 's2';\n"
+                        + "var s2Foo = s2.foo();\n"
+                        + "if (s2Foo != 'from 2') throw 's2 got: ' + s2Foo;\n" // fails
+                        + "}";
+
+        String str1 = "String.prototype.foo = function() { return 'from 1'};" + "scope2.f()";
+        testWithTwoScopes(str1, str2);
+    }
+
+    /** */
+    @Test
+    public void propertyAccess() {
+        String str2 =
+                "function f() { String.prototype.foo = 'from 2'; \n"
+                        + "var s2 = 's2';\n"
+                        + "var s2Foo = s2.foo;\n"
+                        + "if (s2Foo != 'from 2') throw 's2 got: ' + s2Foo;\n" // fails
+                        + "}";
+
+        String str1 = "String.prototype.foo = 'from 1'; scope2.f()";
+        testWithTwoScopes(str1, str2);
+    }
+
+    /** */
+    @Test
+    public void elementAccess() {
+        String str2 =
+                "function f() { String.prototype.foo = 'from 2'; \n"
+                        + "var s2 = 's2';\n"
+                        + "var s2Foo = s2['foo'];\n"
+                        + "if (s2Foo != 'from 2') throw 's2 got: ' + s2Foo;\n" // fails
+                        + "}";
+
+        String str1 = "String.prototype.foo = 'from 1'; scope2.f()";
+        testWithTwoScopes(str1, str2);
+    }
+
+    private void testWithTwoScopes(final String scriptScope1, final String scriptScope2) {
+        Utils.runWithAllModes(
+                cx -> {
+                    final TopLevel scope1 = new TopLevel(new MySimpleScriptableObject("scope1"));
+                    cx.initStandardObjects(scope1);
+                    final TopLevel scope2 = new TopLevel(new MySimpleScriptableObject("scope2"));
+                    cx.initStandardObjects(scope2);
+
+                    cx.evaluateString(scope2, scriptScope2, "source2", 1, null);
+
+                    scope1.put("scope2", scope1, scope2.getGlobalThis());
+
+                    return cx.evaluateString(scope1, scriptScope1, "source1", 1, null);
+                });
+    }
+
+    /** Simple utility allowing to better see the concerned scope while debugging */
+    static class MySimpleScriptableObject extends ScriptableObject {
+        private static final long serialVersionUID = 1L;
+        private String label_;
+
+        MySimpleScriptableObject(String label) {
+            label_ = label;
+        }
+
+        @Override
+        public String getClassName() {
+            return "MySimpleScriptableObject";
+        }
+
+        @Override
+        public String toString() {
+            return label_;
+        }
+    }
+
+    public static class MyObject extends ScriptableObject {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String getClassName() {
+            return "MyObject";
+        }
+
+        public Object readPropFoo(final Scriptable s) {
+            return ScriptableObject.getProperty(s, "foo");
+        }
+    }
+
+    /** Test that FunctionObject use the right top scope to convert a primitive to an object */
+    @Test
+    public void functionObjectPrimitiveToObject() throws Exception {
+        final String scriptScope2 =
+                "function f() {\n"
+                        + "String.prototype.foo = 'from 2'; \n"
+                        + "var s2 = 's2';\n"
+                        + "var s2Foo = s2.foo;\n"
+                        + "var s2FooReadByFunction = myObject.readPropFoo(s2);\n"
+                        + "if (s2Foo != s2FooReadByFunction)\n"
+                        + "throw 's2 got: ' + s2FooReadByFunction;\n"
+                        + "}";
+
+        // define object with custom method
+        final MyObject myObject = new MyObject();
+        final String[] functionNames = {"readPropFoo"};
+
+        final String scriptScope1 = "String.prototype.foo = 'from 1'; scope2.f()";
+
+        Utils.runWithAllModes(
+                cx -> {
+                    final TopLevel scope1 = new TopLevel(new MySimpleScriptableObject("scope1"));
+                    cx.initStandardObjects(scope1);
+                    final TopLevel scope2 = new TopLevel(new MySimpleScriptableObject("scope2"));
+                    cx.initStandardObjects(scope2);
+
+                    myObject.defineFunctionProperties(
+                            scope2, functionNames, MyObject.class, ScriptableObject.EMPTY);
+                    scope2.put("myObject", scope2, myObject);
+                    cx.evaluateString(scope2, scriptScope2, "source2", 1, null);
+
+                    scope1.put("scope2", scope1, scope2.getGlobalThis());
+
+                    return cx.evaluateString(scope1, scriptScope1, "source1", 1, null);
+                });
+    }
+}

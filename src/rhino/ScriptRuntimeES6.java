@@ -1,11 +1,63 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-public class ScriptRuntimeES6{
+import rhino.ScriptableObject.DescriptorInfo;
 
-    public static Scriptable requireObjectCoercible(Context cx, Scriptable val, IdFunctionObject idFuncObj){
-        if(val == null || Undefined.isUndefined(val)){
-            throw ScriptRuntime.typeError2("msg.called.null.or.undefined", idFuncObj.getTag(), idFuncObj.getFunctionName());
+public class ScriptRuntimeES6 {
+
+    public static Object requireObjectCoercible(
+            Context cx, Object val, IdFunctionObject idFuncObj) {
+        if (val == null || Undefined.isUndefined(val)) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.called.null.or.undefined",
+                    idFuncObj.getTag(),
+                    idFuncObj.getFunctionName());
         }
         return val;
+    }
+
+    public static Object requireObjectCoercible(
+            Context cx, Object val, Object tag, String functionName) {
+        if (val == null || Undefined.isUndefined(val)) {
+            throw ScriptRuntime.typeErrorById("msg.called.null.or.undefined", tag, functionName);
+        }
+        return val;
+    }
+
+    /** Registers the symbol {@code [Symbol.species]} on the given constructor function. */
+    public static void addSymbolSpecies(Context cx, VarScope scope, ScriptableObject constructor) {
+        DescriptorInfo desc = symbolSpecies(cx, scope, constructor);
+        constructor.defineOwnProperty(cx, SymbolKey.SPECIES, desc, false);
+    }
+
+    public static DescriptorInfo symbolSpecies(
+            Context cx, VarScope scope, ScriptableObject constructor) {
+        return new DescriptorInfo(
+                false,
+                ScriptableObject.NOT_FOUND,
+                true,
+                new LambdaFunction(
+                        scope,
+                        "get [Symbol.species]",
+                        0,
+                        (Context lcx, VarScope lscope, Object thisObj, Object[] args) -> thisObj,
+                        false),
+                ScriptableObject.NOT_FOUND,
+                ScriptableObject.NOT_FOUND);
+    }
+
+    /** Registers the symbol {@code [Symbol.unscopables]} on the given constructor function. */
+    public static void addSymbolUnscopables(
+            Context cx, VarScope scope, ScriptableObject constructor, LazilyLoadedCtor value) {
+        constructor.addLazilyInitializedValue(
+                SymbolKey.UNSCOPABLES,
+                0,
+                value,
+                ScriptableObject.DONTENUM | ScriptableObject.READONLY);
     }
 }

@@ -1,74 +1,82 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
+import rhino.Token;
 
 /**
- * AST node for keyword literals:  currently, {@code this},
- * {@code null}, {@code true}, {@code false}, and {@code debugger}.
- * Node type is one of
- * {@link Token#THIS},
- * {@link Token#NULL},
- * {@link Token#TRUE},
- * {@link Token#FALSE}, or
- * {@link Token#DEBUGGER}.
+ * AST node for keyword literals: currently, {@code this}, {@code super}, {@code null}, {@code
+ * undefined}, {@code true}, {@code false}, {@code debugger}, and {@code new.target}. Node type is
+ * one of {@link Token#THIS}, {@link Token#SUPER}, {@link Token#NULL}, {@link Token#UNDEFINED},
+ * {@link Token#TRUE}, {@link Token#FALSE}, {@link Token#DEBUGGER}, or {@link Token#NEW_TARGET}.
  */
-public class KeywordLiteral extends AstNode{
+public class KeywordLiteral extends AstNode {
 
-    public KeywordLiteral(){
-    }
+    public KeywordLiteral() {}
 
-    public KeywordLiteral(int pos){
+    public KeywordLiteral(int pos) {
         super(pos);
     }
 
-    public KeywordLiteral(int pos, int len){
+    public KeywordLiteral(int pos, int len) {
         super(pos, len);
     }
 
     /**
      * Constructs a new KeywordLiteral
+     *
      * @param nodeType the token type
      */
-    public KeywordLiteral(int pos, int len, int nodeType){
+    public KeywordLiteral(int pos, int len, int nodeType) {
         super(pos, len);
         setType(nodeType);
     }
 
     /**
      * Sets node token type
+     *
      * @throws IllegalArgumentException if {@code nodeType} is unsupported
      */
     @Override
-    public KeywordLiteral setType(int nodeType){
-        if(!(nodeType == Token.THIS
-        || nodeType == Token.NULL
-        || nodeType == Token.TRUE
-        || nodeType == Token.FALSE
-        || nodeType == Token.DEBUGGER))
-            throw new IllegalArgumentException("Invalid node type: "
-            + nodeType);
+    public KeywordLiteral setType(int nodeType) {
+        if (!(nodeType == Token.THIS
+                || nodeType == Token.SUPER
+                || nodeType == Token.NULL
+                || nodeType == Token.UNDEFINED
+                || nodeType == Token.TRUE
+                || nodeType == Token.FALSE
+                || nodeType == Token.DEBUGGER
+                || nodeType == Token.NEW_TARGET))
+            throw new IllegalArgumentException("Invalid node type: " + nodeType);
         type = nodeType;
         return this;
     }
 
-    /**
-     * Returns true if the token type is {@link Token#TRUE} or
-     * {@link Token#FALSE}.
-     */
-    public boolean isBooleanLiteral(){
+    /** Returns true if the token type is {@link Token#TRUE} or {@link Token#FALSE}. */
+    public boolean isBooleanLiteral() {
         return type == Token.TRUE || type == Token.FALSE;
     }
 
     @Override
-    public String toSource(int depth){
+    public String toSource(int depth) {
         StringBuilder sb = new StringBuilder();
         sb.append(makeIndent(depth));
-        switch(getType()){
+        switch (getType()) {
             case Token.THIS:
                 sb.append("this");
                 break;
+            case Token.SUPER:
+                sb.append("super");
+                break;
             case Token.NULL:
                 sb.append("null");
+                break;
+            case Token.UNDEFINED:
+                sb.append("undefined");
                 break;
             case Token.TRUE:
                 sb.append("true");
@@ -79,18 +87,18 @@ public class KeywordLiteral extends AstNode{
             case Token.DEBUGGER:
                 sb.append("debugger;\n");
                 break;
+            case Token.NEW_TARGET:
+                sb.append("new.target");
+                break;
             default:
-                throw new IllegalStateException("Invalid keyword literal type: "
-                + getType());
+                throw new IllegalStateException("Invalid keyword literal type: " + getType());
         }
         return sb.toString();
     }
 
-    /**
-     * Visits this node.  There are no children to visit.
-     */
+    /** Visits this node. There are no children to visit. */
     @Override
-    public void visit(NodeVisitor v){
+    public void visit(NodeVisitor v) {
         v.visit(this);
     }
 }

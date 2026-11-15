@@ -1,0 +1,109 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.regexp;
+
+import java.io.Serial;
+import rhino.ClassDescriptor;
+import rhino.Context;
+import rhino.ES6Iterator;
+import rhino.ScriptRuntime;
+import rhino.Scriptable;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
+
+// See ECMAScript spec 22.2.9.1
+public final class NativeRegExpStringIterator extends ES6Iterator {
+    @Serial private static final long serialVersionUID = -1622794465605583044L;
+    private static final String ITERATOR_TAG = "RegExpStringIterator";
+
+    private static final ClassDescriptor DESCRIPTOR =
+            ES6Iterator.makeDescriptor(ITERATOR_TAG, "RegExp String Iterator");
+
+    private Scriptable regexp;
+    private String string;
+    private boolean global;
+    private boolean fullUnicode;
+    private boolean nextDone;
+    private Object next = null;
+
+    public static void init(Context cx, VarScope scope, boolean sealed) {
+        ES6Iterator.initialize(
+                DESCRIPTOR,
+                cx,
+                (TopLevel) scope,
+                new NativeRegExpStringIterator(),
+                sealed,
+                ITERATOR_TAG);
+    }
+
+    /** Only for constructing the prototype object. */
+    private NativeRegExpStringIterator() {
+        super();
+    }
+
+    public NativeRegExpStringIterator(
+            VarScope scope, Scriptable regexp, String string, boolean global, boolean fullUnicode) {
+        super(scope, ITERATOR_TAG);
+
+        this.regexp = regexp;
+        this.string = string;
+        this.global = global;
+        this.fullUnicode = fullUnicode;
+        this.nextDone = false;
+    }
+
+    @Override
+    public String getClassName() {
+        return "RegExp String Iterator";
+    }
+
+    @Override
+    protected boolean isDone(Context cx, VarScope scope) {
+        // The base class calls _first_ isDone and _then_ nextValue, so we'll just compute the next
+        // value here and return it form "nextValue".
+        // Also, for non-global regexp, we need to return the first match and then "done" on the
+        // next iteration.
+
+        if (nextDone) {
+            return true;
+        }
+
+        next = NativeRegExp.regExpExec(regexp, string, cx, scope);
+        if (next == null) {
+            // Done! Point ii of the spec
+            next = Undefined.instance;
+            nextDone = true;
+            return true;
+        } else if (!global) {
+            // Return false at this iteration, but true at the next. Point iii of the spec
+            nextDone = true;
+            return false;
+        }
+
+        // Increment index if matched empty string, as per the spec, point v.
+        String matchStr = ScriptRuntime.toString(ScriptRuntime.getObjectIndex(next, 0, cx, scope));
+        if (matchStr.isEmpty()) {
+            long thisIndex =
+                    ScriptRuntime.toLength(ScriptRuntime.getObjectProp(regexp, "lastIndex", cx));
+            long nextIndex = ScriptRuntime.advanceStringIndex(string, thisIndex, fullUnicode);
+            ScriptRuntime.setObjectProp(regexp, "lastIndex", nextIndex, cx);
+        }
+
+        return false;
+    }
+
+    @Override
+    protected Object nextValue(Context cx, VarScope scope) {
+        return next;
+    }
+
+    @Override
+    protected String getTag() {
+        return ITERATOR_TAG;
+    }
+}

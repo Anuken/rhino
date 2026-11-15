@@ -1,0 +1,104 @@
+package rhino.lc.type.impl;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import rhino.lc.type.ParameterizedTypeInfo;
+import rhino.lc.type.TypeInfo;
+import rhino.lc.type.TypeInfoFactory;
+import rhino.lc.type.VariableTypeInfo;
+
+public final class ParameterizedTypeInfoImpl extends TypeInfoBase implements ParameterizedTypeInfo {
+    private final TypeInfo ownerType;
+    private final TypeInfo rawType;
+    private final List<TypeInfo> params;
+    private int hashCode;
+    private Map<VariableTypeInfo, TypeInfo> cachedMapping;
+
+    public ParameterizedTypeInfoImpl(TypeInfo ownerType, TypeInfo rawType, List<TypeInfo> params) {
+        this.ownerType = ownerType;
+        this.rawType = rawType;
+        this.params = params;
+        for (var param : params) { // implicit null check on `params`
+            Objects.requireNonNull(param);
+        }
+    }
+
+    @Override
+    public Class<?> asClass() {
+        return rawType.asClass();
+    }
+
+    @Override
+    public boolean is(Class<?> c) {
+        return rawType.is(c);
+    }
+
+    @Override
+    public TypeInfo ownerType() {
+        return ownerType;
+    }
+
+    @Override
+    public TypeInfo param(int index) {
+        if (index < 0 || index >= params.size()) {
+            return TypeInfo.NONE;
+        }
+        var got = params.get(index);
+        return got == TypeInfo.OBJECT ? TypeInfo.NONE : got;
+    }
+
+    @Override
+    public Map<VariableTypeInfo, TypeInfo> extractConsolidationMapping(TypeInfoFactory factory) {
+        if (cachedMapping == null) {
+            cachedMapping = ParameterizedTypeInfo.super.extractConsolidationMapping(factory);
+        }
+        return cachedMapping;
+    }
+
+    @Override
+    public int hashCode() {
+        if (hashCode == 0) {
+            hashCode = rawType.hashCode() * 31 + params.hashCode();
+
+            // make sure computed hashcode is never 0 to prevent computing again
+            if (hashCode == 0) {
+                hashCode = -1;
+            }
+        }
+
+        return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        return (this == object)
+                || ((object instanceof ParameterizedTypeInfoImpl)
+                        && rawType.equals(((ParameterizedTypeInfoImpl) object).rawType)
+                        && params.equals(((ParameterizedTypeInfoImpl) object).params));
+    }
+
+    @Override
+    public TypeInfo rawType() {
+        return rawType;
+    }
+
+    @Override
+    public List<TypeInfo> params() {
+        return params;
+    }
+
+    @Override
+    public Object newArray(int length) {
+        return rawType.newArray(length);
+    }
+
+    @Override
+    public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+        var params = this.params;
+        var consolidated = TypeInfoFactory.consolidateAll(params, mapping);
+        return params == consolidated
+                ? this
+                : new ParameterizedTypeInfoImpl(NONE, rawType, consolidated);
+    }
+}

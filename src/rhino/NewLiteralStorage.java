@@ -1,0 +1,307 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino;
+
+import static rhino.NativeObject.PROTO_PROPERTY;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** Used to store the support structures for a literal object (or array) being built. */
+public abstract class NewLiteralStorage {
+    protected Object[] keys;
+    protected int[] getterSetters;
+    protected Object[] values;
+    protected int index = 0;
+
+    // handling skip indexes with spreads
+    protected int[] skipIndexes = null;
+    protected int[] spreadAdjustments = null; // [sourcePosition] = adjustment
+
+    protected NewLiteralStorage(Object[] ids, int length, boolean createKeys) {
+        int l;
+        if (ids != null) {
+            this.keys = ids;
+            l = ids.length;
+        } else {
+            this.keys = createKeys ? new Object[length] : null;
+            l = length;
+        }
+        this.getterSetters = new int[l];
+        this.values = new Object[l];
+    }
+
+    public void pushValue(Object value) {
+        values[index] = value;
+        attemptToInferFunctionName(value);
+        ++index;
+    }
+
+    public void pushGetter(Object value) {
+        getterSetters[index] = -1;
+        pushValue(value);
+    }
+
+    public void pushSetter(Object value) {
+        getterSetters[index] = +1;
+        pushValue(value);
+    }
+
+    public void pushKey(Object key) {
+        if (key instanceof Symbol) {
+            keys[index] = key;
+        } else {
+            keys[index] = ScriptRuntime.toString(key);
+        }
+    }
+
+    public void setKeyAt(int idx, Object key) {
+        keys[idx] = key;
+    }
+
+    public void setValueAt(int idx, Object value) {
+        values[idx] = value;
+    }
+
+    public void setGetterAt(int idx, Object value) {
+        getterSetters[idx] = -1;
+        values[idx] = value;
+    }
+
+    public void setSetterAt(int idx, Object value) {
+        getterSetters[idx] = +1;
+        values[idx] = value;
+    }
+
+    public void spread(Context cx, VarScope scope, Object source, int sourcePosition) {
+        int indexBefore = index;
+        if (keys == null) {
+            spreadArray(cx, scope, source);
+        } else {
+            spreadObject(cx, scope, source);
+        }
+
+        if (spreadAdjustments != null) {
+            // sourcePosition can exceed the initial spreadAdjustments size when
+            // there are more spreads than holes or when all children are spreads,
+            // because the array was sized to (nonSpreadChildren + holes) which
+            // does not cover sourcePositions beyond that range.
+            if (sourcePosition >= spreadAdjustments.length) {
+                spreadAdjustments = Arrays.copyOf(spreadAdjustments, sourcePosition + 1);
+            }
+            spreadAdjustments[sourcePosition] = index - indexBefore - 1;
+        }
+    }
+
+    private void spreadArray(Context cx, VarScope scope, Object source) {
+        // See ecma-262 2026, 13.2.5.5 (Array Spread). ToObject throws TypeError for null /
+        // undefined; callIterator throws TypeError if @@iterator is missing.
+        Scriptable src = ScriptRuntime.toObject(cx, scope, source);
+        final Object iterator = ScriptRuntime.callIterator(src, cx, scope);
+        List<Object> spreadValues = new ArrayList<>();
+        try (IteratorLikeIterable it = new IteratorLikeIterable(cx, scope, iterator)) {
+            for (Object temp : it) {
+                spreadValues.add(temp);
+            }
+        }
+
+        int spreadSize = spreadValues.size();
+        int newLen = values.length + spreadSize;
+        getterSetters = Arrays.copyOf(getterSetters, newLen);
+        values = Arrays.copyOf(values, newLen);
+
+        for (Object value : spreadValues) {
+            pushValue(value);
+        }
+    }
+
+    private void spreadObject(Context cx, VarScope scope, Object source) {
+        // See ECMAScript 13.2.5.5 (Object Spread)
+        if (source != null && !Undefined.isUndefined(source)) {
+            Scriptable src = ScriptRuntime.toObject(cx, scope, source);
+            Object[] ids;
+            if (src instanceof ScriptableObject) {
+                var scriptable = (ScriptableObject) src;
+                try (var map = scriptable.startCompoundOp(false)) {
+                    ids = scriptable.getIds(map, false, true);
+                }
+            } else {
+                ids = src.getIds();
+            }
+
+            // Resize all the arrays
+            int newLen = values.length + ids.length;
+            keys = Arrays.copyOf(keys, newLen);
+            getterSetters = Arrays.copyOf(getterSetters, newLen);
+            values = Arrays.copyOf(values, newLen);
+
+            // getIds() can only return a string, int or a symbol
+            for (Object id : ids) {
+                Object value = getPropertyById(src, id);
+                pushKey(id);
+                pushValue(value);
+            }
+        }
+    }
+
+    public Object[] getKeys() {
+        return keys;
+    }
+
+    public int[] getGetterSetters() {
+        return getterSetters;
+    }
+
+    public Object[] getValues() {
+        return values;
+    }
+
+    public void setSkipIndexes(int[] skipIndexes) {
+        this.skipIndexes = skipIndexes;
+        // length is the number of children + skips
+        if (skipIndexes != null && skipIndexes.length > 0) {
+            spreadAdjustments = new int[values.length + skipIndexes.length];
+        }
+    }
+
+    public boolean hasSkipIndexes() {
+        return skipIndexes != null;
+    }
+
+    public int[] getAdjustedSkipIndexes() {
+        if (skipIndexes == null) {
+            return null;
+        }
+
+        // Adjust skip indexes based on spread operations
+        int[] adjusted = new int[skipIndexes.length];
+        for (int i = 0; i < skipIndexes.length; i++) {
+            int sourceSkip = skipIndexes[i];
+            int adjustment = 0;
+
+            // Sum up adjustments from all spreads that occurred before this skip position
+            if (spreadAdjustments != null) {
+                for (int sourcePos = 0;
+                        sourcePos < sourceSkip && sourcePos < spreadAdjustments.length;
+                        sourcePos++) {
+                    adjustment += spreadAdjustments[sourcePos];
+                }
+            }
+
+            adjusted[i] = sourceSkip + adjustment;
+        }
+        return adjusted;
+    }
+
+    private Object getPropertyById(Scriptable src, Object id) {
+        if (id instanceof String) {
+            return ScriptableObject.getProperty(src, (String) id);
+        } else if (id instanceof Integer) {
+            return ScriptableObject.getProperty(src, (int) id);
+        } else if (ScriptRuntime.isSymbol(id)) {
+            return ScriptableObject.getProperty(src, (Symbol) id);
+        } else {
+            throw Kit.codeBug();
+        }
+    }
+
+    public static NewLiteralStorage create(Context cx, Object[] ids) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            return new NameInference(ids, -1, false);
+        } else {
+            return new NoInference(ids, -1, false);
+        }
+    }
+
+    public static NewLiteralStorage create(Context cx, int length, boolean createKeys) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            return new NameInference(null, length, createKeys);
+        } else {
+            return new NoInference(null, length, createKeys);
+        }
+    }
+
+    // In version < ES6, we don't do name inference for functions. Thus, we have NewLiteralStorage
+    // as an abstract class, with two subclasses, depending on the language version. In this way, we
+    // pay the cost of the check only once, rather than for each key.
+    protected abstract void attemptToInferFunctionName(Object value);
+
+    private static final class NoInference extends NewLiteralStorage {
+        NoInference(Object[] ids, int length, boolean createKeys) {
+            super(ids, length, createKeys);
+        }
+
+        @Override
+        protected void attemptToInferFunctionName(Object value) {
+            // Do nothing
+        }
+    }
+
+    private static final class NameInference extends NewLiteralStorage {
+        NameInference(Object[] ids, int length, boolean createKeys) {
+            super(ids, length, createKeys);
+        }
+
+        @Override
+        protected void attemptToInferFunctionName(Object value) {
+            if (this.keys == null) {
+                return;
+            }
+            int gs = getterSetters == null ? 0 : getterSetters[index];
+            inferFunctionName(this.keys[index], value, gs);
+        }
+    }
+
+    /**
+     * Set the inferred name on a function value placed under {@code propKey} in an object literal,
+     * matching the semantics of {@code SetFunctionName} (ECMA 9.2.13). Used by both V1 (via {@link
+     * NewLiteralStorage}) and V2 (directly from its ObjectLit instruction).
+     *
+     * @param propKey the property key (String, Symbol, or other id)
+     * @param value the candidate function value
+     * @param getterSetter -1 for getter, +1 for setter, 0 for regular value
+     */
+    public static void inferFunctionName(Object propKey, Object value, int getterSetter) {
+        if (!(value instanceof JSFunction)) {
+            return;
+        }
+        BaseFunction fun = (BaseFunction) value;
+        if (!"".equals(fun.get("name", fun))) {
+            return;
+        }
+
+        String prefix = "";
+        if (getterSetter == -1) {
+            prefix = "get ";
+        } else if (getterSetter == +1) {
+            prefix = "set ";
+        }
+
+        if (propKey instanceof Symbol) {
+            // For symbol keys, valid names are: `[foo]`, `get [foo]`
+            // However `[]` or `get []` aren't, and become `` and `get `
+            String symbolName = ((Symbol) propKey).getName();
+            if (!symbolName.isEmpty()) {
+                fun.setFunctionName(prefix + "[" + symbolName + "]");
+            } else if (!prefix.isEmpty()) {
+                fun.setFunctionName(prefix);
+            }
+        } else {
+            if (!propKey.equals(PROTO_PROPERTY)) {
+                fun.setFunctionName(prefix + propKey);
+            } else {
+                // `__proto__` is, as usual, weird and applies only to methods, meaning:
+                // - { __proto__(){} } infers the name
+                // - { __proto__: function(){} } does not!
+                if (((JSFunction) fun).isShorthand()) {
+                    fun.setFunctionName(prefix + propKey);
+                }
+            }
+        }
+    }
+}

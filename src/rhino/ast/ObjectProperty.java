@@ -1,116 +1,146 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
+import rhino.Token;
 
 /**
- * AST node for a single name:value entry in an Object literal.
- * For simple entries, the node type is {@link Token#COLON}, and
- * the name (left side expression) is either a {@link Name}, a
- * {@link StringLiteral} or a {@link NumberLiteral}.
+ * AST node for a single name:value entry in an Object literal. For simple entries, the node type is
+ * {@link Token#COLON}, and the name (left side expression) is either a {@link Name}, a {@link
+ * StringLiteral}, a {@link NumberLiteral} or a {@link BigIntLiteral}.
  *
- * <p>This node type is also used for getter/setter properties in object
- * literals.  In this case the node bounds include the "get" or "set"
- * keyword.  The left-hand expression in this case is always a
- * {@link Name}, and the overall node type is {@link Token#GET} or
- * {@link Token#SET}, as appropriate.</p>
- * <p>
- * The {@code operatorPosition} field is meaningless if the node is
- * a getter or setter.
+ * <p>This node type is also used for getter/setter properties in object literals. In this case the
+ * node bounds include the "get" or "set" keyword. The left-hand expression in this case is always a
+ * {@link Name}, and the overall node type is {@link Token#GET} or {@link Token#SET}, as
+ * appropriate. The {@code operatorPosition} field is meaningless if the node is a getter or setter.
  *
  * <pre><i>ObjectProperty</i> :
  *       PropertyName <b>:</b> AssignmentExpression
  * <i>PropertyName</i> :
  *       Identifier
  *       StringLiteral
- *       NumberLiteral</pre>
+ *       NumberLiteral
+ *       BigIntLiteral</pre>
  */
-public class ObjectProperty extends InfixExpression{
+public class ObjectProperty extends AbstractObjectProperty {
 
     {
         type = Token.COLON;
     }
 
+    private AstNode key;
+    private AstNode value;
+    private boolean shorthand;
+
     /**
-     * Sets the node type.  Must be one of
-     * {@link Token#COLON}, {@link Token#GET}, or {@link Token#SET}.
+     * Sets the node type. Must be one of {@link Token#COLON}, {@link Token#GET}, or {@link
+     * Token#SET}.
+     *
      * @throws IllegalArgumentException if {@code nodeType} is invalid
      */
-    public void setNodeType(int nodeType){
-        if(nodeType != Token.COLON
-        && nodeType != Token.GET
-        && nodeType != Token.SET
-        && nodeType != Token.METHOD)
-            throw new IllegalArgumentException("invalid node type: "
-            + nodeType);
+    public void setNodeType(int nodeType) {
+        if (nodeType != Token.COLON
+                && nodeType != Token.GET
+                && nodeType != Token.SET
+                && nodeType != Token.METHOD)
+            throw new IllegalArgumentException("invalid node type: " + nodeType);
         setType(nodeType);
     }
 
-    public ObjectProperty(){
-    }
+    public ObjectProperty() {}
 
-    public ObjectProperty(int pos){
+    public ObjectProperty(int pos) {
         super(pos);
     }
 
-    public ObjectProperty(int pos, int len){
-        super(pos, len);
+    public void setKeyAndValue(AstNode key, AstNode value) {
+        assertNotNull(key);
+        assertNotNull(value);
+
+        this.key = key;
+        this.value = value;
+
+        // compute our bounds while children have absolute positions
+        int beg = key.getPosition();
+        int end = value.getPosition() + value.getLength();
+        setBounds(beg, end);
+
+        // this updates their positions to be parent-relative
+        setLineColumnNumber(key.getLineno(), key.getColumn());
+        key.setParent(this);
+        value.setParent(this);
     }
 
-    /**
-     * Marks this node as a "getter" property.
-     */
-    public void setIsGetterMethod(){
+    /** Marks this node as a "getter" property. */
+    public void setIsGetterMethod() {
         type = Token.GET;
     }
 
-    /**
-     * Returns true if this is a getter function.
-     */
-    public boolean isGetterMethod(){
+    /** Returns true if this is a getter function. */
+    public boolean isGetterMethod() {
         return type == Token.GET;
     }
 
-    /**
-     * Marks this node as a "setter" property.
-     */
-    public void setIsSetterMethod(){
+    /** Marks this node as a "setter" property. */
+    public void setIsSetterMethod() {
         type = Token.SET;
     }
 
-    /**
-     * Returns true if this is a setter function.
-     */
-    public boolean isSetterMethod(){
+    /** Returns true if this is a setter function. */
+    public boolean isSetterMethod() {
         return type == Token.SET;
     }
 
-    public void setIsNormalMethod(){
+    public void setIsNormalMethod() {
         type = Token.METHOD;
     }
 
-    public boolean isNormalMethod(){
+    public boolean isNormalMethod() {
         return type == Token.METHOD;
     }
 
-    public boolean isMethod(){
+    public boolean isMethod() {
         return isGetterMethod() || isSetterMethod() || isNormalMethod();
     }
 
+    public AstNode getKey() {
+        return key;
+    }
+
+    public AstNode getValue() {
+        return value;
+    }
+
     @Override
-    public String toSource(int depth){
+    public String toSource(int depth) {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n");
         sb.append(makeIndent(depth + 1));
-        if(isGetterMethod()){
+        if (isGetterMethod()) {
             sb.append("get ");
-        }else if(isSetterMethod()){
+        } else if (isSetterMethod()) {
             sb.append("set ");
         }
-        sb.append(left.toSource(getType() == Token.COLON ? 0 : depth));
-        if(type == Token.COLON){
-            sb.append(": ");
+        sb.append(key.toSource(getType() == Token.COLON ? 0 : depth));
+
+        if (!shorthand) {
+            if (type == Token.COLON) {
+                sb.append(": ");
+            }
+            sb.append(value.toSource(getType() == Token.COLON ? 0 : depth + 1));
         }
-        sb.append(right.toSource(getType() == Token.COLON ? 0 : depth + 1));
         return sb.toString();
+    }
+
+    /** Visits this node, the key, and the value. */
+    @Override
+    public void visit(NodeVisitor v) {
+        if (v.visit(this)) {
+            key.visit(v);
+            value.visit(v);
+        }
     }
 }

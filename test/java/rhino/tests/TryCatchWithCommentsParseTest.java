@@ -1,0 +1,48 @@
+package rhino.tests;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import rhino.CompilerEnvirons;
+import rhino.Parser;
+import rhino.ast.AstRoot;
+import rhino.ast.Comment;
+import rhino.testutils.TestSource;
+
+/**
+ * Tests if comments between try/catch tokens or blocks makes the parsing go wrong. See {@link
+ * https://github.com/mozilla/rhino/issues/803}
+ *
+ * @author Javier Luengo
+ */
+public class TryCatchWithCommentsParseTest {
+
+    @Test
+    public void tryCatchWithCommentsParse() throws IOException {
+        CompilerEnvirons compilerEnv = new CompilerEnvirons();
+        compilerEnv.setRecordingComments(true);
+
+        Parser p = new Parser(compilerEnv);
+        String testJs;
+        try (BufferedReader scriptIn =
+                new BufferedReader(
+                        new FileReader(
+                                TestSource.resolve("testsrc/jstests/trycatchwithcomments.js")))) {
+            testJs = scriptIn.lines().collect(Collectors.joining(System.lineSeparator()));
+        }
+
+        // Parsing of this source should not throw an exception
+        AstRoot ast = p.parse(testJs, "test", 1);
+
+        // Check that exactly all comments were registered in tree
+        int i = 0;
+        for (Comment comment : ast.getComments()) {
+            Assertions.assertEquals(comment.getValue(), "//" + i);
+            i++;
+        }
+        Assertions.assertEquals(i, 15);
+    }
+}

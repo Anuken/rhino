@@ -1,88 +1,108 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.typedarrays;
 
-import rhino.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import rhino.ClassDescriptor;
+import rhino.Context;
+import rhino.JSFunction;
+import rhino.ScriptRuntimeES6;
+import rhino.SymbolKey;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
 /**
  * An array view that stores 8-bit quantities and implements the JavaScript "Int8Array" interface.
  * It also implements List&lt;Byte&gt; for direct manipulation in Java.
  */
+public class NativeInt8Array extends NativeTypedArrayView<Byte> {
+    @Serial private static final long serialVersionUID = 6655250857400433124L;
 
-public class NativeInt8Array
-extends NativeTypedArrayView<Byte>{
     private static final String CLASS_NAME = "Int8Array";
 
-    public NativeInt8Array(){
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                3,
+                                NativeTypedArrayView::typeError,
+                                NativeInt8Array::js_constructor)
+                        .withProp(CTOR, "BYTES_PER_ELEMENT", value(1))
+                        .withProp(PROTO, "BYTES_PER_ELEMENT", value(1))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
     }
 
-    public NativeInt8Array(NativeArrayBuffer ab, int off, int len){
+    public NativeInt8Array() {}
+
+    public NativeInt8Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len);
     }
 
-    public NativeInt8Array(int len){
+    public NativeInt8Array(int len) {
         this(new NativeArrayBuffer(len), 0, len);
     }
 
     @Override
-    public String getClassName(){
+    public String getClassName() {
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        NativeInt8Array a = new NativeInt8Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    public static JSFunction init(Context cx, VarScope scope, boolean sealed) {
+        return NativeTypedArrayView.initSubClass(cx, scope, DESCRIPTOR, sealed);
     }
 
     @Override
-    protected NativeInt8Array construct(NativeArrayBuffer ab, int off, int len){
-        return new NativeInt8Array(ab, off, len);
-    }
-
-    @Override
-    public int getBytesPerElement(){
+    public int getBytesPerElement() {
         return 1;
     }
 
-    @Override
-    protected NativeInt8Array realThis(Scriptable thisObj, IdFunctionObject f){
-        if(!(thisObj instanceof NativeInt8Array)){
-            throw incompatibleCallError(f);
-        }
-        return (NativeInt8Array)thisObj;
+    private static Object js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return NativeTypedArrayView.js_constructor(
+                cx, f, nt, s, thisObj, args, NativeInt8Array::new, 1, TopLevel.Builtins.Int8Array);
     }
 
     @Override
-    protected Object js_get(int index){
-        if(checkIndex(index)){
+    protected Object js_get(int index) {
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readInt8(arrayBuffer.buffer, index + offset);
+        return arrayBuffer.buffer.get(index + offset);
     }
 
     @Override
-    protected Object js_set(int index, Object c){
-        if(checkIndex(index)){
-            return Undefined.instance;
-        }
+    protected Object js_set(int index, Object c) {
         int val = Conversions.toInt8(c);
-        ByteIo.writeInt8(arrayBuffer.buffer, index + offset, val);
+        if (checkIndex(index)) {
+            return Undefined.instance;
+        }
+        arrayBuffer.buffer.put(index + offset, (byte) val);
         return null;
     }
 
     // List implementation (much of it handled by the superclass)
 
     @Override
-    public Byte get(int i){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Byte)js_get(i);
+    public Byte get(int i) {
+        ensureIndex(i);
+        return (Byte) js_get(i);
     }
 
     @Override
-    public Byte set(int i, Byte aByte){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Byte)js_set(i, aByte);
+    public Byte set(int i, Byte aByte) {
+        ensureIndex(i);
+        return (Byte) js_set(i, aByte);
     }
 }

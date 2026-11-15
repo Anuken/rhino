@@ -1,37 +1,48 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-public final class NativeStringIterator extends ES6Iterator{
+import java.io.Serial;
+
+public final class NativeStringIterator extends ES6Iterator {
+    @Serial private static final long serialVersionUID = 6709689999500242078L;
     private static final String ITERATOR_TAG = "StringIterator";
 
-    static void init(ScriptableObject scope, boolean sealed){
-        ES6Iterator.init(scope, sealed, new NativeStringIterator(), ITERATOR_TAG);
+    private static final ClassDescriptor DESCRIPTOR =
+            ES6Iterator.makeDescriptor(ITERATOR_TAG, "String Iterator");
+
+    static void init(Context cx, VarScope scope, boolean sealed) {
+        ES6Iterator.initialize(
+                DESCRIPTOR, cx, (TopLevel) scope, new NativeStringIterator(), sealed, ITERATOR_TAG);
     }
 
-    /**
-     * Only for constructing the prototype object.
-     */
-    private NativeStringIterator(){
+    /** Only for constructing the prototype object. */
+    private NativeStringIterator() {
         super();
     }
 
-    NativeStringIterator(Scriptable scope, Scriptable stringLike){
+    NativeStringIterator(VarScope scope, Object stringLike) {
         super(scope, ITERATOR_TAG);
         this.index = 0;
         this.string = ScriptRuntime.toString(stringLike);
     }
 
     @Override
-    public String getClassName(){
+    public String getClassName() {
         return "String Iterator";
     }
 
     @Override
-    protected boolean isDone(Context cx, Scriptable scope){
+    protected boolean isDone(Context cx, VarScope scope) {
         return index >= string.length();
     }
 
     @Override
-    protected Object nextValue(Context cx, Scriptable scope){
+    protected Object nextValue(Context cx, VarScope scope) {
         int newIndex = string.offsetByCodePoints(index, 1);
         Object value = string.substring(index, newIndex);
         index = newIndex;
@@ -39,7 +50,7 @@ public final class NativeStringIterator extends ES6Iterator{
     }
 
     @Override
-    protected String getTag(){
+    protected String getTag() {
         return ITERATOR_TAG;
     }
 

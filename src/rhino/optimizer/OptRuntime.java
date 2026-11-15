@@ -1,263 +1,419 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.optimizer;
 
-import rhino.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import rhino.Callable;
+import rhino.Context;
+import rhino.ContextFactory;
+import rhino.ES6Generator;
+import rhino.JSFunction;
+import rhino.JavaScriptException;
+import rhino.NativeGenerator;
+import rhino.NativeIterator;
+import rhino.NewLiteralStorage;
+import rhino.Script;
+import rhino.ScriptRuntime;
+import rhino.Scriptable;
+import rhino.ScriptableObject;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
-public final class OptRuntime extends ScriptRuntime{
-    public static final Double zeroObj = 0.0;
-    public static final Double oneObj = 1.0;
-    public static final Double minusOneObj = -1.0;
+public final class OptRuntime extends ScriptRuntime {
+    public static final Integer oneObj = Integer.valueOf(1);
+    public static final Integer minusOneObj = Integer.valueOf(-1);
 
-    /**
-     * Implement ....() call shrinking optimizer code.
-     */
-    public static Object call0(Callable fun, Scriptable thisObj,
-                               Context cx, Scriptable scope){
+    public static void throwTypeErrorById(String id, Object... args) {
+        throw ScriptRuntime.typeErrorById(id, args);
+    }
+
+    /** Implement ....() call shrinking optimizer code. */
+    public static Object call0(Callable fun, Scriptable thisObj, Context cx, VarScope scope) {
         return fun.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
-    /**
-     * Implement ....(arg) call shrinking optimizer code.
-     */
-    public static Object call1(Callable fun, Scriptable thisObj, Object arg0,
-                               Context cx, Scriptable scope){
-        return fun.call(cx, scope, thisObj, new Object[]{arg0});
+    public static Object call0Optional(
+            Callable fun, Scriptable thisObj, Context cx, VarScope scope) {
+        if (fun == null) {
+            return Undefined.instance;
+        }
+        return call0(fun, thisObj, cx, scope);
     }
 
-    /**
-     * Implement ....(arg0, arg1) call shrinking optimizer code.
-     */
-    public static Object call2(Callable fun, Scriptable thisObj,
-                               Object arg0, Object arg1,
-                               Context cx, Scriptable scope){
-        return fun.call(cx, scope, thisObj, new Object[]{arg0, arg1});
+    /** Implement ....(arg) call shrinking optimizer code. */
+    public static Object call1(
+            Callable fun, Scriptable thisObj, Object arg0, Context cx, VarScope scope) {
+        return fun.call(cx, scope, thisObj, new Object[] {arg0});
     }
 
-    /**
-     * Implement ....(arg0, arg1, ...) call shrinking optimizer code.
-     */
-    public static Object callN(Callable fun, Scriptable thisObj,
-                               Object[] args,
-                               Context cx, Scriptable scope){
+    /** Implement ....(arg0, arg1) call shrinking optimizer code. */
+    public static Object call2(
+            Callable fun,
+            Scriptable thisObj,
+            Object arg0,
+            Object arg1,
+            Context cx,
+            VarScope scope) {
+        return fun.call(cx, scope, thisObj, new Object[] {arg0, arg1});
+    }
+
+    /** Implement ....(arg0, arg1, ...) call shrinking optimizer code. */
+    public static Object callN(
+            Callable fun, Scriptable thisObj, Object[] args, Context cx, VarScope scope) {
         return fun.call(cx, scope, thisObj, args);
     }
 
-    /**
-     * Implement name(args) call shrinking optimizer code.
-     */
-    public static Object callName(Object[] args, String name,
-                                  Context cx, Scriptable scope){
+    /** Implement name(args) call shrinking optimizer code. */
+    @Deprecated(since = "1.8.1", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static Object callName(Object[] args, String name, Context cx, VarScope scope) {
         Callable f = getNameFunctionAndThis(name, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, args);
     }
 
-    /**
-     * Implement name() call shrinking optimizer code.
-     */
-    public static Object callName0(String name,
-                                   Context cx, Scriptable scope){
+    /** Implement name() call shrinking optimizer code. */
+    @Deprecated(since = "1.8.1", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static Object callName0(String name, Context cx, VarScope scope) {
         Callable f = getNameFunctionAndThis(name, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
-    /**
-     * Implement x.property() call shrinking optimizer code.
-     */
-    public static Object callProp0(Object value, String property,
-                                   Context cx, Scriptable scope){
+    @Deprecated(since = "1.8.1", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static Object callName0Optional(String name, Context cx, VarScope scope) {
+        Callable f = getNameFunctionAndThisOptional(name, cx, scope);
+        if (f == null) {
+            return Undefined.instance;
+        }
+        Scriptable thisObj = lastStoredScriptable(cx);
+        return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
+    }
+
+    /** Implement x.property() call shrinking optimizer code. */
+    @Deprecated(since = "1.8.1", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static Object callProp0(Object value, String property, Context cx, VarScope scope) {
         Callable f = getPropFunctionAndThis(value, property, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
-    public static Object add(Object val1, double val2){
-        if(val1 instanceof Scriptable)
-            val1 = ((Scriptable)val1).getDefaultValue(null);
-        if(!(val1 instanceof CharSequence))
-            return wrapDouble(toNumber(val1) + val2);
-        return new ConsString((CharSequence)val1, toString(val2));
+    @Deprecated(since = "1.8.1", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static Object callProp0Optional(
+            Object value, String property, Context cx, VarScope scope) {
+        Callable f = getPropFunctionAndThisOptional(value, property, cx, scope);
+        if (f == null) {
+            return Undefined.instance;
+        }
+        Scriptable thisObj = lastStoredScriptable(cx);
+        return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
-    public static Object add(double val1, Object val2){
-        if(val2 instanceof Scriptable)
-            val2 = ((Scriptable)val2).getDefaultValue(null);
-        if(!(val2 instanceof CharSequence))
-            return wrapDouble(toNumber(val2) + val1);
-        return new ConsString(toString(val1), (CharSequence)val2);
+    // Generic implementations of the named dynamic operations (see DynamicOp), which receive the
+    // name last. They reorder arguments to match the ScriptRuntime methods.
+
+    public static Object propGet(Object obj, Context cx, VarScope scope, String name) {
+        return getObjectProp(obj, name, cx, scope);
     }
 
-    public static Object elemIncrDecr(Object obj, double index,
-                                      Context cx, Scriptable scope,
-                                      int incrDecrMask){
-        return ScriptRuntime.elemIncrDecr(obj, index, cx, scope,
-        incrDecrMask);
+    public static Object propGetNoWarn(Object obj, Context cx, VarScope scope, String name) {
+        return getObjectPropNoWarn(obj, name, cx, scope);
     }
 
-    public static Object[] padStart(Object[] currentArgs, int count){
+    public static Object propGetSuper(
+            Object superObj,
+            Context cx,
+            VarScope scope,
+            Object thisObj,
+            boolean noWarn,
+            String name) {
+        return getSuperProp(superObj, name, cx, scope, thisObj, noWarn);
+    }
+
+    public static LookupResult propGetWithThis(
+            Object obj, Context cx, VarScope scope, String name) {
+        return getPropAndThis(obj, name, cx, scope);
+    }
+
+    public static LookupResult propGetWithThisOptional(
+            Object obj, Context cx, VarScope scope, String name) {
+        return getPropAndThisOptional(obj, name, cx, scope);
+    }
+
+    public static Object propSet(
+            Object obj, Object value, Context cx, VarScope scope, String name) {
+        return setObjectProp(obj, name, value, cx, scope);
+    }
+
+    public static Object propSetSuper(
+            Object superObj,
+            Object value,
+            Context cx,
+            VarScope scope,
+            Object thisObj,
+            String name) {
+        return setSuperProp(superObj, name, value, cx, scope, thisObj);
+    }
+
+    public static VarScope nameBind(VarScope scope, Context cx, String name) {
+        return bind(cx, scope, name);
+    }
+
+    public static Object nameGet(VarScope scope, Context cx, String name) {
+        return name(cx, scope, name);
+    }
+
+    public static LookupResult nameGetWithThis(VarScope scope, Context cx, String name) {
+        return getNameAndThis(name, cx, scope);
+    }
+
+    public static LookupResult nameGetWithThisOptional(VarScope scope, Context cx, String name) {
+        return getNameAndThisOptional(name, cx, scope);
+    }
+
+    public static Object add(Object val1, double val2, Context cx) {
+        if (val1 instanceof Double) {
+            return ((Double) val1) + val2;
+        }
+        if (val1 instanceof Integer) {
+            return ((Integer) val1) + val2;
+        }
+        return ScriptRuntime.add(val1, val2, cx);
+    }
+
+    public static Object add(double val1, Object val2, Context cx) {
+        if (val2 instanceof Double) {
+            return val1 + ((Double) val2);
+        }
+        if (val2 instanceof Integer) {
+            return val1 + ((Integer) val2);
+        }
+        return ScriptRuntime.add(val1, val2, cx);
+    }
+
+    /**
+     * @deprecated Use {@link #elemIncrDecr(Object, double, Context, VarScope, int)} instead
+     */
+    @Deprecated
+    public static Object elemIncrDecr(Object obj, double index, Context cx, int incrDecrMask) {
+        return elemIncrDecr(obj, index, cx, getTopCallScope(cx), incrDecrMask);
+    }
+
+    public static Object elemIncrDecr(
+            Object obj, double index, Context cx, VarScope scope, int incrDecrMask) {
+        return ScriptRuntime.elemIncrDecr(obj, Double.valueOf(index), cx, scope, incrDecrMask);
+    }
+
+    public static Object[] padStart(Object[] currentArgs, int count) {
         Object[] result = new Object[currentArgs.length + count];
         System.arraycopy(currentArgs, 0, result, count, currentArgs.length);
         return result;
     }
 
-    public static void initFunction(NativeFunction fn, int functionType,
-                                    Scriptable scope, Context cx){
+    public static void initFunction(
+            JSFunction fn, int functionType, boolean hoist, VarScope scope, Context cx) {
         ScriptRuntime.initFunction(cx, scope, fn, functionType, false);
+        if (hoist) {
+            while (scope.isNestedScope()) {
+                scope = scope.getParentScope();
+            }
+            scope.put(fn.getFunctionName(), scope, fn);
+        }
     }
 
-    public static Function bindThis(NativeFunction fn, Context cx, Scriptable scope, Scriptable thisObj){
-        return new ArrowFunction(cx, scope, fn, thisObj);
+    public static Object callSpecial(
+            Context cx,
+            Callable fun,
+            Scriptable thisObj,
+            Object[] args,
+            VarScope scope,
+            Scriptable callerThis,
+            int callType,
+            String fileName,
+            int lineNumber,
+            boolean isOptionalChainingCall) {
+        return ScriptRuntime.callSpecial(
+                cx,
+                fun,
+                thisObj,
+                args,
+                scope,
+                callerThis,
+                callType,
+                fileName,
+                lineNumber,
+                isOptionalChainingCall);
     }
 
-    public static Object callSpecial(Context cx, Callable fun,
-                                     Scriptable thisObj, Object[] args,
-                                     Scriptable scope,
-                                     Scriptable callerThis, int callType,
-                                     String fileName, int lineNumber){
-        return ScriptRuntime.callSpecial(cx, fun, thisObj, args, scope,
-        callerThis, callType,
-        fileName, lineNumber);
-    }
-
-    public static Object newObjectSpecial(Context cx, Object fun,
-                                          Object[] args, Scriptable scope,
-                                          Scriptable callerThis, int callType){
+    public static Object newObjectSpecial(
+            Context cx,
+            Object fun,
+            Object[] args,
+            VarScope scope,
+            Scriptable callerThis,
+            int callType) {
         return ScriptRuntime.newSpecial(cx, fun, args, scope, callType);
     }
 
-    public static Double wrapDouble(double num){
-        if(num == 0.0){
-            if(1 / num > 0){
-                // +0.0
-                return zeroObj;
-            }
-        }else if(num == 1.0){
-            return oneObj;
-        }else if(num == -1.0){
-            return minusOneObj;
-        }else if(Double.isNaN(num)){
+    public static Double wrapDouble(double num) {
+        if (Double.isNaN(num)) {
             return NaNobj;
         }
-        return num;
+        return Double.valueOf(num);
     }
 
-    static String encodeIntArray(int[] array){
+    static String encodeIntArray(int[] array) {
         // XXX: this extremely inefficient for small integers
-        if(array == null){
+        if (array == null) {
             return null;
         }
         int n = array.length;
         char[] buffer = new char[1 + n * 2];
         buffer[0] = 1;
-        for(int i = 0; i != n; ++i){
+        for (int i = 0; i != n; ++i) {
             int value = array[i];
             int shift = 1 + i * 2;
-            buffer[shift] = (char)(value >>> 16);
-            buffer[shift + 1] = (char)value;
+            buffer[shift] = (char) (value >>> 16);
+            buffer[shift + 1] = (char) value;
         }
         return new String(buffer);
     }
 
-    private static int[] decodeIntArray(String str, int arraySize){
+    private static int[] decodeIntArray(String str, int arraySize) {
         // XXX: this extremely inefficient for small integers
-        if(arraySize == 0){
-            if(str != null) throw new IllegalArgumentException();
+        if (arraySize == 0) {
+            if (str != null) throw new IllegalArgumentException();
             return null;
         }
-        if(str.length() != 1 + arraySize * 2 && str.charAt(0) != 1){
+        if (str.length() != 1 + arraySize * 2 && str.charAt(0) != 1) {
             throw new IllegalArgumentException();
         }
         int[] array = new int[arraySize];
-        for(int i = 0; i != arraySize; ++i){
+        for (int i = 0; i != arraySize; ++i) {
             int shift = 1 + i * 2;
             array[i] = (str.charAt(shift) << 16) | str.charAt(shift + 1);
         }
         return array;
     }
 
-    public static Scriptable newArrayLiteral(Object[] objects,
-                                             String encodedInts,
-                                             int skipCount,
-                                             Context cx,
-                                             Scriptable scope){
-        int[] skipIndexces = decodeIntArray(encodedInts, skipCount);
-        return newArrayLiteral(objects, skipIndexces, cx, scope);
+    public static Scriptable newArrayLiteral(
+            Object[] objects, String encodedInts, int skipCount, Context cx, VarScope scope) {
+        int[] skipIndexes = decodeIntArray(encodedInts, skipCount);
+        return newArrayLiteral(objects, skipIndexes, cx, scope);
     }
 
-    public static void main(final Script script, final String[] args){
-        ContextFactory.getGlobal().call(cx -> {
-            ScriptableObject global = getGlobal(cx);
-
-            // get the command line arguments and define "arguments"
-            // array in the top-level object
-            Object[] argsCopy = new Object[args.length];
-            System.arraycopy(args, 0, argsCopy, 0, args.length);
-            Scriptable argsObj = cx.newArray(global, argsCopy);
-            global.defineProperty("arguments", argsObj,
-            ScriptableObject.DONTENUM);
-            script.exec(cx, global);
-            return null;
-        });
+    // Work around because our bytecode generator can't handle the
+    // appropriate scaffolding for calling static interface methods.
+    @SafeVarargs
+    public static <E> List<E> listOf(E... items) {
+        return Collections.unmodifiableList(Arrays.asList(items));
     }
 
-    public static void throwStopIteration(Object scope, Object genState){
+    public static void main(final Script script, final String[] args) {
+        ContextFactory.getGlobal()
+                .call(
+                        cx -> {
+                            TopLevel global = getGlobal(cx);
+
+                            // get the command line arguments and define "arguments"
+                            // array in the top-level object
+                            Object[] argsCopy = new Object[args.length];
+                            System.arraycopy(args, 0, argsCopy, 0, args.length);
+                            Scriptable argsObj = cx.newArray(global, argsCopy);
+                            global.defineProperty("arguments", argsObj, ScriptableObject.DONTENUM);
+                            script.exec(cx, global, global.getGlobalThis());
+                            return null;
+                        });
+    }
+
+    public static void throwStopIteration(Object scope, Object genState) {
         Object value = getGeneratorReturnValue(genState);
         Object si =
-        (value == Undefined.instance) ?
-        NativeIterator.getStopIterationObject((Scriptable)scope) :
-        new NativeIterator.StopIteration(value);
+                (value == Undefined.instance)
+                        ? NativeIterator.getStopIterationObject((VarScope) scope)
+                        : new NativeIterator.StopIteration(value);
         throw new JavaScriptException(si, "", 0);
     }
 
-    public static Scriptable createNativeGenerator(NativeFunction funObj,
-                                                   Scriptable scope,
-                                                   Scriptable thisObj,
-                                                   int maxLocals,
-                                                   int maxStack){
-        GeneratorState gs = new GeneratorState(thisObj, maxLocals, maxStack);
-        if(Context.getCurrentContext().getLanguageVersion() >= Context.VERSION_ES6){
+    public static Scriptable createNativeGenerator(
+            Context cx,
+            VarScope scope,
+            Scriptable thisObj,
+            JSFunction funObj,
+            int maxLocals,
+            int maxStack) {
+        GeneratorState gs = new GeneratorState(scope, thisObj, maxLocals, maxStack);
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
             return new ES6Generator(scope, funObj, gs);
-        }else{
+        } else {
             return new NativeGenerator(scope, funObj, gs);
         }
     }
 
-    public static Object[] getGeneratorStackState(Object obj){
-        GeneratorState rgs = (GeneratorState)obj;
-        if(rgs.stackState == null)
-            rgs.stackState = new Object[rgs.maxStack];
+    public static Object[] getGeneratorStackState(Object obj) {
+        GeneratorState rgs = (GeneratorState) obj;
+        if (rgs.stackState == null) rgs.stackState = new Object[rgs.maxStack];
         return rgs.stackState;
     }
 
-    public static Object[] getGeneratorLocalsState(Object obj){
-        GeneratorState rgs = (GeneratorState)obj;
-        if(rgs.localsState == null)
-            rgs.localsState = new Object[rgs.maxLocals];
+    public static Object[] getGeneratorLocalsState(Object obj) {
+        GeneratorState rgs = (GeneratorState) obj;
+        if (rgs.localsState == null) rgs.localsState = new Object[rgs.maxLocals];
         return rgs.localsState;
     }
 
-    public static void setGeneratorReturnValue(Object obj, Object val){
-        GeneratorState rgs = (GeneratorState)obj;
+    public static void setGeneratorReturnValue(Object obj, Object val) {
+        GeneratorState rgs = (GeneratorState) obj;
         rgs.returnValue = val;
     }
 
-    public static Object getGeneratorReturnValue(Object obj){
-        GeneratorState rgs = (GeneratorState)obj;
+    public static Object getGeneratorReturnValue(Object obj) {
+        GeneratorState rgs = (GeneratorState) obj;
         return (rgs.returnValue == null ? Undefined.instance : rgs.returnValue);
     }
 
-    public static class GeneratorState{
-        static final String CLASS_NAME =
-        "rhino/optimizer/OptRuntime$GeneratorState";
+    public static boolean isNullOrUndefined(Object obj) {
+        return obj == null || Undefined.isUndefined(obj);
+    }
 
+    public static void spread(
+            Context cx,
+            VarScope scope,
+            NewLiteralStorage store,
+            Object source,
+            int sourcePosition) {
+        store.spread(cx, scope, source, sourcePosition);
+    }
+
+    public static class GeneratorState {
+        static final String CLASS_NAME =
+                "rhino/optimizer/OptRuntime$GeneratorState";
+
+        @SuppressWarnings("unused")
         public int resumptionPoint;
+
         static final String resumptionPoint_NAME = "resumptionPoint";
         static final String resumptionPoint_TYPE = "I";
 
-        public Scriptable thisObj;
+        @SuppressWarnings("unused")
+        public final Scriptable thisObj;
+
+        @SuppressWarnings("unused")
+        public final VarScope activationFrame;
+
+        static final String activationFrame_NAME = "activationFrame";
+        static final String activationFrame_TYPE = "Lrhino/VarScope;";
         static final String thisObj_NAME = "thisObj";
-        static final String thisObj_TYPE =
-        "Lrhino/Scriptable;";
+        static final String thisObj_TYPE = "Lrhino/Scriptable;";
 
         Object[] stackState;
         Object[] localsState;
@@ -265,7 +421,8 @@ public final class OptRuntime extends ScriptRuntime{
         int maxStack;
         Object returnValue;
 
-        GeneratorState(Scriptable thisObj, int maxLocals, int maxStack){
+        GeneratorState(VarScope activationFrame, Scriptable thisObj, int maxLocals, int maxStack) {
+            this.activationFrame = activationFrame;
             this.thisObj = thisObj;
             this.maxLocals = maxLocals;
             this.maxStack = maxStack;

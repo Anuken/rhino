@@ -1,21 +1,70 @@
 plugins{
     id 'java-library'
     id 'maven-publish'
+    id 'ru.vyarus.animalsniffer' version '2.0.1'
 }
 
 group = 'com.github.Anuken'
 
-tasks.withType(JavaCompile){
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-    options.encoding = "UTF-8"
+java{
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
-sourceSets.main.java.srcDirs = ["src"]
-sourceSets.main.resources.srcDirs = ["src"]
-sourceSets.test.java.srcDirs = ["test"]
+tasks.withType(JavaCompile).configureEach{
+    options.encoding = "UTF-8"
+    options.compilerArgs += ['-Xlint:-deprecation,-unchecked,-removal']
+}
 
-task sourceJar(type: Jar){
+sourceSets{
+    main{
+        java.srcDirs = ["src"]
+        resources.srcDirs = ["src"]
+        resources.excludes = ["**/*.java"]
+    }
+    test{
+        java.srcDirs = ["test/java"]
+        resources.srcDirs = ["test/resources"]
+    }
+    bench{
+        java.srcDirs = ["benchmarks/src"]
+        compileClasspath += main.output
+        runtimeClasspath += main.output
+    }
+}
+
+repositories{
+    mavenCentral()
+}
+
+dependencies{
+    //Android 5.0 (API 21) is the oldest supported platform, and iOS (RoboVM) has a similar standard library
+    signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.yaml:snakeyaml:2.2'
+    //the class file to dex translator that Android apps use to load compiled scripts at runtime
+    testImplementation 'com.jakewharton.android.repackaged:dalvik-dx:9.0.0_r3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+animalsniffer{
+    sourceSets = [project.sourceSets.main]
+    //lambdas and string concatenation are desugared on Android and supported by RoboVM
+    ignore 'java.lang.invoke.LambdaMetafactory', 'java.lang.invoke.StringConcatFactory'
+}
+
+tasks.named('animalsnifferMain'){
+    //the invokedynamic linker is only loaded on desktop JVMs (see Codegen.INVOKEDYNAMIC)
+    exclude 'rhino/optimizer/indy/**'
+}
+
+tasks.register('sourceJar', Jar){
+    archiveClassifier = 'sources'
     from sourceSets.main.allJava
 }
 
@@ -27,20 +76,63 @@ publishing{
     }
 }
 
-repositories{
-    mavenCentral()
+tasks.register('fetchTest262', Exec){
+    description = 'Downloads the test262 suite at the revision the test262.properties expectations were generated for.'
+    def dir = file('test/test262')
+    onlyIf{ !new File(dir, 'test').exists() }
+    commandLine 'sh', '-c', "rm -rf '${dir}' && git init -q '${dir}' && cd '${dir}' && git remote add origin https://github.com/tc39/test262.git && git fetch -q --depth 1 origin \$(cat ../test262.revision) && git checkout -q FETCH_HEAD"
 }
 
-dependencies{
-    testImplementation "junit:junit:4.13"
-}
+tasks.withType(Test).configureEach{
+    useJUnitPlatform()
+    maxHeapSize = '2g'
+    maxParallelForks = Math.max(1, (int)(Runtime.runtime.availableProcessors() / 2))
+    workingDir = file('test')
 
-test{
-    useJUnit()
+    systemProperty 'user.language', 'en'
+    systemProperty 'user.country', 'US'
+    systemProperty 'user.timezone', 'America/Los_Angeles'
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'mozilla.js.tests', 'testsrc/tests'
+    systemProperty 'mozilla.js.tests.timeout', 60000
+    systemProperty 'test262properties', System.getProperty('test262properties')
+    if(System.getProperty('updateTest262properties') != null){
+        systemProperty 'updateTest262properties', System.getProperty('updateTest262properties')
+    }
+    System.properties.each{ k, v ->
+        if(k.startsWith('rhino.')) systemProperty k, v
+    }
+    if(name == 'testNoIndy') systemProperty 'rhino.indy', 'false'
+    jvmArgs += ['--add-opens', 'java.base/java.util=ALL-UNNAMED', '--add-opens', 'java.base/java.lang=ALL-UNNAMED']
 
     testLogging{
         exceptionFormat = 'full'
-
-        testLogging.showStandardStreams = true
+        events 'failed'
     }
+}
+
+tasks.register('testNoIndy', Test){
+    description = 'Runs the compiled mode heavy tests with the invokedynamic-free bytecode used on Android.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter{
+        includeTestsMatching 'rhino.tests.Test262SuiteTest'
+        includeTestsMatching 'rhino.tests.MozillaSuiteTest'
+        includeTestsMatching 'rhino.tests.optimizer.*'
+        includeTestsMatching 'rhino.tests.es6.*'
+        includeTestsMatching 'rhino.tests.CodegenTest'
+        includeTestsMatching 'rhino.tests.ClassFileSplittingTest'
+        includeTestsMatching 'rhino.tests.ClassCompilerTest'
+        includeTestsMatching 'rhino.tests.CompilerFallbackTest'
+    }
+}
+
+tasks.register('bench', JavaExec){
+    description = 'Runs the benchmarks. Pass arguments with -Pargs="...", e.g. -Pargs="-mode interpreted v8".'
+    classpath = sourceSets.bench.runtimeClasspath
+    mainClass = 'Bench'
+    workingDir = projectDir
+    jvmArgs = ['-Xss8m', '-Xmx2g']
+    if(project.hasProperty('args')) args = project.property('args').toString().split(' ').toList()
 }

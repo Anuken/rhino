@@ -1,0 +1,168 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino;
+
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import java.math.BigInteger;
+
+/** This class implements the BigInt native object. */
+final class NativeBigInt extends ScriptableObject {
+    @Serial private static final long serialVersionUID = 1335609231306775449L;
+
+    private static final String CLASS_NAME = "BigInt";
+
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                1,
+                                NativeBigInt::js_constructorFunc,
+                                NativeBigInt::js_constructor)
+                        .withMethod(CTOR, "asIntN", 2, NativeBigInt::js_asIntN)
+                        .withMethod(CTOR, "asUintN", 2, NativeBigInt::js_asUintN)
+                        .withMethod(PROTO, "toString", 0, NativeBigInt::js_toString)
+                        .withMethod(PROTO, "toLocaleString", 0, NativeBigInt::js_toLocaleString)
+                        .withMethod(PROTO, "toSource", 0, NativeBigInt::js_toSource)
+                        .withMethod(PROTO, "valueOf", 0, NativeBigInt::js_valueOf)
+                        .withProp(
+                                PROTO,
+                                SymbolKey.TO_STRING_TAG,
+                                value(CLASS_NAME, DONTENUM | READONLY))
+                        .build();
+    }
+
+    private final BigInteger bigIntValue;
+
+    static Object init(Context cx, VarScope scope, boolean sealed) {
+        return DESCRIPTOR.buildConstructor(cx, scope, new NativeObject(), sealed);
+    }
+
+    NativeBigInt(BigInteger bigInt) {
+        bigIntValue = bigInt;
+    }
+
+    @Override
+    public String getClassName() {
+        return CLASS_NAME;
+    }
+
+    private static NativeBigInt toSelf(Object thisObj) {
+        return LambdaConstructor.convertThisObject(thisObj, NativeBigInt.class);
+    }
+
+    private static Object js_constructorFunc(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return (args.length >= 1) ? ScriptRuntime.toBigInt(args[0]) : BigInteger.ZERO;
+    }
+
+    private static Scriptable js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        throw ScriptRuntime.typeErrorById("msg.no.new", CLASS_NAME);
+    }
+
+    private static Object js_toString(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        int base =
+                (args.length == 0 || args[0] == Undefined.instance)
+                        ? 10
+                        : ScriptRuntime.toInt32(args[0]);
+        BigInteger value = toSelf(thisObj).bigIntValue;
+        return ScriptRuntime.bigIntToString(value, base);
+    }
+
+    private static Object js_toLocaleString(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        if (!cx.hasFeature(Context.FEATURE_INTL_402)) {
+            return js_toString(cx, f, nt, s, thisObj, ScriptRuntime.emptyArgs);
+        }
+
+        BigInteger value = toSelf(thisObj).bigIntValue;
+        return NativeNumber.getLocaleNumberFormat(cx, args).format(value);
+    }
+
+    private static Object js_toSource(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return "(new BigInt(" + ScriptRuntime.toString(toSelf(thisObj).bigIntValue) + "))";
+    }
+
+    private static Object js_asIntN(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return js_asIntOrUintN(true, args);
+    }
+
+    private static Object js_asUintN(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return js_asIntOrUintN(false, args);
+    }
+
+    private static Object js_valueOf(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return toSelf(thisObj).bigIntValue;
+    }
+
+    private static Object js_asIntOrUintN(boolean isSigned, Object[] args) {
+        int bits = ScriptRuntime.toIndex(args.length < 1 ? Undefined.instance : args[0]);
+        BigInteger bigInt = ScriptRuntime.toBigInt(args.length < 2 ? Undefined.instance : args[1]);
+
+        if (bits == 0) {
+            return BigInteger.ZERO;
+        }
+
+        BigInteger modulus = BigInteger.ONE.shiftLeft(bits); // 2^bits
+
+        if (isSigned) {
+            return asSignedN(bigInt, bits, modulus);
+        } else {
+            return asUnsignedN(bigInt, modulus);
+        }
+    }
+
+    private static BigInteger asUnsignedN(BigInteger bigInt, BigInteger modulus) {
+        // For unsigned: return bigInt modulo 2^bits, ensuring non-negative result
+        BigInteger result = bigInt.remainder(modulus);
+
+        // Ensure result is non-negative for unsigned representation
+        if (result.signum() < 0) {
+            result = result.add(modulus);
+        }
+
+        return result;
+    }
+
+    private static BigInteger asSignedN(BigInteger bigInt, int bits, BigInteger modulus) {
+        // For signed: use two's complement representation
+        BigInteger halfModulus = BigInteger.ONE.shiftLeft(bits - 1); // 2^(bits-1)
+        BigInteger minValue = halfModulus.negate(); // -2^(bits-1)
+        BigInteger maxValue = halfModulus.subtract(BigInteger.ONE); // 2^(bits-1) - 1
+
+        // If the number already fits in the signed range, return as is
+        if (bigInt.compareTo(minValue) >= 0 && bigInt.compareTo(maxValue) <= 0) {
+            return bigInt;
+        }
+
+        // Compute unsigned result first
+        BigInteger result = asUnsignedN(bigInt, modulus);
+
+        // Convert to signed range if needed
+        if (result.compareTo(halfModulus) >= 0) {
+            result = result.subtract(modulus);
+        }
+
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return ScriptRuntime.bigIntToString(bigIntValue, 10);
+    }
+}

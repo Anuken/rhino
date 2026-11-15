@@ -1,0 +1,64 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.drivers;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import org.junit.jupiter.api.BeforeAll;
+import rhino.Context;
+import rhino.Context.EvaluationMethod;
+import rhino.ContextFactory;
+import rhino.TopLevel;
+import rhino.testutils.Utils;
+
+public abstract class JsTestsBase {
+    private EvaluationMethod evalMethod;
+
+    private static ContextFactory threadSafeFactory;
+
+    @BeforeAll
+    public static void init() {
+        threadSafeFactory = Utils.contextFactoryWithFeatures(Context.FEATURE_THREAD_SAFE_OBJECTS);
+    }
+
+    public void setEvaluationMethod(EvaluationMethod evalMethod) {
+        this.evalMethod = evalMethod;
+    }
+
+    public void runJsTest(Context cx, TopLevel shared, String name, String source) {
+        // create a lightweight top-level scope
+        TopLevel scope = TopLevel.createIsolate(shared);
+        Object result;
+        try {
+            result = cx.evaluateString(scope, source, "jstest input: " + name, 1, null);
+        } catch (RuntimeException e) {
+            e.printStackTrace(System.err);
+            System.out.println("FAILED");
+            throw e;
+        }
+        assertTrue(result != null);
+        assertTrue("success".equals(result));
+    }
+
+    public void runJsTests(File[] tests) throws IOException {
+        try (Context cx = threadSafeFactory.enterContext()) {
+            cx.setEvaluationMethod(evalMethod);
+            TopLevel shared = cx.initStandardObjects();
+            for (File f : tests) {
+                int length = (int) f.length(); // don't worry about very long
+                // files
+                char[] buf = new char[length];
+                try (var fr = new FileReader(f)) {
+                    fr.read(buf, 0, length);
+                    String session = new String(buf);
+                    runJsTest(cx, shared, f.getName(), session);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,672 @@
+package rhino;
+
+import static rhino.Scriptable.NOT_FOUND;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import rhino.ScriptableObject.DescriptorInfo;
+
+/**
+ * Abstract Object Operations as defined by EcmaScript
+ *
+ * @see <a href="https://262.ecma-international.org/11.0/#sec-operations-on-objects">Abstract
+ *     Operations - Operations on Objects</a>
+ *     <p>Notes
+ *     <ul>
+ *       <li>all methods are to deviate from the method signature defined in the EcmaScript
+ *           specification, by taking an additional 1st parameter of type Context: (downstream)
+ *           methods may need the Context object to read flags and we want to avoid having to look
+ *           up the current context (for performance reasons)
+ *       <li>all methods that implement an Abstract Operation as defined by EcmaScript are to be
+ *           package-scopes methods, to prevent them from being used directly by 3rd party code,
+ *           which would hamper evolving them over time to adept to newer EcmaScript specifications
+ *       <li>a link to the method specification of the specific (EcmaScript) version implemented
+ *           will be put in the JavaDoc of each method that implements an Abstract Operations
+ *     </ul>
+ */
+public class AbstractEcmaObjectOperations {
+    enum INTEGRITY_LEVEL {
+        FROZEN,
+        SEALED
+    }
+
+    enum KEY_COERCION {
+        PROPERTY,
+        COLLECTION,
+    }
+
+    interface ElementTypePredicate {
+        boolean test(Object element);
+    }
+
+    /**
+     * Implementation of Abstract Object operation HasOwnProperty as defined by EcmaScript
+     *
+     * @param cx
+     * @param o
+     * @param property
+     * @return boolean
+     * @see <a href="https://262.ecma-international.org/12.0/#sec-hasownproperty"></a>
+     */
+    static boolean hasOwnProperty(Context cx, Object o, Object property) {
+        Scriptable obj = ScriptableObject.ensureScriptable(o);
+
+        // using instanceof is correct here
+        // (see rhino.tests.es6.Symbol3Test.hasOwnProperty)
+        if (property instanceof Symbol) {
+            return ScriptableObject.ensureSymbolScriptable(o).has((Symbol) property, obj);
+        }
+        ScriptRuntime.StringIdOrIndex s = ScriptRuntime.toStringIdOrIndex(property);
+        if (s.stringId == null) {
+            return obj.has(s.index, obj);
+        }
+        return obj.has(s.stringId, obj);
+    }
+
+    /**
+     * Implementation of Abstract Object operation testIntegrityLevel as defined by EcmaScript
+     *
+     * @param cx
+     * @param o
+     * @param level
+     * @return boolean
+     * @see <a
+     *     href="https://262.ecma-international.org/11.0/#sec-testintegritylevel">TestIntegrityLevel</a>
+     */
+    static boolean testIntegrityLevel(Context cx, Object o, INTEGRITY_LEVEL level) {
+        ScriptableObject obj = ScriptableObject.ensureScriptableObject(o);
+
+        if (obj.isExtensible()) return false;
+
+        Object[] ids;
+        try (var map = obj.startCompoundOp(false)) {
+            ids = obj.getIds(map, true, true);
+        }
+        for (Object name : ids) {
+            DescriptorInfo desc = obj.getOwnPropertyDescriptor(cx, name);
+            if (desc.isConfigurable()) return false;
+
+            if (level == INTEGRITY_LEVEL.FROZEN && desc.isDataDescriptor() && desc.isWritable())
+                return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Implementation of Abstract Object operation setIntegrityLevel as defined by EcmaScript
+     *
+     * @param cx
+     * @param o
+     * @param level
+     * @return boolean
+     * @see <a
+     *     href="https://262.ecma-international.org/11.0/#sec-setintegritylevel">SetIntegrityLevel</a>
+     */
+    static boolean setIntegrityLevel(Context cx, Object o, INTEGRITY_LEVEL level) {
+        /*
+           1. Assert: Type(O) is Object.
+           2. Assert: level is either sealed or frozen.
+           3. Let status be ? O.[[PreventExtensions]]().
+           4. If status is false, return false.
+           5. Let keys be ? O.[[OwnPropertyKeys]]().
+           6. If level is sealed, then
+               a. For each element k of keys, do
+                   i. Perform ? DefinePropertyOrThrow(O, k, PropertyDescriptor { [[Configurable]]: false }).
+           7. Else,
+               a. Assert: level is frozen.
+               b. For each element k of keys, do
+                   i. Let currentDesc be ? O.[[GetOwnProperty]](k).
+                   ii. If currentDesc is not undefined, then
+                       1. If IsAccessorDescriptor(currentDesc) is true, then
+                           a. Let desc be the PropertyDescriptor { [[Configurable]]: false }.
+                       2. Else,
+                           a. Let desc be the PropertyDescriptor { [[Configurable]]: false, [[Writable]]: false }.
+                       3. Perform ? DefinePropertyOrThrow(O, k, desc).
+           8. Return true.
+
+           NOTES
+           - While steps 6.a.i and 7.b.ii.3 call for the Abstract DefinePropertyOrThrow operation,
+             the conditions under which a throw would occur aren't applicable when freezing or sealing an object,
+             see https://262.ecma-international.org/11.0/#sec-validateandapplypropertydescriptor:
+             1. n/a
+             2. current cannot be undefined, because the logic operates only on existing properties
+             3. n/a
+             4. this code doesn't ever set configurable to true or modifies the enumerable property
+             5. n/a
+             6. as current and desc start out the same and the writable property is set only after checking if isDataDescriptor == true, this condition cannot occur
+             7. both conditions under which false would be returned cannot occur here
+             8. both conditions under which false would be returned cannot occur here
+        */
+        ScriptableObject obj = ScriptableObject.ensureScriptableObject(o);
+
+        if (!obj.preventExtensions()) {
+            return false;
+        }
+
+        Object[] ids;
+        try (var map = obj.startCompoundOp(false)) {
+            ids = obj.getIds(map, true, true);
+        }
+        for (Object key : ids) {
+            DescriptorInfo desc = obj.getOwnPropertyDescriptor(cx, key);
+
+            if (level == INTEGRITY_LEVEL.SEALED) {
+                if (desc.isConfigurable()) {
+                    desc.configurable = false;
+
+                    obj.defineOwnProperty(cx, key, desc, false);
+                }
+            } else {
+                if (desc.isDataDescriptor() && desc.isWritable()) {
+                    desc.writable = false;
+                }
+                if (desc.isConfigurable()) {
+                    desc.configurable = false;
+                }
+                obj.defineOwnProperty(cx, key, desc, false);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Implement the ECMAScript abstract operation "SpeciesConstructor" defined in section 7.2.33 of
+     * ECMA262.
+     *
+     * @param cx context
+     * @param s the object for which we will find the "species constructor" as per the spec
+     * @param defaultConstructor as per the spec, the value that will be returned if there is no
+     *     constructor on "s" or if the "species" symbol is not set.
+     * @see <a href="https://tc39.es/ecma262/#sec-speciesconstructor"></a>
+     */
+    public static Constructable speciesConstructor(
+            Context cx, Object s, Constructable defaultConstructor) {
+        /*
+        The abstract operation SpeciesConstructor takes arguments O (an Object) and
+        defaultConstructor (a constructor). It is used to retrieve the constructor that should
+        be used to create new objects that are derived from O. defaultConstructor is the
+        constructor to use if a constructor @@species property cannot be found starting from O.
+        It performs the following steps when called:
+
+        1. Assert: Type(O) is Object.
+        2. Let C be ? Get(O, "constructor").
+        3. If C is undefined, return defaultConstructor.
+        4. If Type(C) is not Object, throw a TypeError exception.
+        5. Let S be ? Get(C, @@species).
+        6. If S is either undefined or null, return defaultConstructor.
+        7. If IsConstructor(S) is true, return S.
+        8. Throw a TypeError exception.
+         */
+        Object constructor = ScriptableObject.getProperty((Scriptable) s, "constructor");
+        if (constructor == NOT_FOUND || Undefined.isUndefined(constructor)) {
+            return defaultConstructor;
+        }
+        if (!ScriptRuntime.isObject(constructor)) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.arg.not.object", ScriptRuntime.typeof(constructor));
+        }
+        Object species = ScriptableObject.getProperty((Scriptable) constructor, SymbolKey.SPECIES);
+        if (species == NOT_FOUND || species == null || Undefined.isUndefined(species)) {
+            return defaultConstructor;
+        }
+        if (!(species instanceof Constructable)) {
+            throw ScriptRuntime.typeErrorById("msg.not.ctor", ScriptRuntime.typeof(species));
+        }
+        return (Constructable) species;
+    }
+
+    /**
+     * Set ( O, P, V, Throw)
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-set-o-p-v-throw">7.3.4 Set (O, P, V,
+     * Throw)</a>
+     */
+    static void put(Context cx, Scriptable o, String p, Object v, boolean isThrow) {
+        Scriptable base = ScriptableObject.getBase(o, p);
+        if (base == null) base = o;
+
+        if (base instanceof ScriptableObject) {
+            if (((ScriptableObject) base).putOwnProperty(p, o, v, isThrow)) return;
+
+            o.put(p, o, v);
+        } else {
+            base.put(p, o, v);
+        }
+    }
+
+    /**
+     * Set ( O, P, V, Throw)
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-set-o-p-v-throw">7.3.4 Set (O, P, V,
+     * Throw)</a>
+     */
+    static void put(Context cx, Scriptable o, int p, Object v, boolean isThrow) {
+        Scriptable base = ScriptableObject.getBase(o, p);
+        if (base == null) base = o;
+
+        if (base instanceof ScriptableObject) {
+            if (((ScriptableObject) base).putOwnProperty(p, o, v, isThrow)) return;
+
+            o.put(p, o, v);
+        } else {
+            base.put(p, o, v);
+        }
+    }
+
+    /**
+     * Set ( O, P, V, Throw)
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-set-o-p-v-throw">7.3.4 Set (O, P, V,
+     * Throw)</a>
+     */
+    static void put(Context cx, Scriptable o, Symbol p, Object v, boolean isThrow) {
+        Scriptable base = ScriptableObject.getBase(o, p);
+        if (base == null) base = o;
+
+        if (base instanceof ScriptableObject) {
+            if (((ScriptableObject) base).putOwnProperty(p, o, v, isThrow)) return;
+
+            ScriptableObject.ensureSymbolScriptable(o).put(p, o, v);
+        } else {
+            ScriptableObject.ensureSymbolScriptable(base).put(p, o, v);
+        }
+    }
+
+    /**
+     * Implement the ECMAScript abstract operation "GroupBy"
+     *
+     * @param cx
+     * @param scope
+     * @param items
+     * @param callback
+     * @param keyCoercion
+     * @see <a href="https://262.ecma-international.org/15.0/#sec-groupby"></a>
+     */
+    static Map<Object, List<Object>> groupBy(
+            Context cx,
+            VarScope scope,
+            IdFunctionObject f,
+            Object items,
+            Object callback,
+            KEY_COERCION keyCoercion) {
+        return groupBy(cx, scope, f.getTag(), f.getFunctionName(), items, callback, keyCoercion);
+    }
+
+    static Map<Object, List<Object>> groupBy(
+            Context cx,
+            VarScope scope,
+            Object classTag,
+            String functionName,
+            Object items,
+            Object callback,
+            KEY_COERCION keyCoercion) {
+        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            ScriptRuntimeES6.requireObjectCoercible(cx, items, classTag, functionName);
+        }
+        if (!(callback instanceof Callable)) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.isnt.function", callback, ScriptRuntime.typeof(callback));
+        }
+
+        // LinkedHashMap used to preserve key creation order
+        Map<Object, List<Object>> groups = new LinkedHashMap<>();
+        final Object iterator = ScriptRuntime.callIterator(items, cx, scope);
+        try (IteratorLikeIterable it = new IteratorLikeIterable(cx, scope, iterator)) {
+            double i = 0;
+            for (Object o : it) {
+                if (i > NativeNumber.MAX_SAFE_INTEGER) {
+                    it.close();
+                    throw ScriptRuntime.typeError("Too many values to iterate");
+                }
+
+                Object[] args = {o, i};
+                Object key =
+                        ((Callable) callback).call(cx, scope, Undefined.SCRIPTABLE_UNDEFINED, args);
+                if (keyCoercion == KEY_COERCION.PROPERTY) {
+                    if (!ScriptRuntime.isSymbol(key)) {
+                        key = ScriptRuntime.toString(key);
+                    }
+                } else {
+                    assert keyCoercion == KEY_COERCION.COLLECTION;
+                    if ((key instanceof Number)
+                            && ((Number) key).doubleValue() == ScriptRuntime.negativeZero) {
+                        key = ScriptRuntime.zeroObj;
+                    }
+                }
+
+                List<Object> group = groups.get(key);
+                if (group == null) {
+                    group = new ArrayList<>();
+                    groups.put(key, group);
+                }
+                group.add(o);
+
+                i++;
+            }
+        }
+
+        return groups;
+    }
+
+    /**
+     * CreateListFromArrayLike ( obj [ , elementTypes ] )
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-createlistfromarraylike">7.3.19
+     * CreateListFromArrayLike (obj [, elementTypes])</a>
+     */
+    static List<Object> createListFromArrayLike(
+            Context cx, Scriptable o, ElementTypePredicate elementTypesPredicate, String msg) {
+        ScriptableObject obj = ScriptableObject.ensureScriptableObject(o);
+        if (obj instanceof NativeArray) {
+            Object[] arr = ((NativeArray) obj).toArray();
+            for (Object next : arr) {
+                if (!elementTypesPredicate.test(next)) {
+                    throw ScriptRuntime.typeError(msg);
+                }
+            }
+            return Arrays.asList(arr);
+        }
+
+        long len = lengthOfArrayLike(cx, obj);
+        List<Object> list = new ArrayList<>();
+        long index = 0;
+        while (index < len) {
+            // String indexName = ScriptRuntime.toString(index);
+            Object next = ScriptableObject.getProperty(obj, (int) index);
+            if (!elementTypesPredicate.test(next)) {
+                throw ScriptRuntime.typeError(msg);
+            }
+            list.add(next);
+            index++;
+        }
+        return list;
+    }
+
+    /**
+     * LengthOfArrayLike ( obj )
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-lengthofarraylike">7.3.18
+     * LengthOfArrayLike (obj)</a>
+     */
+    public static long lengthOfArrayLike(Context cx, Scriptable o) {
+        Object value = ScriptableObject.getProperty(o, "length");
+        long len = ScriptRuntime.toLength(new Object[] {value}, 0);
+        return len;
+    }
+
+    /**
+     * IsCompatiblePropertyDescriptor ( Extensible, Desc, Current )
+     *
+     * <p><a
+     * href="https://262.ecma-international.org/12.0/#sec-iscompatiblepropertydescriptor">10.1.6.2
+     * IsCompatiblePropertyDescriptor (Extensible, Desc, Current)</a>
+     */
+    static boolean isCompatiblePropertyDescriptor(
+            Context cx, boolean extensible, DescriptorInfo desc, DescriptorInfo current) {
+        return validateAndApplyPropertyDescriptor(
+                cx,
+                Undefined.SCRIPTABLE_UNDEFINED,
+                Undefined.SCRIPTABLE_UNDEFINED,
+                extensible,
+                desc,
+                current);
+    }
+
+    /**
+     * ValidateAndApplyPropertyDescriptor ( O, P, extensible, Desc, current )
+     *
+     * <p><a
+     * href="https://262.ecma-international.org/12.0/#sec-validateandapplypropertydescriptor">10.1.6.3
+     * ValidateAndApplyPropertyDescriptor (O, P, extensible, Desc, current)</a>
+     */
+    static boolean validateAndApplyPropertyDescriptor(
+            Context cx,
+            Scriptable o,
+            Scriptable p,
+            boolean extensible,
+            DescriptorInfo desc,
+            DescriptorInfo current) {
+        if (Undefined.isUndefined(current)) {
+            if (!extensible) {
+                return false;
+            }
+
+            if (desc.isGenericDescriptor() || desc.isDataDescriptor()) {
+                /*
+                i. i. If O is not undefined, create an own data property named P of object O whose [[Value]], [[Writable]], [[Enumerable]], and [[Configurable]] attribute values are described by Desc.
+                  If the value of an attribute field of Desc is absent, the attribute of the newly created property is set to its default value.
+                 */
+            } else {
+                /*
+                ii. ii. If O is not undefined, create an own accessor property named P of object O whose [[Get]], [[Set]], [[Enumerable]], and [[Configurable]] attribute values are described by Desc. If the value of an attribute field of Desc is absent, the attribute of the newly created property is set to its default value.
+                 */
+            }
+            return true;
+        }
+
+        if (!desc.hasEnumerable()
+                && !desc.hasConfigurable()
+                && !desc.hasWritable()
+                && !desc.hasGetter()
+                && !desc.hasSetter()
+                && !desc.hasValue()) {
+            return true;
+        }
+
+        if (current.isConfigurable(false)) {
+            if (desc.isConfigurable()) {
+                return false;
+            }
+
+            if (desc.hasEnumerable() && !Objects.equals(desc.enumerable, current.enumerable)) {
+                return false;
+            }
+        }
+
+        if (desc.isGenericDescriptor()) {
+            return true;
+        }
+
+        if (current.isDataDescriptor() != desc.isDataDescriptor()) {
+            if (current.isConfigurable(false)) {
+                return false;
+            }
+            if (current.isDataDescriptor()) {
+                if (current.isConfigurable(false)) {
+                    // i. i. If O is not undefined, convert the property named P of object O from a
+                    // data property to an accessor property. Preserve the existing values of the
+                    // converted property's [[Configurable]] and [[Enumerable]] attributes and set
+                    // the rest of the property's attributes to their default values.
+                } else {
+                    // i. i. If O is not undefined, convert the property named P of object O from an
+                    // accessor property to a data property. Preserve the existing values of the
+                    // converted property's [[Configurable]] and [[Enumerable]] attributes and set
+                    // the rest of the property's attributes to their default values.
+                }
+            }
+        } else if (current.isDataDescriptor() && desc.isDataDescriptor()) {
+            if (current.isConfigurable(false) && current.isWritable(false)) {
+                if (desc.isWritable()) {
+                    return false;
+                }
+                if (desc.hasValue() && !Objects.equals(desc.value, current.value)) {
+                    return false;
+                }
+                return true;
+            }
+        } else {
+            if (current.isConfigurable(false)) {
+                if (desc.hasSetter() && !Objects.equals(desc.setter, current.setter)) {
+                    return false;
+                }
+                if (desc.hasGetter() && !Objects.equals(desc.getter, current.getter)) {
+                    return false;
+                }
+                return true;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * IsConstructor ( argument )
+     *
+     * <p><a href="https://262.ecma-international.org/12.0/#sec-isconstructor">7.2.4 IsConstructor
+     * (argument)</a>
+     */
+    public static boolean isConstructor(Context cx, Object argument) {
+        /*
+           The abstract operation IsConstructor takes argument argument (an ECMAScript language value).
+           It determines if argument is a function object with a [[Construct]] internal method.
+           It performs the following steps when called:
+
+           1. If Type(argument) is not Object, return false.
+           2. If argument has a [[Construct]] internal method, return true.
+           3. Return false.
+        */
+
+        if (argument instanceof Function) {
+            return ((Function) argument).isConstructor();
+        }
+        return argument instanceof Constructable;
+    }
+
+    /**
+     * IsRegExp(argument)
+     *
+     * <p><a href="https://tc39.es/ecma262/multipage/abstract-operations.html#sec-isregexp">7.2.6
+     * IsRegExp (argument)</a>
+     */
+    static boolean isRegExp(Context cx, VarScope scope, Object argument) {
+        if (!ScriptRuntime.isObject(argument)) {
+            return false;
+        }
+        Object matcher = ScriptRuntime.getObjectElem(argument, SymbolKey.MATCH, cx, scope);
+        if (!Undefined.isUndefined(matcher)) {
+            return ScriptRuntime.toBoolean(matcher);
+        }
+        RegExpProxy regExpProxy = ScriptRuntime.checkRegExpProxy(cx);
+        if (argument instanceof Scriptable && regExpProxy.isRegExp((Scriptable) argument)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Implements the OrdinarySetWithOwnDescriptor abstract operation.
+     *
+     * <p>see <a href="https://262.ecma-international.org/14.0/#sec-ordinaryset">OrdinarySet ( O, P,
+     * V, Receiver )</a>
+     */
+    public static boolean ordinarySet(
+            Context cx, VarScope s, ScriptableObject o, Object p, Object v, Scriptable receiver) {
+        /*
+         * 1. Let ownDesc be ? O.[[GetOwnProperty]](P).
+         * 2. Return ? OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc).
+         */
+        DescriptorInfo ownDesc =
+                ScriptRuntime.isSymbol(p)
+                        ? o.getOwnPropertyDescriptor(cx, p)
+                        : o.getOwnPropertyDescriptor(cx, ScriptRuntime.toString(p));
+
+        return ordinarySetWithOwnDescriptor(cx, s, o, p, v, receiver, ownDesc);
+    }
+
+    /**
+     * Implements the OrdinarySetWithOwnDescriptor abstract operation.
+     *
+     * <p>see <a href="https://262.ecma-international.org/14.0/#sec-ordinarysetwithowndescriptor">
+     * OrdinarySetWithOwnDescriptor ( O, P, V, Receiver, ownDesc )</a>
+     */
+    private static boolean ordinarySetWithOwnDescriptor(
+            Context cx,
+            VarScope s,
+            Scriptable o,
+            Object p,
+            Object v,
+            Scriptable receiver,
+            DescriptorInfo ownDesc) {
+        /*
+         * 1. If ownDesc is undefined, then
+         *    a. Let parent be ? O.[[GetPrototypeOf]]().
+         *    b. If parent is not null, then
+         *       i. Return ? parent.[[Set]](P, V, Receiver).
+         *    c. Else,
+         *       i. Set ownDesc to the PropertyDescriptor { [[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true }.
+         * 2. If IsDataDescriptor(ownDesc) is true, then
+         *    a. If ownDesc.[[Writable]] is false, return false.
+         *    b. If Type(Receiver) is not Object, return false.
+         *    c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
+         *    d. If existingDescriptor is not undefined, then
+         *       i.  If IsAccessorDescriptor(existingDescriptor) is true, return false.
+         *       ii. If existingDescriptor.[[Writable]] is false, return false.
+         *       iii.Let valueDesc be the PropertyDescriptor { [[Value]]: V }.
+         *           Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
+         *    e. Else,
+         *       Return ? CreateDataProperty(Receiver, P, V).
+         * 3. Assert: IsAccessorDescriptor(ownDesc) is true.
+         * 4. Let setter be ownDesc.[[Set]].
+         * 5. If setter is undefined, return false.
+         * 6. Perform ? Call(setter, Receiver, « V »).
+         * 7. Return true.
+         */
+
+        if (ownDesc == null || Undefined.isUndefined(ownDesc)) {
+            Scriptable parent = o.getPrototype();
+            if (parent != null) {
+                if (ScriptRuntime.isSymbol(p)) {
+                    parent.put((Symbol) p, receiver, v);
+                } else {
+                    ScriptRuntime.StringIdOrIndex soi = ScriptRuntime.toStringIdOrIndex(p);
+                    if (soi.stringId == null) {
+                        parent.put(soi.index, receiver, v);
+                    } else {
+                        parent.put(soi.stringId, receiver, v);
+                    }
+                }
+                return true;
+            }
+
+            ownDesc = new DescriptorInfo(true, true, true, Undefined.instance);
+        }
+
+        if (ownDesc.isDataDescriptor()) {
+            if (ownDesc.isWritable(false) || !(receiver instanceof ScriptableObject)) {
+                return false;
+            }
+            ScriptableObject receiverObj = (ScriptableObject) receiver;
+
+            DescriptorInfo existingDesc =
+                    ScriptRuntime.isSymbol(p)
+                            ? receiverObj.getOwnPropertyDescriptor(cx, p)
+                            : receiverObj.getOwnPropertyDescriptor(cx, ScriptRuntime.toString(p));
+
+            if (existingDesc != null) {
+                if (existingDesc.isAccessorDescriptor() || existingDesc.isWritable(false)) {
+                    return false;
+                }
+                DescriptorInfo valueDesc =
+                        new DescriptorInfo(
+                                NOT_FOUND, NOT_FOUND, NOT_FOUND, NOT_FOUND, NOT_FOUND, v);
+                return receiverObj.defineOwnProperty(cx, p, valueDesc);
+            }
+
+            DescriptorInfo newDesc = new DescriptorInfo(true, true, true, v);
+            receiverObj.defineOwnProperty(cx, p, newDesc);
+            return true;
+        }
+
+        Object setter = ownDesc.setter;
+        if (setter == null || setter == NOT_FOUND || Undefined.isUndefined(setter)) {
+            return false;
+        }
+        ((Function) setter).call(cx, s, receiver, new Object[] {v});
+        return true;
+    }
+}

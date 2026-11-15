@@ -1,0 +1,79 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/** */
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import rhino.CompilerEnvirons;
+import rhino.Context;
+import rhino.ErrorReporter;
+import rhino.Parser;
+import rhino.ScopeObject;
+import rhino.Undefined;
+import rhino.ast.AstRoot;
+
+/**
+ * @author André Bargull
+ */
+public class Bug687669Test {
+
+    private Context cx;
+    private ScopeObject scope;
+
+    @BeforeEach
+    public void setUp() {
+        cx = Context.enter();
+        cx.setLanguageVersion(Context.VERSION_1_8);
+        scope = cx.initStandardObjects();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        Context.exit();
+    }
+
+    private Object eval(CharSequence cs) {
+        return cx.evaluateString(scope, cs.toString(), "<eval>", 1, null);
+    }
+
+    private AstRoot parse(CharSequence cs) {
+        CompilerEnvirons compilerEnv = new CompilerEnvirons();
+        compilerEnv.initFromContext(cx);
+        ErrorReporter compilationErrorReporter = compilerEnv.getErrorReporter();
+        Parser p = new Parser(compilerEnv, compilationErrorReporter);
+        return p.parse(cs.toString(), "<eval>", 1);
+    }
+
+    private String toSource(CharSequence cs) {
+        return parse(cs).toSource();
+    }
+
+    @Test
+    public void eval() {
+        // test EmptyStatement node doesn't infer with return values (in
+        // contrast to wrapping EmptyExpression into an ExpressionStatement)
+        assertEquals(1, eval("1;;;;"));
+        assertEquals(Undefined.instance, eval("(function(){1;;;;})()"));
+        assertEquals(1, eval("(function(){return 1;;;;})()"));
+    }
+
+    @Test
+    public void toSource() {
+        assertEquals("L1:\n  ;\n", toSource("L1:;"));
+        assertEquals("L1:\n  ;\na = 1;\n", toSource("L1:; a=1;"));
+
+        assertEquals("if (1) \n  ;\n", toSource("if(1);"));
+        assertEquals("if (1) \n  ;\na = 1;\n", toSource("if(1); a=1;"));
+
+        assertEquals("if (1) \n  a = 1;\n", toSource("if(1)a=1;"));
+        assertEquals("if (1) \n  a = 1;\na = 1;\n", toSource("if(1)a=1; a=1;"));
+
+        assertEquals("if (1) \n  ;\n;\n;\n;\n", toSource("if(1);;;;"));
+    }
+}

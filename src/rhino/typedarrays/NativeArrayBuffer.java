@@ -1,226 +1,547 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.typedarrays;
 
-import rhino.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import rhino.AbstractEcmaObjectOperations;
+import rhino.ClassDescriptor;
+import rhino.Constructable;
+import rhino.Context;
+import rhino.JSFunction;
+import rhino.LambdaConstructor;
+import rhino.NativeObject;
+import rhino.ScriptRuntime;
+import rhino.ScriptRuntimeES6;
+import rhino.Scriptable;
+import rhino.ScriptableObject;
+import rhino.SymbolKey;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
 /**
- * A NativeArrayBuffer is the backing buffer for a typed array. Used inside JavaScript code,
- * it implements the ArrayBuffer interface. Used directly from Java, it simply holds a byte array.
+ * A NativeArrayBuffer is the backing buffer for a typed array. Used inside JavaScript code, it
+ * implements the ArrayBuffer interface. Used directly from Java, it simply holds a byte array.
+ * NativeArrayBuffer is the implementation class for both ArrayBuffer and SharedArrayBuffer. Both
+ * classes have the same internal methods but different constructors and prototypes.
+ *
+ * <p><b>Design</b>
+ *
+ * <p>The data for an ArrayBuffer is stored in a ByteBuffer. A "heap" buffer is used for regular
+ * ArrayBuffers and a direct buffer is used for shared buffers. A shared buffer may be accessed by
+ * Rhino scripts running in different threads once Atomics is supported, and direct buffers are a
+ * prerequisite for that (for example, VarHandle-based atomic access is only available for direct
+ * buffers). Until then, no cross-thread synchronization or visibility is provided.
+ *
+ * <p>The position is normally set to zero and the limit is set to the allocated length of the
+ * buffer.
+ *
+ * <p>Views of the buffer created by typed arrays and the "slice" method maintain their own offsets
+ * and lengths on the underlying buffer. An alternative would be to actually "duplicate" the
+ * original buffer and manipulate the position and limit. However, that would require extra
+ * bookkeeping when the underlying buffer is resized while various views are attached.
+ *
+ * <p>Non-shared ArrayBuffers are detached by simply nulling out the buffer and letting it be GCed.
+ *
+ * <p>ArrayBuffers are resized by creating a new buffer of the appropriate size and copying the
+ * contents.
+ *
+ * <p>Typed array buffers are all separate subclasses that reference the underlying view. These
+ * classes, and the DataView class, use the native "put" and "get" methods on ByteBuffer. On modern
+ * Java implementations these are efficiently implemented using intrinsics so that many operations
+ * are just one instruction. This prevents "tearing" for non-atomic access in shared buffers.
  */
+public class NativeArrayBuffer extends ScriptableObject {
+    @Serial private static final long serialVersionUID = 3110411773054879549L;
 
-public class NativeArrayBuffer
-extends IdScriptableObject{
-    public static final String CLASS_NAME = "ArrayBuffer";
+    public static final String ARRAY_CLASS_NAME = "ArrayBuffer";
+    public static final String SHARED_CLASS_NAME = "SharedArrayBuffer";
 
-    private static final byte[] EMPTY_BUF = new byte[0];
+    private static final ClassDescriptor ARRAY_DESCRIPTOR;
+    private static final ClassDescriptor SHARED_ARRAY_DESCRIPTOR;
 
-    final byte[] buffer;
+    static {
+        ARRAY_DESCRIPTOR =
+                new ClassDescriptor.Builder(ARRAY_CLASS_NAME, 1, NativeArrayBuffer::js_constructor)
+                        .withMethod(CTOR, "isView", 1, NativeArrayBuffer::js_isView)
+                        .withMethod(PROTO, "slice", 2, NativeArrayBuffer::js_slice)
+                        .withMethod(PROTO, "transfer", 0, NativeArrayBuffer::js_transfer)
+                        .withMethod(PROTO, "resize", 1, NativeArrayBuffer::js_resize)
+                        .withMethod(
+                                PROTO,
+                                "transferToFixedLength",
+                                0,
+                                NativeArrayBuffer::js_transferToFixedLength)
+                        .withProp(
+                                PROTO,
+                                "byteLength",
+                                NativeArrayBuffer::js_byteLength,
+                                null,
+                                DONTENUM)
+                        .withProp(PROTO, "detached", NativeArrayBuffer::js_detached, null, DONTENUM)
+                        .withProp(
+                                PROTO, "resizable", NativeArrayBuffer::js_resizable, null, DONTENUM)
+                        .withProp(
+                                PROTO,
+                                "maxByteLength",
+                                NativeArrayBuffer::js_maxByteLength,
+                                null,
+                                DONTENUM)
+                        .withProp(
+                                PROTO,
+                                SymbolKey.TO_STRING_TAG,
+                                value(ARRAY_CLASS_NAME, DONTENUM | READONLY))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
+
+        SHARED_ARRAY_DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                SHARED_CLASS_NAME, 1, NativeArrayBuffer::js_sharedConstructor)
+                        .withMethod(CTOR, "isView", 1, NativeArrayBuffer::js_isView)
+                        .withMethod(PROTO, "slice", 2, NativeArrayBuffer::js_sharedSlice)
+                        .withMethod(PROTO, "grow", 1, NativeArrayBuffer::js_sharedGrow)
+                        .withProp(
+                                PROTO,
+                                "byteLength",
+                                NativeArrayBuffer::js_sharedByteLength,
+                                null,
+                                DONTENUM)
+                        .withProp(
+                                PROTO,
+                                "maxByteLength",
+                                NativeArrayBuffer::js_sharedMaxByteLength,
+                                null,
+                                DONTENUM)
+                        .withProp(
+                                PROTO,
+                                "growable",
+                                NativeArrayBuffer::js_sharedGrowable,
+                                null,
+                                DONTENUM)
+                        .withProp(
+                                PROTO,
+                                SymbolKey.TO_STRING_TAG,
+                                value(SHARED_CLASS_NAME, DONTENUM | READONLY))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
+    }
+
+    /** The actual buffer, with limit set to the maximum allocated size. */
+    ByteBuffer buffer;
+
+    protected final ByteOrder byteOrder;
+    // ES2024: maxByteLength for resizable buffers (-1 = fixed-length)
+    private int maxByteLength = -1;
+    private final boolean shared;
 
     @Override
-    public String getClassName(){
-        return CLASS_NAME;
+    public String getClassName() {
+        return shared ? SHARED_CLASS_NAME : ARRAY_CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        NativeArrayBuffer na = new NativeArrayBuffer();
-        na.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    public static Object init(Context cx, VarScope scope, boolean sealed) {
+        return ARRAY_DESCRIPTOR.buildConstructor(cx, scope, new NativeObject(), sealed);
+    }
+
+    public static Object initShared(Context cx, VarScope scope, boolean sealed) {
+        return SHARED_ARRAY_DESCRIPTOR.buildConstructor(cx, scope, new NativeObject(), sealed);
+    }
+
+    /** Create an empty buffer. */
+    public NativeArrayBuffer() {
+        this(false);
+    }
+
+    public NativeArrayBuffer(boolean shared) {
+        byteOrder = defaultByteOrder();
+        buffer = allocateBuffer(0, shared);
+        this.shared = shared;
+    }
+
+    public NativeArrayBuffer(int len) {
+        this(len, false);
+    }
+
+    /** Create a buffer of the specified length in bytes. */
+    public NativeArrayBuffer(double len, boolean shared) {
+        this(ScriptRuntime.toIndex(len), shared);
+    }
+
+    private NativeArrayBuffer(int len, boolean shared) {
+        byteOrder = defaultByteOrder();
+        this.shared = shared;
+        try {
+            buffer = allocateBuffer(len, shared);
+        } catch (OutOfMemoryError e) {
+            throw ScriptRuntime.rangeErrorById("msg.arraybuf.oom");
+        }
+    }
+
+    private ByteBuffer allocateBuffer(int len, boolean allocateShared) {
+        var buf = allocateShared ? ByteBuffer.allocateDirect(len) : ByteBuffer.allocate(len);
+        buf.order(byteOrder);
+        return buf;
+    }
+
+    private static ByteOrder defaultByteOrder(Context cx) {
+        return cx.hasFeature(Context.FEATURE_LITTLE_ENDIAN)
+                ? ByteOrder.LITTLE_ENDIAN
+                : ByteOrder.BIG_ENDIAN;
+    }
+
+    private static ByteOrder defaultByteOrder() {
+        Context cx = Context.getCurrentContext();
+        return cx == null ? ByteOrder.BIG_ENDIAN : defaultByteOrder(cx);
+    }
+
+    protected void checkDetached() {
+        if (isDetached()) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.detached");
+        }
+    }
+
+    /** Get the number of bytes in the buffer. */
+    public int getLength() {
+        return buffer != null ? buffer.limit() : 0;
     }
 
     /**
-     * Create an empty buffer.
+     * Return the actual bytes that back the buffer. This is a reference to the real buffer, so
+     * changes to bytes here will be reflected in the actual object and all its views.
+     *
+     * @deprecated This method returns null for shared buffers, which use a direct buffer without a
+     *     backing array, and possibly for other buffers in the future. Callers should use {@link
+     *     #getByteBuffer} instead.
      */
-    public NativeArrayBuffer(){
-        buffer = EMPTY_BUF;
+    @Deprecated
+    @SuppressWarnings("ByteBufferBackingArray")
+    public byte[] getBuffer() {
+        return buffer != null && buffer.hasArray() ? buffer.array() : null;
     }
 
     /**
-     * Create a buffer of the specified length in bytes.
+     * Return a buffer that points to the contents. The position will be zero and the limit will be
+     * the length of the buffer. The buffer is returned using {@link java.nio.Buffer#duplicate}.
      */
-    public NativeArrayBuffer(double len){
-        if(len >= Integer.MAX_VALUE){
-            throw ScriptRuntime.constructError("RangeError", "length parameter (" + len + ") is too large ");
-        }
-        if(len == Double.NEGATIVE_INFINITY){
-            throw ScriptRuntime.constructError("RangeError", "Negative array length " + len);
-        }
-
-        int intLen = ScriptRuntime.toInt32(len);
-        if(intLen < 0){
-            throw ScriptRuntime.constructError("RangeError", "Negative array length " + len);
-        }
-        if(intLen == 0){
-            buffer = EMPTY_BUF;
-        }else{
-            buffer = new byte[intLen];
-        }
+    public ByteBuffer getByteBuffer() {
+        return buffer != null ? buffer.duplicate() : null;
     }
 
-    /**
-     * Get the number of bytes in the buffer.
-     */
-    public int getLength(){
-        return buffer.length;
+    public void detach() {
+        buffer = null;
     }
 
-    /**
-     * Return the actual bytes that back the buffer. This is a reference to the real buffer,
-     * so changes to bytes here will be reflected in the actual object and all its views.
-     */
-    public byte[] getBuffer(){
+    public boolean isDetached() {
+        return buffer == null;
+    }
+
+    public boolean isShared() {
+        return shared;
+    }
+
+    private static NativeArrayBuffer getSelf(Object thisObj) {
+        var self = LambdaConstructor.convertThisObject(thisObj, NativeArrayBuffer.class);
+        if (self.shared) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.notarraybuf");
+        }
+        return self;
+    }
+
+    private static NativeArrayBuffer getSharedSelf(Object thisObj) {
+        var self = LambdaConstructor.convertThisObject(thisObj, NativeArrayBuffer.class);
+        if (!self.shared) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.notsharedarraybuf");
+        }
+        return self;
+    }
+
+    private static NativeArrayBuffer js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        double length = isArg(args, 0) ? toIndexBounded(args[0]) : 0;
+        int maxByteLength = getMaxByteLength(args, length);
+        NativeArrayBuffer buffer = new NativeArrayBuffer(length, false);
+        buffer.maxByteLength = maxByteLength;
+        ScriptRuntime.setBuiltinProtoAndParent(buffer, f, nt, s, TopLevel.Builtins.ArrayBuffer);
         return buffer;
     }
 
-    // Actual implementations of actual code
+    private static NativeArrayBuffer js_sharedConstructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        double length = isArg(args, 0) ? toIndexBounded(args[0]) : 0;
+        int maxByteLength = getMaxByteLength(args, length);
+        NativeArrayBuffer buffer = new NativeArrayBuffer(length, true);
+        buffer.maxByteLength = maxByteLength;
+        ScriptRuntime.setBuiltinProtoAndParent(
+                buffer, f, nt, s, TopLevel.Builtins.SharedArrayBuffer);
+        return buffer;
+    }
 
     /**
-     * Return a new buffer that represents a slice of this buffer's content, starting at position
-     * "start" and ending at position "end". Both values will be "clamped" as per the JavaScript
-     * spec so that invalid values may be passed and will be adjusted up or down accordingly.
-     * This method will return a new buffer that contains a copy of the original buffer. Changes
-     * there will not affect the content of the buffer.
-     * @param s the position where the new buffer will start
-     * @param e the position where it will end
+     * Convert a byte length argument to an index, rejecting values that exceed the largest buffer
+     * this implementation can hold. Without the check, {@link ScriptRuntime#toIndex} would silently
+     * clamp such values to {@link Integer#MAX_VALUE}.
      */
-    public NativeArrayBuffer slice(double s, double e){
-        // Handle negative start as relative to start
-        // Clamp as per the spec to between 0 and length
-        int end = ScriptRuntime.toInt32(Math.max(0, Math.min(buffer.length, (e < 0 ? buffer.length + e : e))));
-        int start = ScriptRuntime.toInt32(Math.min(end, Math.max(0, (s < 0 ? buffer.length + s : s))));
-        int len = end - start;
-
-        NativeArrayBuffer newBuf = new NativeArrayBuffer(len);
-        System.arraycopy(buffer, start, newBuf.buffer, 0, len);
-        return newBuf;
-    }
-
-    // Function-calling dispatcher
-
-    @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args){
-        if(!f.hasTag(CLASS_NAME)){
-            return super.execIdCall(f, cx, scope, thisObj, args);
+    private static int toIndexBounded(Object val) {
+        double length = ScriptRuntime.toNumber(val);
+        if (length > (double) Integer.MAX_VALUE) {
+            throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.toobig");
         }
-        int id = f.methodId();
-        switch(id){
-            case ConstructorId_isView:
-                return (isArg(args, 0) && (args[0] instanceof NativeArrayBufferView));
+        return ScriptRuntime.toIndex(length);
+    }
 
-            case Id_constructor:
-                double length = isArg(args, 0) ? ScriptRuntime.toNumber(args[0]) : 0;
-                return new NativeArrayBuffer(length);
-
-            case Id_slice:
-                NativeArrayBuffer self = realThis(thisObj, f);
-                double start = isArg(args, 0) ? ScriptRuntime.toNumber(args[0]) : 0;
-                double end = isArg(args, 1) ? ScriptRuntime.toNumber(args[1]) : self.buffer.length;
-                return self.slice(start, end);
+    private static int getMaxByteLength(Object[] args, double length) {
+        int maxLen = -1;
+        if (isArg(args, 1) && args[1] instanceof Scriptable) {
+            Scriptable options = (Scriptable) args[1];
+            Object maxByteLengthValue = ScriptableObject.getProperty(options, "maxByteLength");
+            if (maxByteLengthValue != Scriptable.NOT_FOUND
+                    && !Undefined.isUndefined(maxByteLengthValue)) {
+                maxLen = toIndexBounded(maxByteLengthValue);
+                if (length > maxLen) {
+                    throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.mismatch");
+                }
+                if (maxLen > Runtime.getRuntime().maxMemory()) {
+                    // Sanity check (in the 262 tests) to avoid an impossibly-large maximum
+                    throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.toobig");
+                }
+            }
         }
-        throw new IllegalArgumentException(String.valueOf(id));
+        return maxLen;
     }
 
-    private static NativeArrayBuffer realThis(Scriptable thisObj, IdFunctionObject f){
-        if(!(thisObj instanceof NativeArrayBuffer))
-            throw incompatibleCallError(f);
-        return (NativeArrayBuffer)thisObj;
+    private static Boolean js_isView(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return isArg(args, 0) && (args[0] instanceof NativeArrayBufferView);
     }
 
-    private static boolean isArg(Object[] args, int i){
+    private static NativeArrayBuffer js_slice(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        NativeArrayBuffer self = getSelf(thisObj);
+        return self.sliceImpl(cx, s, args);
+    }
+
+    private static NativeArrayBuffer js_sharedSlice(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        NativeArrayBuffer self = getSharedSelf(thisObj);
+        return self.sliceImpl(cx, s, args);
+    }
+
+    private NativeArrayBuffer sliceImpl(Context cx, VarScope s, Object[] args) {
+        checkDetached();
+        double start = isArg(args, 0) ? ScriptRuntime.toNumber(args[0]) : 0;
+        double end = isArg(args, 1) ? ScriptRuntime.toNumber(args[1]) : getLength();
+        int endI =
+                ScriptRuntime.toInt32(
+                        Math.max(0, Math.min(getLength(), (end < 0 ? getLength() + end : end))));
+        int startI =
+                ScriptRuntime.toInt32(
+                        Math.min(endI, Math.max(0, (start < 0 ? getLength() + start : start))));
+        int len = endI - startI;
+
+        var species = shared ? TopLevel.Builtins.SharedArrayBuffer : TopLevel.Builtins.ArrayBuffer;
+        Constructable constructor =
+                AbstractEcmaObjectOperations.speciesConstructor(
+                        cx,
+                        this,
+                        TopLevel.getBuiltinCtor(cx, ScriptableObject.getTopLevelScope(s), species));
+        Scriptable newBuf = constructor.construct(cx, s, new Object[] {len});
+        if (!(newBuf instanceof NativeArrayBuffer)) {
+            throw ScriptRuntime.typeErrorById("msg.species.invalid.ctor");
+        }
+        NativeArrayBuffer buf = (NativeArrayBuffer) newBuf;
+
+        if (buf == this) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.same");
+        }
+
+        int actualLength = buf.getLength();
+        if (actualLength < len) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.smaller.len", len, actualLength);
+        }
+
+        var tmp = buffer.duplicate();
+        ((Buffer) tmp).position(startI);
+        ((Buffer) tmp).limit(startI + len);
+        buf.buffer.put(tmp);
+        ((Buffer) buf.buffer).rewind();
+        return buf;
+    }
+
+    private static Object js_byteLength(Scriptable thisObj) {
+        return getSelf(thisObj).getLength();
+    }
+
+    private static Object js_sharedByteLength(Scriptable thisObj) {
+        return getSharedSelf(thisObj).getLength();
+    }
+
+    private static Object js_detached(Scriptable thisObj) {
+        return getSelf(thisObj).isDetached();
+    }
+
+    private NativeArrayBuffer copyAndDetach(
+            Context cx, VarScope scope, Object lenObj, boolean preserveResizability) {
+        assert !shared;
+        int newLength;
+        if (Undefined.isUndefined(lenObj)) {
+            newLength = getLength();
+        } else {
+            newLength = ScriptRuntime.toIndex(lenObj);
+        }
+        checkDetached();
+
+        int newMaxByteLength = preserveResizability ? maxByteLength : -1;
+        if (newMaxByteLength >= 0 && newLength > newMaxByteLength) {
+            throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.mismatch");
+        }
+        var newBuffer = new NativeArrayBuffer(newLength);
+        newBuffer.maxByteLength = newMaxByteLength;
+        ScriptRuntime.setBuiltinProtoAndParent(newBuffer, scope, TopLevel.Builtins.ArrayBuffer);
+        int copyLength = Math.min(newLength, getLength());
+        if (copyLength > 0) {
+            var tmp = buffer.duplicate();
+            ((Buffer) tmp).limit(copyLength);
+            newBuffer.buffer.put(tmp);
+            ((Buffer) newBuffer.buffer).rewind();
+        }
+        detach();
+        return newBuffer;
+    }
+
+    // ES2025 ArrayBuffer.prototype.transfer
+    private static Scriptable js_transfer(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        var self = getSelf(thisObj);
+        var arg1 = args.length > 0 ? args[0] : Undefined.instance;
+        return self.copyAndDetach(cx, s, arg1, true);
+    }
+
+    // ES2025 ArrayBuffer.prototype.transferToFixedLength
+    private static Scriptable js_transferToFixedLength(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        var self = getSelf(thisObj);
+        var arg1 = args.length > 0 ? args[0] : Undefined.instance;
+        return self.copyAndDetach(cx, s, arg1, false);
+    }
+
+    private static boolean isArg(Object[] args, int i) {
         return ((args.length > i) && !Undefined.instance.equals(args[i]));
     }
 
-    @Override
-    protected void initPrototypeId(int id){
-        String s;
-        int arity;
-        switch(id){
-            case Id_constructor:
-                arity = 1;
-                s = "constructor";
-                break;
-            case Id_slice:
-                arity = 1;
-                s = "slice";
-                break;
-            default:
-                throw new IllegalArgumentException(String.valueOf(id));
+    // ES2024 ArrayBuffer.prototype.resize
+    private static Object js_resize(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        NativeArrayBuffer self = getSelf(thisObj);
+        if (!self.isResizable()) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.notresizeable");
         }
-        initPrototypeMethod(CLASS_NAME, id, s, arity);
-    }
-
-// #string_id_map#
-
-    @Override
-    protected int findPrototypeId(String s){
-        int id;
-// #generated# Last update: 2018-07-20 08:21:54 MESZ
-        L0:
-        {
-            id = 0;
-            String X = null;
-            int s_length = s.length();
-            if(s_length == 5){
-                X = "slice";
-                id = Id_slice;
-            }else if(s_length == 11){
-                X = "constructor";
-                id = Id_constructor;
-            }
-            if(X != null && X != s && !X.equals(s)) id = 0;
+        var arg1 = args.length > 0 ? args[0] : Undefined.instance;
+        int newLength = ScriptRuntime.toIndex(arg1);
+        self.checkDetached();
+        if (newLength > self.maxByteLength) {
+            throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.exceedsmax", self.maxByteLength);
         }
-// #/generated#
-        return id;
-    }
-
-    // Table of all functions
-    private static final int
-    Id_constructor = 1,
-    Id_slice = 2,
-    MAX_PROTOTYPE_ID = Id_slice;
-
-// #/string_id_map#
-
-    // Constructor (aka static) functions here
-
-    private static final int ConstructorId_isView = -1;
-
-    @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor){
-        addIdFunctionProperty(ctor, CLASS_NAME, ConstructorId_isView, "isView", 1);
-    }
-
-    // Properties here
-
-    @Override
-    protected int getMaxInstanceId(){
-        return MAX_INSTANCE_ID;
-    }
-
-    @Override
-    protected String getInstanceIdName(int id){
-        if(id == Id_byteLength){
-            return "byteLength";
+        if (newLength == self.getLength()) {
+            // No resize needed
+            return Undefined.instance;
         }
-        return super.getInstanceIdName(id);
+
+        self.replaceBuffer(newLength);
+        return Undefined.instance;
     }
 
-    @Override
-    protected Object getInstanceIdValue(int id){
-        if(id == Id_byteLength){
-            return ScriptRuntime.wrapInt(buffer.length);
+    // ES2024 SharedArrayBuffer.prototype.grow
+    private static Object js_sharedGrow(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        NativeArrayBuffer self = getSharedSelf(thisObj);
+        if (!self.isGrowable()) {
+            throw ScriptRuntime.typeErrorById("msg.arraybuf.notresizeable");
         }
-        return super.getInstanceIdValue(id);
-    }
-
-    @Override
-    protected int findInstanceIdInfo(String s){
-        if("byteLength".equals(s)){
-            return instanceIdInfo(READONLY | PERMANENT, Id_byteLength);
+        var arg1 = args.length > 0 ? args[0] : Undefined.instance;
+        int newLength = ScriptRuntime.toIndex(arg1);
+        if (newLength > self.maxByteLength) {
+            throw ScriptRuntime.rangeErrorById("msg.arraybuf.range.exceedsmax", self.maxByteLength);
         }
-        return super.findInstanceIdInfo(s);
+        if (newLength <= self.getLength()) {
+            // A shared buffer can only grow, never shrink
+            return Undefined.instance;
+        }
+
+        self.replaceBuffer(newLength);
+        return Undefined.instance;
     }
 
-    // Table of all properties
-    private static final int
-    Id_byteLength = 1,
-    MAX_INSTANCE_ID = Id_byteLength;
+    /**
+     * Replace the underlying buffer with a new one of the given length, preserving the existing
+     * contents. Views of this buffer keep referencing the {@link NativeArrayBuffer} object, so they
+     * transparently pick up the new buffer. New bytes are automatically initialized to 0 in Java.
+     */
+    private void replaceBuffer(int newLength) {
+        var newBuffer = allocateBuffer(newLength, shared);
+        int copyLength = Math.min(newLength, getLength());
+
+        if (copyLength > 0) {
+            var tmp = buffer.duplicate();
+            ((Buffer) tmp).limit(copyLength);
+            newBuffer.put(tmp);
+            ((Buffer) newBuffer).rewind();
+        }
+
+        buffer = newBuffer;
+    }
+
+    public boolean isResizable() {
+        return maxByteLength >= 0;
+    }
+
+    public boolean isGrowable() {
+        return isResizable();
+    }
+
+    // ES2024 ArrayBuffer.prototype.resizable getter
+    private static Object js_resizable(Scriptable thisObj) {
+        NativeArrayBuffer self = getSelf(thisObj);
+        // A buffer is resizable if maxByteLength was specified in constructor
+        return self.isResizable();
+    }
+
+    private static Object js_sharedGrowable(Scriptable thisObj) {
+        NativeArrayBuffer self = getSharedSelf(thisObj);
+        // A buffer is resizable if maxByteLength was specified in constructor
+        return self.isGrowable();
+    }
+
+    // ES2024 ArrayBuffer.prototype.maxByteLength getter
+    private static Object js_maxByteLength(Scriptable thisObj) {
+        NativeArrayBuffer self = getSelf(thisObj);
+        // For fixed-length buffers, maxByteLength = byteLength
+        // For resizable buffers, return the maxByteLength
+        if (self.maxByteLength >= 0) {
+            return self.maxByteLength;
+        } else {
+            return self.getLength();
+        }
+    }
+
+    private static Object js_sharedMaxByteLength(Scriptable thisObj) {
+        NativeArrayBuffer self = getSharedSelf(thisObj);
+        // For fixed-length buffers, maxByteLength = byteLength
+        // For resizable buffers, return the maxByteLength
+        if (self.maxByteLength >= 0) {
+            return self.maxByteLength;
+        } else {
+            return self.getLength();
+        }
+    }
 }

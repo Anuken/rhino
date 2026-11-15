@@ -1,0 +1,250 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package rhino.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.PropHolder;
+import rhino.Scriptable;
+import rhino.TopLevel;
+import rhino.testutils.Utils;
+
+/**
+ * Tests for yield* with iterator.return() method. Tests andling when the delegated iterator's
+ * return method is null, undefined, or returns null/undefined.
+ */
+public class GeneratorsYieldStarReturnTest {
+
+    /**
+     * Test that yield* properly delegates to the iterable's return() method and handles the case
+     * when return() returns null.
+     */
+    @Test
+    public void testYieldStarWithNullReturn() {
+        String script =
+                Utils.lines(
+                        "var returnGets = 0;",
+                        "var iterable = {",
+                        "    next: function() {",
+                        "        return {value: 1, done: false};",
+                        "    },",
+                        "    get return() {",
+                        "        returnGets += 1;",
+                        "        return null;",
+                        "    },",
+                        "};",
+                        "",
+                        "iterable[Symbol.iterator] = function() {",
+                        "    return iterable;",
+                        "};",
+                        "",
+                        "function* generator() {",
+                        "    yield* iterable;",
+                        "}",
+                        "",
+                        "var iterator = generator();",
+                        "iterator.next();",
+                        "",
+                        "var result = iterator.return(2);");
+
+        Utils.runWithAllModes(
+                cx -> {
+                    cx.setLanguageVersion(Context.VERSION_ES6);
+                    TopLevel scope = cx.initStandardObjects();
+                    cx.evaluateString(scope, script, "test", 1, null);
+
+                    Object result = scope.get("result", scope);
+                    assertTrue(result instanceof Scriptable, "result should be a Scriptable");
+
+                    Scriptable resultObj = (Scriptable) result;
+                    assertEquals(
+                            2.0,
+                            getNumberProperty(resultObj, "value"),
+                            0.001,
+                            "Result value should be 2");
+                    assertEquals(
+                            Boolean.TRUE,
+                            resultObj.get("done", resultObj),
+                            "Result should be done");
+
+                    double returnGets = getNumberProperty(scope, "returnGets");
+                    assertEquals(1.0, returnGets, 0.001, "Return getter should be called once");
+                    return null;
+                });
+    }
+
+    /**
+     * Test that yield* properly delegates to the iterable's return() method and handles the case
+     * when return() returns undefined.
+     */
+    @Test
+    public void testYieldStarWithUndefinedReturn() {
+        String script =
+                Utils.lines(
+                        "var returnCalled = false;",
+                        "var iterable = {",
+                        "    next: function() {",
+                        "        return {value: 1, done: false};",
+                        "    },",
+                        "    return: function() {",
+                        "        returnCalled = true;",
+                        "        return undefined;",
+                        "    },",
+                        "};",
+                        "",
+                        "iterable[Symbol.iterator] = function() {",
+                        "    return iterable;",
+                        "};",
+                        "",
+                        "function* generator() {",
+                        "    yield* iterable;",
+                        "}",
+                        "",
+                        "var iterator = generator();",
+                        "iterator.next();",
+                        "",
+                        "var result = iterator.return(42);");
+
+        Utils.runWithAllModes(
+                cx -> {
+                    cx.setLanguageVersion(Context.VERSION_ES6);
+                    TopLevel scope = cx.initStandardObjects();
+                    cx.evaluateString(scope, script, "test", 1, null);
+
+                    Object result = scope.get("result", scope);
+                    assertTrue(result instanceof Scriptable, "result should be a Scriptable");
+
+                    Scriptable resultObj = (Scriptable) result;
+                    assertEquals(
+                            42.0,
+                            getNumberProperty(resultObj, "value"),
+                            0.001,
+                            "Result value should be 42");
+                    assertEquals(
+                            Boolean.TRUE,
+                            resultObj.get("done", resultObj),
+                            "Result should be done");
+
+                    Object returnCalled = scope.get("returnCalled", scope);
+                    assertEquals(Boolean.TRUE, returnCalled, "Return method should be called");
+                    return null;
+                });
+    }
+
+    /** Test that yield* properly delegates when iterable doesn't have return(). */
+    @Test
+    public void testYieldStarWithoutReturn() {
+        String script =
+                Utils.lines(
+                        "var iterable = {",
+                        "    next: function() {",
+                        "        return {value: 1, done: false};",
+                        "    },",
+                        "};",
+                        "",
+                        "iterable[Symbol.iterator] = function() {",
+                        "    return iterable;",
+                        "};",
+                        "",
+                        "function* generator() {",
+                        "    yield* iterable;",
+                        "}",
+                        "",
+                        "var iterator = generator();",
+                        "iterator.next();",
+                        "",
+                        "var result = iterator.return(99);");
+
+        Utils.runWithAllModes(
+                cx -> {
+                    cx.setLanguageVersion(Context.VERSION_ES6);
+                    TopLevel scope = cx.initStandardObjects();
+                    cx.evaluateString(scope, script, "test", 1, null);
+
+                    Object result = scope.get("result", scope);
+                    assertTrue(result instanceof Scriptable, "result should be a Scriptable");
+
+                    Scriptable resultObj = (Scriptable) result;
+                    assertEquals(
+                            99.0,
+                            getNumberProperty(resultObj, "value"),
+                            0.001,
+                            "Result value should be 99");
+                    assertEquals(
+                            Boolean.TRUE,
+                            resultObj.get("done", resultObj),
+                            "Result should be done");
+                    return null;
+                });
+    }
+
+    /**
+     * Test that yield* properly delegates when iterable's return() returns a valid iterator result.
+     */
+    @Test
+    public void testYieldStarWithValidReturn() {
+        String script =
+                Utils.lines(
+                        "var returnCalled = false;",
+                        "var iterable = {",
+                        "    next: function() {",
+                        "        return {value: 1, done: false};",
+                        "    },",
+                        "    return: function(value) {",
+                        "        returnCalled = true;",
+                        "        return {value: value + 10, done: true};",
+                        "    },",
+                        "};",
+                        "",
+                        "iterable[Symbol.iterator] = function() {",
+                        "    return iterable;",
+                        "};",
+                        "",
+                        "function* generator() {",
+                        "    yield* iterable;",
+                        "}",
+                        "",
+                        "var iterator = generator();",
+                        "iterator.next();",
+                        "",
+                        "var result = iterator.return(5);");
+
+        Utils.runWithAllModes(
+                cx -> {
+                    cx.setLanguageVersion(Context.VERSION_ES6);
+                    TopLevel scope = cx.initStandardObjects();
+                    cx.evaluateString(scope, script, "test", 1, null);
+
+                    Object result = scope.get("result", scope);
+                    assertTrue(result instanceof Scriptable, "result should be a Scriptable");
+
+                    Scriptable resultObj = (Scriptable) result;
+                    assertEquals(
+                            15.0,
+                            getNumberProperty(resultObj, "value"),
+                            0.001,
+                            "Result value should be 15");
+                    assertEquals(
+                            Boolean.TRUE,
+                            resultObj.get("done", resultObj),
+                            "Result should be done");
+
+                    Object returnCalled = scope.get("returnCalled", scope);
+                    assertEquals(Boolean.TRUE, returnCalled, "Return method should be called");
+                    return null;
+                });
+    }
+
+    private <T extends PropHolder<T>> double getNumberProperty(T obj, String property) {
+        Object value = obj.get(property, obj);
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        throw new AssertionError("Property " + property + " is not a number: " + value);
+    }
+}

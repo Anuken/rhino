@@ -1,177 +1,156 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-import rhino.classfile.*;
+import static rhino.ScriptableObject.DONTENUM;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import rhino.classfile.ByteCode;
+import rhino.classfile.ClassFileWriter;
+import rhino.lc.type.TypeInfo;
 
-public final class JavaAdapter implements IdFunctionCall{
+public final class JavaAdapter {
     /** If set, creates adapter classes instead of generating their bytecode. */
     public static AdapterFactory adapterFactory;
 
     /**
-     * Provides a key with which to distinguish previously generated
-     * adapter classes stored in a hash table.
+     * Provides a key with which to distinguish previously generated adapter classes stored in a
+     * hash table.
+     *
+     * <p>JavaAdapter should cache the adapter class when input classes are the same, and
+     * implementation object are of "same shape", which means having same number of function
+     * properties, and same length for each function
      */
-    static class JavaAdapterSignature{
+    static class JavaAdapterSignature {
         Class<?> superClass;
         Class<?>[] interfaces;
-        ObjToIntMap names;
+        // name -> function arg length
+        Map<String, Integer> names;
 
-        JavaAdapterSignature(Class<?> superClass, Class<?>[] interfaces,
-                             ObjToIntMap names){
-            this.superClass = superClass;
-            this.interfaces = interfaces;
-            this.names = names;
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof JavaAdapterSignature)) return false;
+            JavaAdapterSignature sig = (JavaAdapterSignature) obj;
+            return superClass == sig.superClass
+                    && Arrays.equals(interfaces, sig.interfaces)
+                    && names.equals(sig.names);
         }
 
         @Override
-        public boolean equals(Object obj){
-            if(!(obj instanceof JavaAdapterSignature))
-                return false;
-            JavaAdapterSignature sig = (JavaAdapterSignature)obj;
-            if(superClass != sig.superClass)
-                return false;
-            if(interfaces != sig.interfaces){
-                if(interfaces.length != sig.interfaces.length)
-                    return false;
-                for(int i = 0; i < interfaces.length; i++)
-                    if(interfaces[i] != sig.interfaces[i])
-                        return false;
-            }
-            if(names.size() != sig.names.size())
-                return false;
-            ObjToIntMap.Iterator iter = new ObjToIntMap.Iterator(names);
-            for(iter.start(); !iter.done(); iter.next()){
-                String name = (String)iter.getKey();
-                int arity = iter.getValue();
-                if(arity != sig.names.get(name, arity + 1))
-                    return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode(){
-            return (superClass.hashCode() + Arrays.hashCode(interfaces)) ^ names.size();
+        public int hashCode() {
+            return (superClass.hashCode() * 31 + Arrays.hashCode(interfaces)) ^ names.size();
         }
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        JavaAdapter obj = new JavaAdapter();
-        IdFunctionObject ctor = new IdFunctionObject(obj, FTAG, Id_JavaAdapter,
-        "JavaAdapter", 1, scope);
-        ctor.markAsConstructor(null);
-        if(sealed){
+    /** The JavaAdapter constructor. */
+    static final class AdapterConstructor extends LambdaConstructor {
+        private static final long serialVersionUID = 1L;
+
+        AdapterConstructor(VarScope scope) {
+            super(scope, "JavaAdapter", 1, JavaAdapter::js_createAdapter);
+        }
+
+        // The prototype of an adapter is its implementation object; the default
+        // LambdaConstructor behavior would replace it with JavaAdapter.prototype.
+        @Override
+        public Scriptable construct(Context cx, Object nt, VarScope scope, Object[] args) {
+            return js_createAdapter(cx, nt, getDeclarationScope(), args);
+        }
+
+        @Override
+        public Object call(Context cx, Object nt, VarScope scope, Object thisObj, Object[] args) {
+            return js_createAdapter(cx, nt, getDeclarationScope(), args);
+        }
+    }
+
+    public static void init(Context cx, VarScope scope, boolean sealed) {
+        var ctor = new AdapterConstructor(scope);
+
+        if (sealed) {
             ctor.sealObject();
         }
-        ctor.exportAsScopeProperty();
+
+        ScriptableObject.defineProperty(scope, "JavaAdapter", ctor, DONTENUM);
     }
 
-    @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args){
-        if(f.hasTag(FTAG)){
-            if(f.methodId() == Id_JavaAdapter){
-                return js_createAdapter(cx, scope, args);
-            }
-        }
-        throw f.unknown();
-    }
-
-    public static Object convertResult(Object result, Class<?> c){
-        if(result == Undefined.instance &&
-        (c != ScriptRuntime.ObjectClass &&
-        c != ScriptRuntime.StringClass)){
+    public static Object convertResult(Object result, Class<?> c) {
+        if (result == Undefined.instance
+                && (c != ScriptRuntime.ObjectClass && c != ScriptRuntime.StringClass)) {
             // Avoid an error for an undefined value; return null instead.
             return null;
         }
         return Context.jsToJava(result, c);
     }
 
-    public static Scriptable createAdapterWrapper(Scriptable obj, Object adapter){
-        Scriptable scope = ScriptableObject.getTopLevelScope(obj);
-        NativeJavaObject res = new NativeJavaObject(scope, adapter, null, true);
+    public static Scriptable createAdapterWrapper(Scriptable obj, Object adapter) {
+        VarScope scope = ScriptableObject.getTopLevelScope(obj.getParentScope());
+        NativeJavaObject res = new NativeJavaObject(scope, adapter, TypeInfo.NONE, true);
         res.setPrototype(obj);
         return res;
     }
 
     public static Object getAdapterSelf(Class<?> adapterClass, Object adapter)
-    throws NoSuchFieldException, IllegalAccessException{
+            throws NoSuchFieldException, IllegalAccessException {
         Field self = adapterClass.getDeclaredField("self");
         return self.get(adapter);
     }
 
-    static Object js_createAdapter(Context cx, Scriptable scope, Object[] args){
+    static Scriptable js_createAdapter(Context cx, Object nt, VarScope scope, Object[] args) {
         int N = args.length;
-        if(N == 0){
-            throw ScriptRuntime.typeError0("msg.adapter.zero.args");
+        if (N == 0) {
+            throw ScriptRuntime.typeErrorById("msg.adapter.zero.args");
         }
 
         // Expected arguments:
         // Any number of NativeJavaClass objects representing the super-class
         // and/or interfaces to implement, followed by one NativeObject providing
         // the implementation, followed by any number of arguments to pass on
-        // to the (super-class) constructor.
+        // to the (super-class) constructor:
+        // new JavaAdapter(
+        //     AbstractClazz, Interface1, Interface2,
+        //     { someMethod: function(args) {}, someOtherMethod: function(args) {} },
+        //     ["args for AbstractClazz ctor"]
+        // )
 
-        int classCount;
-        for(classCount = 0; classCount < N - 1; classCount++){
-            Object arg = args[classCount];
-            // We explicitly test for NativeObject here since checking for
-            // instanceof ScriptableObject or !(instanceof NativeJavaClass)
-            // would fail for a Java class that isn't found in the class path
-            // as NativeJavaPackage extends ScriptableObject.
-            if(arg instanceof NativeObject){
-                break;
-            }
+        var sig = new JavaAdapterSignature();
+        var classCount = fillAdapterInheritanceData(scope, args, sig);
 
-            if(!(arg instanceof NativeJavaClass) && arg instanceof NativeJavaObject && ((NativeJavaObject)arg).unwrap() instanceof Class){
-                args[classCount] = arg = new NativeJavaClass(scope, (Class)((NativeJavaObject)arg).unwrap());
-            }
-
-            if(!(arg instanceof NativeJavaClass)){
-                throw ScriptRuntime.typeError2("msg.not.java.class.arg",
-                String.valueOf(classCount),
-                ScriptRuntime.toString(arg));
-            }
-        }
-        Class<?> superClass = null;
-        Class<?>[] intfs = new Class[classCount];
-        int interfaceCount = 0;
-        for(int i = 0; i < classCount; ++i){
-            Class<?> c = ((NativeJavaClass)args[i]).getClassObject();
-            if(!c.isInterface()){
-                if(superClass != null){
-                    throw ScriptRuntime.typeError2("msg.only.one.super",
-                    superClass.getName(), c.getName());
-                }
-                superClass = c;
-            }else{
-                intfs[interfaceCount++] = c;
-            }
-        }
-
-        if(superClass == null){
-            superClass = ScriptRuntime.ObjectClass;
-        }
-
-        Class<?>[] interfaces = new Class[interfaceCount];
-        System.arraycopy(intfs, 0, interfaces, 0, interfaceCount);
         // next argument is implementation, must be scriptable
         Scriptable obj = ScriptableObject.ensureScriptable(args[classCount]);
+        sig.names = getObjectFunctionNames(obj);
 
-        if(adapterFactory != null){
+        if (adapterFactory != null) {
             Object[] ctorArgs = new Object[N - classCount - 1];
             System.arraycopy(args, classCount + 1, ctorArgs, 0, ctorArgs.length);
-            return FactoryAdapter.get(adapterFactory, scope, superClass, interfaces, obj).create(cx, obj, ctorArgs);
+            return FactoryAdapter.get(adapterFactory, scope, sig).create(cx, scope, obj, ctorArgs);
         }
 
-        Class<?> adapterClass = getAdapterClass(scope, superClass, interfaces, obj);
+        Class<?> adapterClass = getAdapterClass(scope, sig);
         Object adapter;
 
         int argsCount = N - classCount - 1;
-        try{
-            if(argsCount > 0){
+        try {
+            if (argsCount > 0) {
                 // Arguments contain parameters for super-class constructor.
                 // We use the generic Java method lookup logic to find and
                 // invoke the right constructor.
@@ -180,58 +159,176 @@ public final class JavaAdapter implements IdFunctionCall{
                 ctorArgs[1] = cx.getFactory();
                 System.arraycopy(args, classCount + 1, ctorArgs, 2, argsCount);
                 // TODO: cache class wrapper?
-                NativeJavaClass classWrapper = new NativeJavaClass(scope,
-                adapterClass, true);
+                NativeJavaClass classWrapper = new NativeJavaClass(scope, adapterClass, true);
                 NativeJavaMethod ctors = classWrapper.members.ctors;
                 int index = ctors.findCachedFunction(cx, ctorArgs);
-                if(index < 0){
-                    String sig = NativeJavaMethod.scriptSignature(args);
-                    throw Context.reportRuntimeError2(
-                    "msg.no.java.ctor", adapterClass.getName(), sig);
+                if (index < 0) {
+                    throw Context.reportRuntimeErrorById(
+                            "msg.no.java.ctor",
+                            adapterClass.getName(),
+                            NativeJavaMethod.scriptSignature(args));
                 }
 
                 // Found the constructor, so try invoking it.
                 adapter = NativeJavaClass.constructInternal(ctorArgs, ctors.methods[index]);
-            }else{
+            } else {
                 Class<?>[] ctorParms = {
-                ScriptRuntime.ScriptableClass,
-                ScriptRuntime.ContextFactoryClass
+                    ScriptRuntime.ScriptableClass, ScriptRuntime.ContextFactoryClass
                 };
                 Object[] ctorArgs = {obj, cx.getFactory()};
                 adapter = adapterClass.getConstructor(ctorParms).newInstance(ctorArgs);
             }
 
-            Object self = getAdapterSelf(adapterClass, adapter);
+            var self = (Scriptable) getAdapterSelf(adapterClass, adapter);
             // Return unwrapped JavaAdapter if it implements Scriptable
-            if(self instanceof Wrapper){
-                Object unwrapped = ((Wrapper)self).unwrap();
-                if(unwrapped instanceof Scriptable){
-                    if(unwrapped instanceof ScriptableObject){
-                        ScriptRuntime.setObjectProtoAndParent(
-                        (ScriptableObject)unwrapped, scope);
+            if (self instanceof Wrapper) {
+                Object unwrapped = ((Wrapper) self).unwrap();
+                if (unwrapped instanceof Scriptable) {
+                    if (unwrapped instanceof ScriptableObject) {
+                        ScriptRuntime.setObjectProtoAndParent((ScriptableObject) unwrapped, scope);
                     }
-                    return unwrapped;
+                    return (Scriptable) unwrapped;
                 }
             }
             return self;
-        }catch(Exception ex){
+        } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);
         }
     }
 
-    static ObjToIntMap getObjectFunctionNames(Scriptable obj){
+    /**
+     * @param args JavaAdapter args to scan
+     * @param signature holder of collected information, {@link JavaAdapterSignature#superClass} and
+     *     {@link JavaAdapterSignature#interfaces} will be overwritten
+     * @return the index of JS implementation object
+     */
+    private static int fillAdapterInheritanceData(
+            VarScope scope, Object[] args, JavaAdapterSignature signature) {
+        var len = args.length;
+
+        int classCount;
+        for (classCount = 0; classCount < len - 1; classCount++) {
+            Object arg = args[classCount];
+            // We explicitly test for NativeObject here since checking for
+            // instanceof ScriptableObject or !(instanceof NativeJavaClass)
+            // would fail for a Java class that isn't found in the class path
+            // as NativeJavaPackage extends ScriptableObject.
+            if (arg instanceof NativeObject) {
+                break;
+            }
+            // java.lang.Class objects work like the classes they represent
+            if (!(arg instanceof NativeJavaClass)
+                    && arg instanceof Wrapper
+                    && ((Wrapper) arg).unwrap() instanceof Class) {
+                Class<?> c = (Class<?>) ((Wrapper) arg).unwrap();
+                args[classCount] = arg = new NativeJavaClass(scope, c);
+            }
+            if (!(arg instanceof NativeJavaClass)) {
+                throw ScriptRuntime.typeErrorById(
+                        "msg.not.java.class.arg",
+                        String.valueOf(classCount),
+                        ScriptRuntime.toString(arg));
+            }
+        }
+        Class<?> superClass = null;
+        Class<?>[] interfaces = new Class[classCount];
+        int interfaceCount = 0;
+        for (int i = 0; i < classCount; ++i) {
+            Class<?> c = ((NativeJavaClass) args[i]).getClassObject();
+            if (c.isInterface()) {
+                interfaces[interfaceCount++] = c;
+            } else {
+                if (superClass != null) {
+                    throw ScriptRuntime.typeErrorById(
+                            "msg.only.one.super", superClass.getName(), c.getName());
+                }
+                superClass = c;
+            }
+        }
+
+        signature.superClass = superClass == null ? Object.class : superClass;
+        signature.interfaces =
+                interfaceCount == interfaces.length
+                        ? interfaces
+                        : Arrays.copyOf(interfaces, interfaceCount);
+        return classCount;
+    }
+
+    // Needed by NativeJavaObject serializer
+    public static void writeAdapterObject(Object javaObject, ObjectOutputStream out)
+            throws IOException {
+        Class<?> cl = javaObject.getClass();
+        out.writeObject(cl.getSuperclass().getName());
+
+        Class<?>[] interfaces = cl.getInterfaces();
+        String[] interfaceNames = new String[interfaces.length];
+
+        for (int i = 0; i < interfaces.length; i++) interfaceNames[i] = interfaces[i].getName();
+
+        out.writeObject(interfaceNames);
+
+        try {
+            Object delegee = cl.getField("delegee").get(javaObject);
+            out.writeObject(delegee);
+            return;
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+        }
+        throw new IOException();
+    }
+
+    // Needed by NativeJavaObject de-serializer
+    public static Object readAdapterObject(Scriptable self, ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+        ContextFactory factory;
+        Context cx = Context.getCurrentContext();
+        if (cx != null) {
+            factory = cx.getFactory();
+        } else {
+            factory = null;
+        }
+
+        var sig = new JavaAdapterSignature();
+        sig.superClass = Class.forName((String) in.readObject());
+
+        String[] interfaceNames = (String[]) in.readObject();
+        sig.interfaces = new Class[interfaceNames.length];
+
+        for (int i = 0; i < interfaceNames.length; i++)
+            sig.interfaces[i] = Class.forName(interfaceNames[i]);
+
+        Scriptable delegee = (Scriptable) in.readObject();
+        sig.names = getObjectFunctionNames(delegee);
+
+        Class<?> adapterClass = getAdapterClass(self.getParentScope(), sig);
+
+        Class<?>[] ctorParms = {
+            ScriptRuntime.ContextFactoryClass,
+            ScriptRuntime.ScriptableClass,
+            ScriptRuntime.ScriptableClass
+        };
+        Object[] ctorArgs = {factory, delegee, self};
+        try {
+            return adapterClass.getConstructor(ctorParms).newInstance(ctorArgs);
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
+        }
+
+        throw new ClassNotFoundException("adapter");
+    }
+
+    static Map<String, Integer> getObjectFunctionNames(Scriptable obj) {
         Object[] ids = ScriptableObject.getPropertyIds(obj);
-        ObjToIntMap map = new ObjToIntMap(ids.length);
-        for(int i = 0; i != ids.length; ++i){
-            if(!(ids[i] instanceof String))
-                continue;
-            String id = (String)ids[i];
+        HashMap<String, Integer> map = new HashMap<>();
+        for (int i = 0; i != ids.length; ++i) {
+            if (!(ids[i] instanceof String)) continue;
+            String id = (String) ids[i];
             Object value = ScriptableObject.getProperty(obj, id);
-            if(value instanceof Function){
-                Function f = (Function)value;
-                int length = ScriptRuntime.toInt32(
-                ScriptableObject.getProperty(f, "length"));
-                if(length < 0){
+            if (value instanceof Function) {
+                Function f = (Function) value;
+                int length = ScriptRuntime.toInt32(ScriptableObject.getProperty(f, "length"));
+                if (length < 0) {
                     length = 0;
                 }
                 map.put(id, length);
@@ -240,138 +337,157 @@ public final class JavaAdapter implements IdFunctionCall{
         return map;
     }
 
-    private static Class<?> getAdapterClass(Scriptable scope, Class<?> superClass,
-                                            Class<?>[] interfaces, Scriptable obj){
+    private static Class<?> getAdapterClass(VarScope scope, JavaAdapterSignature sig) {
         ClassCache cache = ClassCache.get(scope);
-        Map<JavaAdapterSignature, Class<?>> generated
-        = cache.getInterfaceAdapterCacheMap();
+        Map<JavaAdapterSignature, Class<?>> generated = cache.getInterfaceAdapterCacheMap();
 
-        ObjToIntMap names = getObjectFunctionNames(obj);
-        JavaAdapterSignature sig;
-        sig = new JavaAdapterSignature(superClass, interfaces, names);
         Class<?> adapterClass = generated.get(sig);
-        if(adapterClass == null){
-            String adapterName = "adapter" + cache.newClassSerialNumber();
-            byte[] code = createAdapterCode(names, adapterName,
-            superClass, interfaces, null);
+        if (adapterClass == null) {
+            String adapterName =
+                    adapterClassName(sig.superClass, sig.interfaces, cache.newClassSerialNumber());
+            byte[] code =
+                    createAdapterCode(sig.names, adapterName, sig.superClass, sig.interfaces, null);
 
             adapterClass = loadAdapterClass(adapterName, code);
-            if(cache.isCachingEnabled()){
+            if (cache.isCachingEnabled()) {
                 generated.put(sig, adapterClass);
             }
         }
         return adapterClass;
     }
 
-    public static byte[] createAdapterCode(ObjToIntMap functionNames,
-                                           String adapterName,
-                                           Class<?> superClass,
-                                           Class<?>[] interfaces,
-                                           String scriptClassName){
-        ClassFileWriter cfw = new ClassFileWriter(adapterName,
-        superClass.getName(),
-        "<adapter>");
-        cfw.addField("factory", "Lrhino/ContextFactory;",
-        (short)(ClassFileWriter.ACC_PUBLIC |
-        ClassFileWriter.ACC_FINAL));
-        cfw.addField("delegee", "Lrhino/Scriptable;",
-        (short)(ClassFileWriter.ACC_PUBLIC |
-        ClassFileWriter.ACC_FINAL));
-        cfw.addField("self", "Lrhino/Scriptable;",
-        (short)(ClassFileWriter.ACC_PUBLIC |
-        ClassFileWriter.ACC_FINAL));
+    /**
+     * Names generated adapters after the class or interface they extend, like {@link
+     * FactoryAdapter} does. Classes can't be defined in java.* packages, so those get a prefix.
+     */
+    static String adapterClassName(Class<?> superClass, Class<?>[] interfaces, int serial) {
+        Class<?> base =
+                superClass == ScriptRuntime.ObjectClass && interfaces.length > 0
+                        ? interfaces[0]
+                        : superClass;
+        String name = base.getName() + "$JavaAdapter" + serial;
+        return name.startsWith("java.") ? "rhino.gen." + name : name;
+    }
+
+    public static byte[] createAdapterCode(
+            Map<String, Integer> functionNames,
+            String adapterName,
+            Class<?> superClass,
+            Class<?>[] interfaces,
+            String scriptClassName) {
+        ClassFileWriter cfw = new ClassFileWriter(adapterName, superClass.getName(), "<adapter>");
+        cfw.addField(
+                "factory",
+                "Lrhino/ContextFactory;",
+                (short) (ClassFileWriter.ACC_PUBLIC | ClassFileWriter.ACC_FINAL));
+        cfw.addField(
+                "delegee",
+                "Lrhino/Scriptable;",
+                (short) (ClassFileWriter.ACC_PUBLIC | ClassFileWriter.ACC_FINAL));
+        cfw.addField(
+                "self",
+                "Lrhino/Scriptable;",
+                (short) (ClassFileWriter.ACC_PUBLIC | ClassFileWriter.ACC_FINAL));
         int interfacesCount = interfaces == null ? 0 : interfaces.length;
-        for(int i = 0; i < interfacesCount; i++){
-            if(interfaces[i] != null)
-                cfw.addInterface(interfaces[i].getName());
+        for (int i = 0; i < interfacesCount; i++) {
+            if (interfaces[i] != null) cfw.addInterface(interfaces[i].getName());
         }
 
         String superName = superClass.getName().replace('.', '/');
         Constructor<?>[] ctors = superClass.getDeclaredConstructors();
-        for(Constructor<?> ctor : ctors){
+        for (Constructor<?> ctor : ctors) {
             int mod = ctor.getModifiers();
-            if(Modifier.isPublic(mod) || Modifier.isProtected(mod)){
+            if (Modifier.isPublic(mod) || Modifier.isProtected(mod)) {
                 generateCtor(cfw, adapterName, superName, ctor);
             }
         }
         generateSerialCtor(cfw, adapterName, superName);
-        if(scriptClassName != null){
+        if (scriptClassName != null) {
             generateEmptyCtor(cfw, adapterName, superName, scriptClassName);
         }
 
-        ObjToIntMap generatedMethods = new ObjToIntMap();
-        for(AdapterMethod override : getOverrides(functionNames, superClass, interfaces)){
+        HashMap<String, Integer> generatedMethods = new HashMap<>();
+        for (AdapterMethod override : getOverrides(functionNames, superClass, interfaces)) {
             Method method = override.method;
             Class<?>[] argTypes = method.getParameterTypes();
             generateMethod(cfw, adapterName, method.getName(), argTypes, method.getReturnType(), true);
             generatedMethods.put(method.getName(), 0);
             // if a method was overridden, generate a "super$method"
             // which lets the delegate call the superclass' version.
-            if(override.hasSuper){
-                generateSuper(cfw, adapterName, superName, method.getName(), getMethodSignature(method, argTypes),
-                argTypes, method.getReturnType());
+            if (override.hasSuper) {
+                generateSuper(
+                        cfw,
+                        adapterName,
+                        superName,
+                        method.getName(),
+                        getMethodSignature(method, argTypes),
+                        argTypes,
+                        method.getReturnType());
             }
         }
 
         // Generate Java methods for remaining properties that are not
         // overrides.
-        ObjToIntMap.Iterator iter = new ObjToIntMap.Iterator(functionNames);
-        for(iter.start(); !iter.done(); iter.next()){
-            String functionName = (String)iter.getKey();
-            if(generatedMethods.has(functionName))
-                continue;
-            int length = iter.getValue();
+        for (Map.Entry<String, Integer> e : functionNames.entrySet()) {
+            String functionName = e.getKey();
+            if (generatedMethods.containsKey(functionName)) continue;
+            int length = e.getValue();
             Class<?>[] parms = new Class[length];
-            for(int k = 0; k < length; k++)
-                parms[k] = ScriptRuntime.ObjectClass;
-            generateMethod(cfw, adapterName, functionName, parms,
-            ScriptRuntime.ObjectClass, false);
+            for (int k = 0; k < length; k++) parms[k] = ScriptRuntime.ObjectClass;
+            generateMethod(cfw, adapterName, functionName, parms, ScriptRuntime.ObjectClass, false);
         }
         return cfw.toByteArray();
     }
 
     /** A method an adapter class overrides. */
-    static final class AdapterMethod{
+    static final class AdapterMethod {
         final Method method;
+
         /** Whether the superclass implements it, so the adapter has a super$ method for it. */
         final boolean hasSuper;
 
-        AdapterMethod(Method method, boolean hasSuper){
+        AdapterMethod(Method method, boolean hasSuper) {
             this.method = method;
             this.hasSuper = hasSuper;
         }
     }
 
-    /** @return the methods an adapter for these functions overrides, with one for each signature */
-    static ArrayList<AdapterMethod> getOverrides(ObjToIntMap functionNames, Class<?> superClass, Class<?>[] interfaces){
-        ArrayList<AdapterMethod> overrides = new ArrayList<>();
+    /**
+     * @return the methods an adapter for these functions overrides, one for each signature
+     */
+    static List<AdapterMethod> getOverrides(
+            Map<String, Integer> functionNames, Class<?> superClass, Class<?>[] interfaces) {
+        List<AdapterMethod> overrides = new ArrayList<>();
         HashSet<String> generated = new HashSet<>();
         int interfacesCount = interfaces == null ? 0 : interfaces.length;
 
-        // generate methods to satisfy all specified interfaces.
-        for(int i = 0; i < interfacesCount; i++){
-            Method[] methods = interfaces[i].getMethods();
-            for(Method method : methods){
+        // methods to satisfy all specified interfaces.
+        for (int i = 0; i < interfacesCount; i++) {
+            for (Method method : interfaces[i].getMethods()) {
                 int mods = method.getModifiers();
-                if(Modifier.isStatic(mods) || Modifier.isFinal(mods) || (methodIsDefault(method) && !functionNames.has(method.getName()))){
+                // interfaces[i] is an interface, so a non-abstract instance method is a default
+                // one; it keeps its implementation unless the object overrides it
+                if (Modifier.isStatic(mods)
+                        || Modifier.isFinal(mods)
+                        || (!Modifier.isAbstract(mods)
+                                && !functionNames.containsKey(method.getName()))) {
                     continue;
                 }
                 String methodName = method.getName();
                 Class<?>[] argTypes = method.getParameterTypes();
-                if(!functionNames.has(methodName)){
-                    try{
+                if (!functionNames.containsKey(methodName)) {
+                    try {
                         superClass.getMethod(methodName, argTypes);
                         // The class we're extending implements this method and
                         // the JavaScript object doesn't have an override. See
                         // bug 61226.
                         continue;
-                    }catch(NoSuchMethodException e){
+                    } catch (NoSuchMethodException e) {
                         // Not implemented by superclass; fall through
                     }
                 }
-                // make sure to generate only one instance of a particular
-                // method/signature.
-                if(generated.add(methodName + getMethodSignature(method, argTypes))){
+                // only one instance of a particular method/signature.
+                if (generated.add(methodName + getMethodSignature(method, argTypes))) {
                     overrides.add(new AdapterMethod(method, false));
                 }
             }
@@ -379,79 +495,85 @@ public final class JavaAdapter implements IdFunctionCall{
 
         // Now, go through the superclass's methods, checking for abstract
         // methods or additional methods to override.
-        for(Method method : getOverridableMethods(superClass)){
+        for (Method method : getOverridableMethods(superClass)) {
             // if a method is marked abstract, must implement it or the
             // resulting class won't be instantiable. otherwise, if the object
             // has a property of the same name, then an override is intended.
             boolean isAbstractMethod = Modifier.isAbstract(method.getModifiers());
             String methodName = method.getName();
-            if((isAbstractMethod || functionNames.has(methodName))
-            && generated.add(methodName + getMethodSignature(method, method.getParameterTypes()))){
+            if ((isAbstractMethod || functionNames.containsKey(methodName))
+                    && generated.add(
+                            methodName + getMethodSignature(method, method.getParameterTypes()))) {
                 overrides.add(new AdapterMethod(method, !isAbstractMethod));
             }
         }
         return overrides;
     }
 
-    static boolean methodIsDefault(Method method){
-        //Method.isDefault() is missing on some platforms
-        int mods = method.getModifiers();
-        return method.getDeclaringClass().isInterface() && !Modifier.isAbstract(mods) && !Modifier.isStatic(mods);
-    }
-
-    static Method[] getOverridableMethods(Class<?> clazz){
+    static Method[] getOverridableMethods(Class<?> clazz) {
         ArrayList<Method> list = new ArrayList<>();
         HashSet<String> skip = new HashSet<>();
         // Check superclasses before interfaces so we always choose
         // implemented methods over abstract ones, even if a subclass
         // re-implements an interface already implemented in a superclass
         // (e.g. java.util.ArrayList)
-        for(Class<?> c = clazz; c != null; c = c.getSuperclass()){
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
             appendOverridableMethods(c, list, skip);
         }
-        for(Class<?> c = clazz; c != null; c = c.getSuperclass()){
-            for(Class<?> intf : c.getInterfaces())
-                appendOverridableMethods(intf, list, skip);
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            for (Class<?> intf : c.getInterfaces()) appendOverridableMethods(intf, list, skip);
         }
         return list.toArray(new Method[0]);
     }
 
-    private static void appendOverridableMethods(Class<?> c,
-                                                 ArrayList<Method> list, HashSet<String> skip){
-        Method[] methods = c.getDeclaredMethods();
-        for(int i = 0; i < methods.length; i++){
-            String methodKey = methods[i].getName() +
-            getMethodSignature(methods[i],
-            methods[i].getParameterTypes());
-            if(skip.contains(methodKey))
-                continue; // skip this method
-            int mods = methods[i].getModifiers();
-            if(Modifier.isStatic(mods))
-                continue;
-            if(Modifier.isFinal(mods)){
+    private static void appendOverridableMethods(Class<?> c, List<Method> list, Set<String> skip) {
+        Method[] methods = c.isInterface() ? c.getMethods() : c.getDeclaredMethods();
+
+        for (Method method : methods) {
+            String methodKey =
+                    method.getName() + getMethodSignature(method, method.getParameterTypes());
+            if (skip.contains(methodKey)) continue; // skip this method
+            int mods = method.getModifiers();
+            if (Modifier.isStatic(mods)) continue;
+            if (Modifier.isFinal(mods)) {
                 // Make sure we don't add a final method to the list
                 // of overridable methods.
                 skip.add(methodKey);
                 continue;
             }
-            if(Modifier.isPublic(mods) || Modifier.isProtected(mods)){
-                list.add(methods[i]);
+            if (Modifier.isPublic(mods) || Modifier.isProtected(mods)) {
+                list.add(method);
                 skip.add(methodKey);
             }
         }
     }
 
-    static Class<?> loadAdapterClass(String className, byte[] classBytes){
-        Context cx = Context.getContext();
-        GeneratedClassLoader loader = cx.createClassLoader(cx.getApplicationClassLoader());
+    static Class<?> loadAdapterClass(String className, byte[] classBytes) {
+        Object staticDomain;
+        Class<?> domainClass = SecurityController.getStaticSecurityDomainClass();
+        if (domainClass == CodeSource.class || domainClass == ProtectionDomain.class) {
+            // use the calling script's security domain if available
+            ProtectionDomain protectionDomain = SecurityUtilities.getScriptProtectionDomain();
+            if (protectionDomain == null) {
+                protectionDomain = JavaAdapter.class.getProtectionDomain();
+            }
+            if (domainClass == CodeSource.class) {
+                staticDomain = protectionDomain == null ? null : protectionDomain.getCodeSource();
+            } else {
+                staticDomain = protectionDomain;
+            }
+        } else {
+            staticDomain = null;
+        }
+        GeneratedClassLoader loader = SecurityController.createLoader(null, staticDomain);
         Class<?> result = loader.defineClass(className, classBytes);
         loader.linkClass(result);
         return result;
     }
 
-    public static Function getFunction(Scriptable obj, String functionName){
+    public static Function getFunction(Scriptable obj, String functionName) {
         Object x = ScriptableObject.getProperty(obj, functionName);
-        if(x == Scriptable.NOT_FOUND){
+        if (x == Scriptable.NOT_FOUND) {
             // This method used to swallow the exception from calling
             // an undefined method. People have come to depend on this
             // somewhat dubious behavior. It allows people to avoid
@@ -459,95 +581,102 @@ public final class JavaAdapter implements IdFunctionCall{
             // for instance.
             return null;
         }
-        if(!(x instanceof Function))
-            throw ScriptRuntime.notFunctionError(x, functionName);
+        if (!(x instanceof Function)) throw ScriptRuntime.notFunctionError(x, functionName);
 
-        return (Function)x;
+        return (Function) x;
     }
 
     /**
-     * Utility method which dynamically binds a Context to the current thread,
-     * if none already exists.
+     * Utility method which dynamically binds a Context to the current thread, if none already
+     * exists.
      */
-    public static Object callMethod(ContextFactory factory,
-                                    final Scriptable thisObj,
-                                    final Function f, final Object[] args,
-                                    final long argsToWrap){
-        if(f == null){
+    public static Object callMethod(
+            ContextFactory factory,
+            final Scriptable thisObj,
+            final Function f,
+            final Object[] args,
+            final long argsToWrap) {
+        if (f == null) {
             // See comments in getFunction
             return null;
         }
-        if(factory == null){
+        if (factory == null) {
             factory = ContextFactory.getGlobal();
         }
 
-        final Scriptable scope = f.getParentScope();
-        if(argsToWrap == 0){
-            return Context.call(factory, f, scope, thisObj, args);
-        }
-
+        final VarScope scope = f.getDeclarationScope();
+        // entering a context is only needed on threads that have none
         Context cx = Context.getCurrentContext();
-        if(cx != null){
+        if (cx != null) {
             return doCall(cx, scope, thisObj, f, args, argsToWrap);
         }
         return factory.call(cx2 -> doCall(cx2, scope, thisObj, f, args, argsToWrap));
     }
 
-    private static Object doCall(Context cx, Scriptable scope,
-                                 Scriptable thisObj, Function f,
-                                 Object[] args, long argsToWrap){
+    private static Object doCall(
+            Context cx,
+            VarScope scope,
+            Scriptable thisObj,
+            Function f,
+            Object[] args,
+            long argsToWrap) {
         // Wrap the rest of objects
-        for(int i = 0; i != args.length; ++i){
-            if(0 != (argsToWrap & (1 << i))){
-                Object arg = args[i];
-                if(!(arg instanceof Scriptable)){
-                    args[i] = cx.getWrapFactory().wrap(cx, scope, arg,
-                    null);
+        if (argsToWrap != 0) {
+            for (int i = 0; i != args.length; ++i) {
+                if (0 != (argsToWrap & (1L << i))) {
+                    Object arg = args[i];
+                    if (!(arg instanceof Scriptable)) {
+                        args[i] = cx.getWrapFactory().wrap(cx, scope, arg, TypeInfo.NONE);
+                    }
                 }
             }
         }
         return f.call(cx, scope, thisObj, args);
     }
 
-    public static Scriptable runScript(final Script script){
-        return ContextFactory.getGlobal().call(cx -> {
-            ScriptableObject global = ScriptRuntime.getGlobal(cx);
-            script.exec(cx, global);
-            return global;
-        });
+    public static Scriptable runScript(final Script script) {
+        return ContextFactory.getGlobal()
+                .call(
+                        cx -> {
+                            TopLevel top = ScriptRuntime.getGlobal(cx);
+                            script.exec(cx, top, top.getGlobalThis());
+                            return top.getGlobalThis();
+                        });
     }
 
-    private static void generateCtor(ClassFileWriter cfw, String adapterName,
-                                     String superName, Constructor<?> superCtor){
-        short locals = 3; // this + factory + delegee
+    private static void generateCtor(
+            ClassFileWriter cfw, String adapterName, String superName, Constructor<?> superCtor) {
+        int locals = 3; // this + factory + delegee
         Class<?>[] parameters = superCtor.getParameterTypes();
 
         // Note that we swapped arguments in app-facing constructors to avoid
         // conflicting signatures with serial constructor defined below.
-        if(parameters.length == 0){
-            cfw.startMethod("<init>",
-            "(Lrhino/Scriptable;"
-            + "Lrhino/ContextFactory;)V",
-            ClassFileWriter.ACC_PUBLIC);
+        if (parameters.length == 0) {
+            cfw.startMethod(
+                    "<init>",
+                    "(Lrhino/Scriptable;"
+                            + "Lrhino/ContextFactory;)V",
+                    ClassFileWriter.ACC_PUBLIC);
 
             // Invoke base class constructor
-            cfw.add(ByteCode.ALOAD_0);  // this
+            cfw.add(ByteCode.ALOAD_0); // this
             cfw.addInvoke(ByteCode.INVOKESPECIAL, superName, "<init>", "()V");
-        }else{
-            StringBuilder sig = new StringBuilder(
-            "(Lrhino/Scriptable;"
-            + "Lrhino/ContextFactory;");
+        } else {
+            StringBuilder sig =
+                    new StringBuilder(
+                            "(Lrhino/Scriptable;"
+                                    + "Lrhino/ContextFactory;");
             int marker = sig.length(); // lets us reuse buffer for super signature
-            for(Class<?> c : parameters){
+            for (Class<?> c : parameters) {
                 appendTypeString(sig, c);
             }
             sig.append(")V");
             cfw.startMethod("<init>", sig.toString(), ClassFileWriter.ACC_PUBLIC);
 
             // Invoke base class constructor
-            cfw.add(ByteCode.ALOAD_0);  // this
-            short paramOffset = 3;
-            for(Class<?> parameter : parameters){
+            cfw.add(ByteCode.ALOAD_0); // this
+            int paramOffset = 3;
+            for (Class<?> parameter : parameters) {
                 paramOffset += generatePushParam(cfw, paramOffset, parameter);
             }
             locals = paramOffset;
@@ -556,84 +685,88 @@ public final class JavaAdapter implements IdFunctionCall{
         }
 
         // Save parameter in instance variable "delegee"
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_1);  // first arg: Scriptable delegee
-        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_1); // first arg: Scriptable delegee
+        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee", "Lrhino/Scriptable;");
 
         // Save parameter in instance variable "factory"
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_2);  // second arg: ContextFactory instance
-        cfw.add(ByteCode.PUTFIELD, adapterName, "factory",
-        "Lrhino/ContextFactory;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_2); // second arg: ContextFactory instance
+        cfw.add(
+                ByteCode.PUTFIELD,
+                adapterName,
+                "factory",
+                "Lrhino/ContextFactory;");
 
-        cfw.add(ByteCode.ALOAD_0);  // this for the following PUTFIELD for self
+        cfw.add(ByteCode.ALOAD_0); // this for the following PUTFIELD for self
         // create a wrapper object to be used as "this" in method calls
-        cfw.add(ByteCode.ALOAD_1);  // the Scriptable delegee
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "rhino/JavaAdapter",
-        "createAdapterWrapper",
-        "(Lrhino/Scriptable;"
-        + "Ljava/lang/Object;"
-        + ")Lrhino/Scriptable;");
-        cfw.add(ByteCode.PUTFIELD, adapterName, "self",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_1); // the Scriptable delegee
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC,
+                "rhino/JavaAdapter",
+                "createAdapterWrapper",
+                "(Lrhino/Scriptable;"
+                        + "Ljava/lang/Object;"
+                        + ")Lrhino/Scriptable;");
+        cfw.add(ByteCode.PUTFIELD, adapterName, "self", "Lrhino/Scriptable;");
 
         cfw.add(ByteCode.RETURN);
         cfw.stopMethod(locals);
     }
 
-    private static void generateSerialCtor(ClassFileWriter cfw,
-                                           String adapterName,
-                                           String superName){
-        cfw.startMethod("<init>",
-        "(Lrhino/ContextFactory;"
-        + "Lrhino/Scriptable;"
-        + "Lrhino/Scriptable;"
-        + ")V",
-        ClassFileWriter.ACC_PUBLIC);
+    private static void generateSerialCtor(
+            ClassFileWriter cfw, String adapterName, String superName) {
+        cfw.startMethod(
+                "<init>",
+                "(Lrhino/ContextFactory;"
+                        + "Lrhino/Scriptable;"
+                        + "Lrhino/Scriptable;"
+                        + ")V",
+                ClassFileWriter.ACC_PUBLIC);
 
         // Invoke base class constructor
-        cfw.add(ByteCode.ALOAD_0);  // this
+        cfw.add(ByteCode.ALOAD_0); // this
         cfw.addInvoke(ByteCode.INVOKESPECIAL, superName, "<init>", "()V");
 
         // Save parameter in instance variable "factory"
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_1);  // first arg: ContextFactory instance
-        cfw.add(ByteCode.PUTFIELD, adapterName, "factory",
-        "Lrhino/ContextFactory;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_1); // first arg: ContextFactory instance
+        cfw.add(
+                ByteCode.PUTFIELD,
+                adapterName,
+                "factory",
+                "Lrhino/ContextFactory;");
 
         // Save parameter in instance variable "delegee"
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_2);  // second arg: Scriptable delegee
-        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_2); // second arg: Scriptable delegee
+        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee", "Lrhino/Scriptable;");
         // save self
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_3);  // third arg: Scriptable self
-        cfw.add(ByteCode.PUTFIELD, adapterName, "self",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_3); // third arg: Scriptable self
+        cfw.add(ByteCode.PUTFIELD, adapterName, "self", "Lrhino/Scriptable;");
 
         cfw.add(ByteCode.RETURN);
-        cfw.stopMethod((short)4); // 4: this + factory + delegee + self
+        cfw.stopMethod(4); // 4: this + factory + delegee + self
     }
 
-    private static void generateEmptyCtor(ClassFileWriter cfw,
-                                          String adapterName,
-                                          String superName,
-                                          String scriptClassName){
+    private static void generateEmptyCtor(
+            ClassFileWriter cfw, String adapterName, String superName, String scriptClassName) {
         cfw.startMethod("<init>", "()V", ClassFileWriter.ACC_PUBLIC);
 
         // Invoke base class constructor
-        cfw.add(ByteCode.ALOAD_0);  // this
+        cfw.add(ByteCode.ALOAD_0); // this
         cfw.addInvoke(ByteCode.INVOKESPECIAL, superName, "<init>", "()V");
 
         // Set factory to null to use current global when necessary
         cfw.add(ByteCode.ALOAD_0);
         cfw.add(ByteCode.ACONST_NULL);
-        cfw.add(ByteCode.PUTFIELD, adapterName, "factory",
-        "Lrhino/ContextFactory;");
+        cfw.add(
+                ByteCode.PUTFIELD,
+                adapterName,
+                "factory",
+                "Lrhino/ContextFactory;");
 
         // Load script class
         cfw.add(ByteCode.NEW, scriptClassName);
@@ -641,49 +774,45 @@ public final class JavaAdapter implements IdFunctionCall{
         cfw.addInvoke(ByteCode.INVOKESPECIAL, scriptClassName, "<init>", "()V");
 
         // Run script and save resulting scope
-        cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "rhino/JavaAdapter",
-        "runScript",
-        "(Lrhino/Script;"
-        + ")Lrhino/Scriptable;");
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC,
+                "rhino/JavaAdapter",
+                "runScript",
+                "(Lrhino/Script;" + ")Lrhino/Scriptable;");
         cfw.add(ByteCode.ASTORE_1);
 
         // Save the Scriptable in instance variable "delegee"
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.add(ByteCode.ALOAD_1);  // the Scriptable
-        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.add(ByteCode.ALOAD_1); // the Scriptable
+        cfw.add(ByteCode.PUTFIELD, adapterName, "delegee", "Lrhino/Scriptable;");
 
-        cfw.add(ByteCode.ALOAD_0);  // this for the following PUTFIELD for self
+        cfw.add(ByteCode.ALOAD_0); // this for the following PUTFIELD for self
         // create a wrapper object to be used as "this" in method calls
-        cfw.add(ByteCode.ALOAD_1);  // the Scriptable
-        cfw.add(ByteCode.ALOAD_0);  // this
-        cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "rhino/JavaAdapter",
-        "createAdapterWrapper",
-        "(Lrhino/Scriptable;"
-        + "Ljava/lang/Object;"
-        + ")Lrhino/Scriptable;");
-        cfw.add(ByteCode.PUTFIELD, adapterName, "self",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.ALOAD_1); // the Scriptable
+        cfw.add(ByteCode.ALOAD_0); // this
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC,
+                "rhino/JavaAdapter",
+                "createAdapterWrapper",
+                "(Lrhino/Scriptable;"
+                        + "Ljava/lang/Object;"
+                        + ")Lrhino/Scriptable;");
+        cfw.add(ByteCode.PUTFIELD, adapterName, "self", "Lrhino/Scriptable;");
 
         cfw.add(ByteCode.RETURN);
-        cfw.stopMethod((short)2); // this + delegee
+        cfw.stopMethod(2); // this + delegee
     }
 
     /**
-     * Generates code to wrap Java arguments into Object[].
-     * Non-primitive Java types are left as-is pending conversion
-     * in the helper method. Leaves the array object on the top of the stack.
+     * Generates code to wrap Java arguments into Object[]. Non-primitive Java types are left as-is
+     * pending conversion in the helper method. Leaves the array object on the top of the stack.
      */
-    static void generatePushWrappedArgs(ClassFileWriter cfw,
-                                        Class<?>[] argTypes,
-                                        int arrayLength){
+    static void generatePushWrappedArgs(ClassFileWriter cfw, Class<?>[] argTypes, int arrayLength) {
         // push arguments
         cfw.addPush(arrayLength);
         cfw.add(ByteCode.ANEWARRAY, "java/lang/Object");
         int paramOffset = 1;
-        for(int i = 0; i != argTypes.length; ++i){
+        for (int i = 0; i != argTypes.length; ++i) {
             cfw.add(ByteCode.DUP); // duplicate array reference
             cfw.addPush(i);
             paramOffset += generateWrapArg(cfw, paramOffset, argTypes[i]);
@@ -692,36 +821,34 @@ public final class JavaAdapter implements IdFunctionCall{
     }
 
     /**
-     * Generates code to wrap Java argument into Object.
-     * Non-primitive Java types are left unconverted pending conversion
-     * in the helper method. Leaves the wrapper object on the top of the stack.
+     * Generates code to wrap Java argument into Object. Non-primitive Java types are left
+     * unconverted pending conversion in the helper method. Leaves the wrapper object on the top of
+     * the stack.
      */
-    private static int generateWrapArg(ClassFileWriter cfw, int paramOffset,
-                                       Class<?> argType){
+    private static int generateWrapArg(ClassFileWriter cfw, int paramOffset, Class<?> argType) {
         int size = 1;
-        if(!argType.isPrimitive()){
+        if (!argType.isPrimitive()) {
             cfw.add(ByteCode.ALOAD, paramOffset);
 
-        }else if(argType == Boolean.TYPE){
+        } else if (argType == Boolean.TYPE) {
             // wrap boolean values with java.lang.Boolean.
             cfw.add(ByteCode.NEW, "java/lang/Boolean");
             cfw.add(ByteCode.DUP);
             cfw.add(ByteCode.ILOAD, paramOffset);
-            cfw.addInvoke(ByteCode.INVOKESPECIAL, "java/lang/Boolean",
-            "<init>", "(Z)V");
+            cfw.addInvoke(ByteCode.INVOKESPECIAL, "java/lang/Boolean", "<init>", "(Z)V");
 
-        }else if(argType == Character.TYPE){
+        } else if (argType == Character.TYPE) {
             // Create a string of length 1 using the character parameter.
             cfw.add(ByteCode.ILOAD, paramOffset);
-            cfw.addInvoke(ByteCode.INVOKESTATIC, "java/lang/String",
-            "valueOf", "(C)Ljava/lang/String;");
+            cfw.addInvoke(
+                    ByteCode.INVOKESTATIC, "java/lang/String", "valueOf", "(C)Ljava/lang/String;");
 
-        }else{
+        } else {
             // convert all numeric values to java.lang.Double.
             cfw.add(ByteCode.NEW, "java/lang/Double");
             cfw.add(ByteCode.DUP);
             String typeName = argType.getName();
-            switch(typeName.charAt(0)){
+            switch (typeName.charAt(0)) {
                 case 'b':
                 case 's':
                 case 'i':
@@ -745,50 +872,52 @@ public final class JavaAdapter implements IdFunctionCall{
                     size = 2;
                     break;
             }
-            cfw.addInvoke(ByteCode.INVOKESPECIAL, "java/lang/Double",
-            "<init>", "(D)V");
+            cfw.addInvoke(ByteCode.INVOKESPECIAL, "java/lang/Double", "<init>", "(D)V");
         }
         return size;
     }
 
     /**
-     * Generates code to convert a wrapped value type to a primitive type.
-     * Handles unwrapping java.lang.Boolean, and java.lang.Number types.
-     * Generates the appropriate RETURN bytecode.
+     * Generates code to convert a wrapped value type to a primitive type. Handles unwrapping
+     * java.lang.Boolean, and java.lang.Number types. Generates the appropriate RETURN bytecode.
      */
-    static void generateReturnResult(ClassFileWriter cfw, Class<?> retType,
-                                     boolean callConvertResult){
+    static void generateReturnResult(
+            ClassFileWriter cfw, Class<?> retType, boolean callConvertResult) {
         // wrap boolean values with java.lang.Boolean, convert all other
         // primitive values to java.lang.Double.
-        if(retType == Void.TYPE){
+        if (retType == Void.TYPE) {
             cfw.add(ByteCode.POP);
             cfw.add(ByteCode.RETURN);
 
-        }else if(retType == Boolean.TYPE){
-            cfw.addInvoke(ByteCode.INVOKESTATIC,
-            "rhino/Context",
-            "toBoolean", "(Ljava/lang/Object;)Z");
+        } else if (retType == Boolean.TYPE) {
+            cfw.addInvoke(
+                    ByteCode.INVOKESTATIC,
+                    "rhino/Context",
+                    "toBoolean",
+                    "(Ljava/lang/Object;)Z");
             cfw.add(ByteCode.IRETURN);
 
-        }else if(retType == Character.TYPE){
+        } else if (retType == Character.TYPE) {
             // characters are represented as strings in JavaScript.
             // return the first character.
             // first convert the value to a string if possible.
-            cfw.addInvoke(ByteCode.INVOKESTATIC,
-            "rhino/Context",
-            "toString",
-            "(Ljava/lang/Object;)Ljava/lang/String;");
+            cfw.addInvoke(
+                    ByteCode.INVOKESTATIC,
+                    "rhino/Context",
+                    "toString",
+                    "(Ljava/lang/Object;)Ljava/lang/String;");
             cfw.add(ByteCode.ICONST_0);
-            cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java/lang/String",
-            "charAt", "(I)C");
+            cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C");
             cfw.add(ByteCode.IRETURN);
 
-        }else if(retType.isPrimitive()){
-            cfw.addInvoke(ByteCode.INVOKESTATIC,
-            "rhino/Context",
-            "toNumber", "(Ljava/lang/Object;)D");
+        } else if (retType.isPrimitive()) {
+            cfw.addInvoke(
+                    ByteCode.INVOKESTATIC,
+                    "rhino/Context",
+                    "toNumber",
+                    "(Ljava/lang/Object;)D");
             String typeName = retType.getName();
-            switch(typeName.charAt(0)){
+            switch (typeName.charAt(0)) {
                 case 'b':
                 case 's':
                 case 'i':
@@ -807,25 +936,24 @@ public final class JavaAdapter implements IdFunctionCall{
                     cfw.add(ByteCode.DRETURN);
                     break;
                 default:
-                    throw new RuntimeException("Unexpected return type " +
-                    retType.toString());
+                    throw new RuntimeException("Unexpected return type " + retType);
             }
 
-        }else{
+        } else {
             String retTypeStr = retType.getName();
-            if(callConvertResult){
+            if (callConvertResult) {
                 cfw.addLoadConstant(retTypeStr);
-                cfw.addInvoke(ByteCode.INVOKESTATIC,
-                "java/lang/Class",
-                "forName",
-                "(Ljava/lang/String;)Ljava/lang/Class;");
+                cfw.addInvoke(
+                        ByteCode.INVOKESTATIC,
+                        "java/lang/Class",
+                        "forName",
+                        "(Ljava/lang/String;)Ljava/lang/Class;");
 
-                cfw.addInvoke(ByteCode.INVOKESTATIC,
-                "rhino/JavaAdapter",
-                "convertResult",
-                "(Ljava/lang/Object;"
-                + "Ljava/lang/Class;"
-                + ")Ljava/lang/Object;");
+                cfw.addInvoke(
+                        ByteCode.INVOKESTATIC,
+                        "rhino/JavaAdapter",
+                        "convertResult",
+                        "(Ljava/lang/Object;" + "Ljava/lang/Class;" + ")Ljava/lang/Object;");
             }
             // Now cast to return type
             cfw.add(ByteCode.CHECKCAST, retTypeStr);
@@ -833,87 +961,87 @@ public final class JavaAdapter implements IdFunctionCall{
         }
     }
 
-    private static void generateMethod(ClassFileWriter cfw, String genName,
-                                       String methodName, Class<?>[] parms,
-                                       Class<?> returnType, boolean convertResult){
+    private static void generateMethod(
+            ClassFileWriter cfw,
+            String genName,
+            String methodName,
+            Class<?>[] parms,
+            Class<?> returnType,
+            boolean convertResult) {
         StringBuilder sb = new StringBuilder();
         int paramsEnd = appendMethodSignature(parms, returnType, sb);
         String methodSignature = sb.toString();
-        cfw.startMethod(methodName, methodSignature,
-        ClassFileWriter.ACC_PUBLIC);
+        cfw.startMethod(methodName, methodSignature, ClassFileWriter.ACC_PUBLIC);
 
         // Prepare stack to call method
 
         // push factory
         cfw.add(ByteCode.ALOAD_0);
-        cfw.add(ByteCode.GETFIELD, genName, "factory",
-        "Lrhino/ContextFactory;");
+        cfw.add(ByteCode.GETFIELD, genName, "factory", "Lrhino/ContextFactory;");
 
         // push self
         cfw.add(ByteCode.ALOAD_0);
-        cfw.add(ByteCode.GETFIELD, genName, "self",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.GETFIELD, genName, "self", "Lrhino/Scriptable;");
 
         // push function
         cfw.add(ByteCode.ALOAD_0);
-        cfw.add(ByteCode.GETFIELD, genName, "delegee",
-        "Lrhino/Scriptable;");
+        cfw.add(ByteCode.GETFIELD, genName, "delegee", "Lrhino/Scriptable;");
         cfw.addPush(methodName);
-        cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "rhino/JavaAdapter",
-        "getFunction",
-        "(Lrhino/Scriptable;"
-        + "Ljava/lang/String;"
-        + ")Lrhino/Function;");
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC,
+                "rhino/JavaAdapter",
+                "getFunction",
+                "(Lrhino/Scriptable;"
+                        + "Ljava/lang/String;"
+                        + ")Lrhino/Function;");
 
         // push arguments
         generatePushWrappedArgs(cfw, parms, parms.length);
 
         // push bits to indicate which parameters should be wrapped
-        if(parms.length > 64){
+        if (parms.length > 64) {
             // If it will be an issue, then passing a static boolean array
             // can be an option, but for now using simple bitmask
-            throw Context.reportRuntimeError0(
-            "JavaAdapter can not subclass methods with more then"
-            + " 64 arguments.");
+            throw Context.reportRuntimeErrorById(
+                    "JavaAdapter can not subclass methods with more then" + " 64 arguments.");
         }
-        long convertionMask = 0;
-        for(int i = 0; i != parms.length; ++i){
-            if(!parms[i].isPrimitive()){
-                convertionMask |= (1 << i);
+        long conversionMask = 0;
+        for (int i = 0; i != parms.length; ++i) {
+            if (!parms[i].isPrimitive()) {
+                conversionMask |= 1L << i;
             }
         }
-        cfw.addPush(convertionMask);
+        cfw.addPush(conversionMask);
 
         // go through utility method, which creates a Context to run the
         // method in.
-        cfw.addInvoke(ByteCode.INVOKESTATIC,
-        "rhino/JavaAdapter",
-        "callMethod",
-        "(Lrhino/ContextFactory;"
-        + "Lrhino/Scriptable;"
-        + "Lrhino/Function;"
-        + "[Ljava/lang/Object;"
-        + "J"
-        + ")Ljava/lang/Object;");
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC,
+                "rhino/JavaAdapter",
+                "callMethod",
+                "(Lrhino/ContextFactory;"
+                        + "Lrhino/Scriptable;"
+                        + "Lrhino/Function;"
+                        + "[Ljava/lang/Object;"
+                        + "J"
+                        + ")Ljava/lang/Object;");
 
         generateReturnResult(cfw, returnType, convertResult);
 
-        cfw.stopMethod((short)paramsEnd);
+        cfw.stopMethod((short) paramsEnd);
     }
 
     /**
-     * Generates code to push typed parameters onto the operand stack
-     * prior to a direct Java method call.
+     * Generates code to push typed parameters onto the operand stack prior to a direct Java method
+     * call.
      */
-    private static int generatePushParam(ClassFileWriter cfw, int paramOffset,
-                                         Class<?> paramType){
-        if(!paramType.isPrimitive()){
+    private static int generatePushParam(ClassFileWriter cfw, int paramOffset, Class<?> paramType) {
+        if (!paramType.isPrimitive()) {
             cfw.addALoad(paramOffset);
             return 1;
         }
         String typeName = paramType.getName();
-        switch(typeName.charAt(0)){
+        switch (typeName.charAt(0)) {
             case 'z':
             case 'b':
             case 'c':
@@ -938,15 +1066,13 @@ public final class JavaAdapter implements IdFunctionCall{
     }
 
     /**
-     * Generates code to return a Java type, after calling a Java method
-     * that returns the same type.
+     * Generates code to return a Java type, after calling a Java method that returns the same type.
      * Generates the appropriate RETURN bytecode.
      */
-    private static void generatePopResult(ClassFileWriter cfw,
-                                          Class<?> retType){
-        if(retType.isPrimitive()){
+    private static void generatePopResult(ClassFileWriter cfw, Class<?> retType) {
+        if (retType.isPrimitive()) {
             String typeName = retType.getName();
-            switch(typeName.charAt(0)){
+            switch (typeName.charAt(0)) {
                 case 'b':
                 case 'c':
                 case 's':
@@ -964,65 +1090,60 @@ public final class JavaAdapter implements IdFunctionCall{
                     cfw.add(ByteCode.DRETURN);
                     break;
             }
-        }else{
+        } else {
             cfw.add(ByteCode.ARETURN);
         }
     }
 
     /**
-     * Generates a method called "super$methodName()" which can be called
-     * from JavaScript that is equivalent to calling "super.methodName()"
-     * from Java. Eventually, this may be supported directly in JavaScript.
+     * Generates a method called "super$methodName()" which can be called from JavaScript that is
+     * equivalent to calling "super.methodName()" from Java. Eventually, this may be supported
+     * directly in JavaScript.
      */
-    private static void generateSuper(ClassFileWriter cfw,
-                                      String genName, String superName,
-                                      String methodName, String methodSignature,
-                                      Class<?>[] parms, Class<?> returnType){
-        cfw.startMethod("super$" + methodName, methodSignature,
-        ClassFileWriter.ACC_PUBLIC);
+    private static void generateSuper(
+            ClassFileWriter cfw,
+            String genName,
+            String superName,
+            String methodName,
+            String methodSignature,
+            Class<?>[] parms,
+            Class<?> returnType) {
+        cfw.startMethod("super$" + methodName, methodSignature, ClassFileWriter.ACC_PUBLIC);
 
         // push "this"
         cfw.add(ByteCode.ALOAD, 0);
 
         // push the rest of the parameters.
         int paramOffset = 1;
-        for(Class<?> parm : parms){
+        for (Class<?> parm : parms) {
             paramOffset += generatePushParam(cfw, paramOffset, parm);
         }
 
         // call the superclass implementation of the method.
-        cfw.addInvoke(ByteCode.INVOKESPECIAL,
-        superName,
-        methodName,
-        methodSignature);
+        cfw.addInvoke(ByteCode.INVOKESPECIAL, superName, methodName, methodSignature);
 
         // now, handle the return type appropriately.
-        Class<?> retType = returnType;
-        if(!retType.equals(Void.TYPE)){
-            generatePopResult(cfw, retType);
-        }else{
+        if (!returnType.equals(Void.TYPE)) {
+            generatePopResult(cfw, returnType);
+        } else {
             cfw.add(ByteCode.RETURN);
         }
-        cfw.stopMethod((short)(paramOffset + 1));
+        cfw.stopMethod((short) (paramOffset + 1));
     }
 
-    /**
-     * Returns a fully qualified method name concatenated with its signature.
-     */
-    private static String getMethodSignature(Method method, Class<?>[] argTypes){
+    /** Returns a fully qualified method name concatenated with its signature. */
+    private static String getMethodSignature(Method method, Class<?>[] argTypes) {
         StringBuilder sb = new StringBuilder();
         appendMethodSignature(argTypes, method.getReturnType(), sb);
         return sb.toString();
     }
 
-    static int appendMethodSignature(Class<?>[] argTypes,
-                                     Class<?> returnType,
-                                     StringBuilder sb){
+    static int appendMethodSignature(Class<?>[] argTypes, Class<?> returnType, StringBuilder sb) {
         sb.append('(');
         int firstLocal = 1 + argTypes.length; // includes this.
-        for(Class<?> type : argTypes){
+        for (Class<?> type : argTypes) {
             appendTypeString(sb, type);
-            if(type == Long.TYPE || type == Double.TYPE){
+            if (type == Long.TYPE || type == Double.TYPE) {
                 // adjust for double slot
                 ++firstLocal;
             }
@@ -1032,23 +1153,23 @@ public final class JavaAdapter implements IdFunctionCall{
         return firstLocal;
     }
 
-    private static StringBuilder appendTypeString(StringBuilder sb, Class<?> type){
-        while(type.isArray()){
+    private static StringBuilder appendTypeString(StringBuilder sb, Class<?> type) {
+        while (type.isArray()) {
             sb.append('[');
             type = type.getComponentType();
         }
-        if(type.isPrimitive()){
+        if (type.isPrimitive()) {
             char typeLetter;
-            if(type == Boolean.TYPE){
+            if (type == Boolean.TYPE) {
                 typeLetter = 'Z';
-            }else if(type == Long.TYPE){
+            } else if (type == Long.TYPE) {
                 typeLetter = 'J';
-            }else{
+            } else {
                 String typeName = type.getName();
                 typeLetter = Character.toUpperCase(typeName.charAt(0));
             }
             sb.append(typeLetter);
-        }else{
+        } else {
             sb.append('L');
             sb.append(type.getName().replace('.', '/'));
             sb.append(';');
@@ -1056,23 +1177,17 @@ public final class JavaAdapter implements IdFunctionCall{
         return sb;
     }
 
-    static int[] getArgsToConvert(Class<?>[] argTypes){
+    static int[] getArgsToConvert(Class<?>[] argTypes) {
         int count = 0;
-        for(int i = 0; i != argTypes.length; ++i){
-            if(!argTypes[i].isPrimitive())
-                ++count;
+        for (int i = 0; i != argTypes.length; ++i) {
+            if (!argTypes[i].isPrimitive()) ++count;
         }
-        if(count == 0)
-            return null;
+        if (count == 0) return null;
         int[] array = new int[count];
         count = 0;
-        for(int i = 0; i != argTypes.length; ++i){
-            if(!argTypes[i].isPrimitive())
-                array[count++] = i;
+        for (int i = 0; i != argTypes.length; ++i) {
+            if (!argTypes[i].isPrimitive()) array[count++] = i;
         }
         return array;
     }
-
-    private static final Object FTAG = "JavaAdapter";
-    private static final int Id_JavaAdapter = 1;
 }

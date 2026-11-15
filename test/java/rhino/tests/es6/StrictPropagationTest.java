@@ -1,0 +1,39 @@
+package rhino.tests.es6;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.LambdaFunction;
+import rhino.Callable;
+import rhino.TopLevel;
+import rhino.testutils.Utils;
+
+public class StrictPropagationTest {
+
+    @Test
+    public void strictIsNotPropagatedWhenLoadingDynamically() {
+        final String outer = "function outer() { 'use strict'; includeDynamic() } outer(); x";
+        // This works in non-strict mode, and is a ReferenceError in strict mode
+        final String nested = "(function() { x = 'x'; })()";
+
+        Utils.runWithAllModes(
+                cx -> {
+                    cx.setLanguageVersion(Context.VERSION_ES6);
+                    TopLevel scope = cx.initStandardObjects(new TopLevel());
+
+                    Callable includeDynamic =
+                            (cx2, scope2, thisObj, args) ->
+                                    cx2.evaluateString(scope2, nested, "nested", 1, null);
+                    scope.put(
+                            "includeDynamic",
+                            scope,
+                            new LambdaFunction(scope, "includeDynamic", 0, includeDynamic));
+
+                    Object res = cx.evaluateString(scope, outer, "outer", 1, null);
+                    assertEquals("x", res);
+
+                    return null;
+                });
+    }
+}

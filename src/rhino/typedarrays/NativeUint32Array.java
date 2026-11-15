@@ -1,87 +1,116 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.typedarrays;
 
-import rhino.*;
+import static rhino.ClassDescriptor.Builder.value;
+import static rhino.ClassDescriptor.Destination.CTOR;
+import static rhino.ClassDescriptor.Destination.PROTO;
+
+import java.io.Serial;
+import rhino.ClassDescriptor;
+import rhino.Context;
+import rhino.JSFunction;
+import rhino.ScriptRuntimeES6;
+import rhino.SymbolKey;
+import rhino.TopLevel;
+import rhino.Undefined;
+import rhino.VarScope;
 
 /**
- * An array view that stores 32-bit quantities and implements the JavaScript "Uint32Array" interface.
- * It also implements List&lt;Long&gt; for direct manipulation in Java.
+ * An array view that stores 32-bit quantities and implements the JavaScript "Uint32Array"
+ * interface. It also implements List&lt;Long&gt; for direct manipulation in Java.
  */
+public class NativeUint32Array extends NativeTypedArrayView<Long> {
+    @Serial private static final long serialVersionUID = -7987831421954144244L;
 
-public class NativeUint32Array
-extends NativeTypedArrayView<Long>{
     private static final String CLASS_NAME = "Uint32Array";
     private static final int BYTES_PER_ELEMENT = 4;
 
-    public NativeUint32Array(){
+    private static final ClassDescriptor DESCRIPTOR;
+
+    static {
+        DESCRIPTOR =
+                new ClassDescriptor.Builder(
+                                CLASS_NAME,
+                                3,
+                                NativeTypedArrayView::typeError,
+                                NativeUint32Array::js_constructor)
+                        .withProp(CTOR, "BYTES_PER_ELEMENT", value(4))
+                        .withProp(PROTO, "BYTES_PER_ELEMENT", value(4))
+                        .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
+                        .build();
     }
 
-    public NativeUint32Array(NativeArrayBuffer ab, int off, int len){
+    public NativeUint32Array() {}
+
+    public NativeUint32Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len * BYTES_PER_ELEMENT);
     }
 
-    public NativeUint32Array(int len){
+    public NativeUint32Array(int len) {
         this(new NativeArrayBuffer(len * BYTES_PER_ELEMENT), 0, len);
     }
 
     @Override
-    public String getClassName(){
+    public String getClassName() {
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed){
-        NativeUint32Array a = new NativeUint32Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    public static JSFunction init(Context cx, VarScope scope, boolean sealed) {
+        return NativeTypedArrayView.initSubClass(cx, scope, DESCRIPTOR, sealed);
     }
 
     @Override
-    protected NativeUint32Array construct(NativeArrayBuffer ab, int off, int len){
-        return new NativeUint32Array(ab, off, len);
-    }
-
-    @Override
-    public int getBytesPerElement(){
+    public int getBytesPerElement() {
         return BYTES_PER_ELEMENT;
     }
 
-    @Override
-    protected NativeUint32Array realThis(Scriptable thisObj, IdFunctionObject f){
-        if(!(thisObj instanceof NativeUint32Array)){
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint32Array)thisObj;
+    private static Object js_constructor(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return NativeTypedArrayView.js_constructor(
+                cx,
+                f,
+                nt,
+                s,
+                thisObj,
+                args,
+                NativeUint32Array::new,
+                4,
+                TopLevel.Builtins.Uint32Array);
     }
 
     @Override
-    protected Object js_get(int index){
-        if(checkIndex(index)){
+    protected Object js_get(int index) {
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readUint32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
+        int intBits = arrayBuffer.buffer.getInt((index * BYTES_PER_ELEMENT) + offset);
+        return Conversions.intBitsToUint(intBits);
     }
 
     @Override
-    protected Object js_set(int index, Object c){
-        if(checkIndex(index)){
+    protected Object js_set(int index, Object c) {
+        int val = Conversions.toUint32(c);
+        if (checkIndex(index)) {
             return Undefined.instance;
         }
-        long val = Conversions.toUint32(c);
-        ByteIo.writeUint32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
+        arrayBuffer.buffer.putInt((index * BYTES_PER_ELEMENT) + offset, val);
         return null;
     }
 
     @Override
-    public Long get(int i){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Long)js_get(i);
+    public Long get(int i) {
+        ensureIndex(i);
+        return (Long) js_get(i);
     }
 
     @Override
-    public Long set(int i, Long aByte){
-        if(checkIndex(i)){
-            throw new IndexOutOfBoundsException();
-        }
-        return (Long)js_set(i, aByte);
+    public Long set(int i, Long aByte) {
+        ensureIndex(i);
+        return (Long) js_set(i, aByte);
     }
 }

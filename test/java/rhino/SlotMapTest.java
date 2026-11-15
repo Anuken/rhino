@@ -1,0 +1,420 @@
+package rhino;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static rhino.ScriptableObject.DONTENUM;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+public class SlotMapTest {
+    // Random number generator with fixed seed to ensure repeatable tests
+    private static final Random rand = new Random(0);
+
+    private static class TestScriptableObject extends ScriptableObject {
+
+        public void initSlotMapTest() {}
+
+        public String getClassName() {
+            return "foo";
+        }
+    }
+
+    private ScriptableObject obj;
+
+    // `SingleSlotMaps` will always have a slot, so we need to record
+    // the starting size of our slot map and take that into account
+    // when testing with one of those as the initial map.
+    private int startingSize;
+
+    public void initSlotMapTest(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        this.obj = new TestScriptableObject();
+        this.obj.setMap(mapSupplier.get());
+        startingSize = this.obj.getMap().size();
+    }
+
+    public static Collection<Object[]> mapTypes() {
+        @SuppressWarnings("unchecked")
+        List<Supplier<SlotMap<Scriptable>>> suppliers =
+                List.of(
+                        () -> (SlotMap<Scriptable>) SlotMapOwner.EMPTY_SLOT_MAP,
+                        () ->
+                                new SlotMapOwner.SingleEntrySlotMap<Scriptable>(
+                                        new StandardSlot<Scriptable>(new Object(), 0, 0)),
+                        () -> new EmbeddedSlotMap<>(),
+                        () -> new HashSlotMap<>(),
+                        () -> (SlotMap<Scriptable>) SlotMapOwner.THREAD_SAFE_EMPTY_SLOT_MAP,
+                        () ->
+                                new SlotMapOwner.ThreadSafeSingleEntrySlotMap<Scriptable>(
+                                        new StandardSlot<Scriptable>(new Object(), 0, 0)),
+                        () -> new ThreadSafeEmbeddedSlotMap<>(),
+                        () -> new ThreadSafeHashSlotMap<>());
+        return suppliers.stream().map(i -> new Object[] {i}).collect(Collectors.toList());
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void empty(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        if (startingSize == 0) {
+            assertEquals(0, obj.getMap().size());
+            assertTrue(obj.getMap().isEmpty());
+            assertNull(obj.getMap().query("notfound", 0));
+            assertNull(obj.getMap().query(null, 123));
+        } else {
+            assertEquals(startingSize, obj.getMap().size());
+            assertFalse(obj.getMap().isEmpty());
+        }
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void crudOneString(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        assertNull(obj.getMap().query("foo", 0));
+        var slot = obj.getMap().modify(obj, "foo", 0, 0);
+        assertNotNull(slot);
+        slot.value = "Testing";
+        assertEquals(1 + startingSize, obj.getMap().size());
+        assertFalse(obj.getMap().isEmpty());
+        var newSlot = new StandardSlot<>(slot);
+        obj.getMap().compute(obj, "foo", 0, (k, i, e, m, o) -> newSlot);
+        var foundNewSlot = obj.getMap().query("foo", 0);
+        assertEquals("Testing", foundNewSlot.value);
+        assertSame(foundNewSlot, newSlot);
+        obj.getMap().compute(obj, "foo", 0, (k, ii, e, m, o) -> null);
+        assertNull(obj.getMap().query("foo", 0));
+        assertEquals(0 + startingSize, obj.getMap().size());
+        if (startingSize == 0) {
+            assertTrue(obj.getMap().isEmpty());
+        } else {
+            assertFalse(obj.getMap().isEmpty());
+        }
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void oneBuiltIn(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        assertNull(obj.getMap().query("foo", 0));
+        createBuiltInSlot(obj, "foo");
+        assertEquals(1 + startingSize, obj.getMap().size());
+        assertFalse(obj.getMap().isEmpty());
+        var foundNewSlot = obj.getMap().query("foo", 0);
+        assertNotNull(foundNewSlot);
+        assertTrue(foundNewSlot instanceof BuiltInSlot);
+        assertEquals("foo_result", foundNewSlot.getValue(obj));
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void crudOneIndex(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        assertNull(obj.getMap().query(null, 11));
+        var slot = obj.getMap().modify(obj, null, 11, 0);
+        assertNotNull(slot);
+        slot.value = "Testing";
+        assertEquals(1 + startingSize, obj.getMap().size());
+        assertFalse(obj.getMap().isEmpty());
+        var newSlot = new StandardSlot<>(slot);
+        obj.getMap().compute(obj, null, 11, (k, i, e, m, o) -> newSlot);
+        var foundNewSlot = obj.getMap().query(null, 11);
+        assertEquals("Testing", foundNewSlot.value);
+        assertSame(foundNewSlot, newSlot);
+        obj.getMap().compute(obj, null, 11, (k, ii, e, m, o) -> null);
+        assertNull(obj.getMap().query(null, 11));
+        assertEquals(0 + startingSize, obj.getMap().size());
+        if (startingSize == 0) {
+            assertTrue(obj.getMap().isEmpty());
+        } else {
+            assertFalse(obj.getMap().isEmpty());
+        }
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void computeReplaceSlot(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        var slot = obj.getMap().modify(obj, "one", 0, 0);
+        slot.value = "foo";
+        var newSlot =
+                obj.getMap()
+                        .compute(
+                                obj,
+                                "one",
+                                0,
+                                (k, i, e, m, o) -> {
+                                    assertEquals(k, "one");
+                                    assertEquals(i, 0);
+                                    assertNotNull(e);
+                                    assertEquals(e.value, "foo");
+                                    var n = new StandardSlot<>(e);
+                                    n.value = "bar";
+                                    return n;
+                                });
+        assertEquals(newSlot.value, "bar");
+        slot = obj.getMap().query("one", 0);
+        assertEquals(slot.value, "bar");
+        assertEquals(1 + startingSize, obj.getMap().size());
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void computeCreateNewSlot(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        var newSlot =
+                obj.getMap()
+                        .compute(
+                                obj,
+                                "one",
+                                0,
+                                (k, i, e, m, o) -> {
+                                    assertEquals(k, "one");
+                                    assertEquals(i, 0);
+                                    assertNull(e);
+                                    var n = new StandardSlot<Scriptable>(k, i, 0);
+                                    n.value = "bar";
+                                    return n;
+                                });
+        assertNotNull(newSlot);
+        assertEquals(newSlot.value, "bar");
+        var slot = obj.getMap().query("one", 0);
+        assertNotNull(slot);
+        assertEquals(slot.value, "bar");
+        assertEquals(1 + startingSize, obj.getMap().size());
+    }
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void computeRemoveSlot(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        var slot = obj.getMap().modify(obj, "one", 0, 0);
+        slot.value = "foo";
+        var newSlot =
+                obj.getMap()
+                        .compute(
+                                obj,
+                                "one",
+                                0,
+                                (k, i, e, m, o) -> {
+                                    assertEquals(k, "one");
+                                    assertEquals(i, 0);
+                                    assertNotNull(e);
+                                    assertEquals(e.value, "foo");
+                                    return null;
+                                });
+        assertNull(newSlot);
+        slot = obj.getMap().query("one", 0);
+        assertNull(slot);
+        assertEquals(0 + startingSize, obj.getMap().size());
+    }
+
+    private static final int NUM_INDICES = 67;
+
+    @MethodSource("mapTypes")
+    @ParameterizedTest
+    public void manyKeysAndIndices(Supplier<SlotMap<Scriptable>> mapSupplier) {
+        initSlotMapTest(mapSupplier);
+        for (int i = 0; i < NUM_INDICES; i++) {
+            var newSlot = obj.getMap().modify(obj, null, i, 0);
+            newSlot.value = i;
+        }
+        for (String key : KEYS) {
+            var newSlot = obj.getMap().modify(obj, key, 0, 0);
+            newSlot.value = key;
+        }
+        assertEquals(KEYS.length + NUM_INDICES + startingSize, obj.getMap().size());
+        assertFalse(obj.getMap().isEmpty());
+        verifyIndicesAndKeys();
+
+        // Randomly replace some slots
+        for (int i = 0; i < 20; i++) {
+            int ix = rand.nextInt(NUM_INDICES);
+            var slot = obj.getMap().query(null, ix);
+            assertNotNull(slot);
+            obj.getMap().compute(obj, null, ix, (k, j, e, m, o) -> new StandardSlot<>(slot));
+        }
+        for (int i = 0; i < 20; i++) {
+            int ix = rand.nextInt(KEYS.length);
+            var slot = obj.getMap().query(KEYS[ix], 0);
+            assertNotNull(slot);
+            obj.getMap().compute(obj, KEYS[ix], 0, (k, j, e, m, o) -> new StandardSlot<>(slot));
+        }
+        verifyIndicesAndKeys();
+
+        // Randomly remove slots -- which we do using compute because that's all
+        // that ScriptableObject needs.
+        HashSet<Integer> removedIds = new HashSet<>();
+        for (int i = 0; i < 20; i++) {
+            int ix = rand.nextInt(NUM_INDICES);
+            obj.getMap().compute(obj, null, ix, (k, ii, e, m, o) -> null);
+            removedIds.add(ix);
+        }
+        HashSet<String> removedKeys = new HashSet<>();
+        for (int i = 0; i < 20; i++) {
+            int ix = rand.nextInt(NUM_INDICES);
+            obj.getMap().compute(obj, KEYS[ix], ix, (k, idx, e, m, o) -> null);
+            removedKeys.add(KEYS[ix]);
+        }
+
+        for (int i = 0; i < NUM_INDICES; i++) {
+            var slot = obj.getMap().query(null, i);
+            if (removedIds.contains(i)) {
+                assertNull(slot);
+            } else {
+                assertNotNull(slot);
+                assertEquals(i, slot.value);
+            }
+        }
+        for (String key : KEYS) {
+            var slot = obj.getMap().query(key, 0);
+            if (removedKeys.contains(key)) {
+                assertNull(slot);
+            } else {
+                assertNotNull(slot);
+                assertEquals(key, slot.value);
+            }
+        }
+    }
+
+    private void verifyIndicesAndKeys() {
+        try (var map = obj.startCompoundOp(false)) {
+            var it = map.iterator();
+            for (int i = 0; i < startingSize; i++) {
+                // Skip initial slots
+                it.next();
+            }
+            for (int i = 0; i < NUM_INDICES; i++) {
+                var slot = map.query(null, i);
+                assertNotNull(slot);
+                assertEquals(i, slot.value);
+                assertTrue(it.hasNext());
+                assertEquals(slot, it.next());
+            }
+            for (String key : KEYS) {
+                var slot = map.query(key, 0);
+                assertNotNull(slot);
+                assertEquals(key, slot.value);
+                assertTrue(it.hasNext());
+                assertEquals(slot, it.next());
+            }
+            assertFalse(it.hasNext());
+        }
+    }
+
+    private void createBuiltInSlot(ScriptableObject obj, String name) {
+        ScriptableObject.defineBuiltInProperty(
+                obj,
+                DONTENUM,
+                new BuiltInSlot.Descriptor<ScriptableObject>(name, (b, s) -> name + "_result"));
+    }
+
+    // These keys come from the hash collision test and may help ensure that we have a few
+    // collisions for proper testing of the embedded slot obj.getMap().
+    private static final String[] KEYS = {
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaAaBBBBBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaAaBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBAaBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBAaBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBBBAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBAaBBBBBBBBBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAaAaAa",
+        "AaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAaAaBB",
+        "AaAaAaAaAaAaAaAaAaAaAaBBBBAaAaAaBBAa",
+    };
+}

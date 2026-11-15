@@ -1,55 +1,62 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino.ast;
 
-import rhino.*;
-
-import java.util.*;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import rhino.Context;
+import rhino.Kit;
+import rhino.Node;
+import rhino.Token;
 
 /**
- * Base class for AST node types.  The goal of the AST is to represent the
- * physical source code, to make it useful for code-processing tools such
- * as IDEs or pretty-printers.  The parser must not rewrite the parse tree
- * when producing this representation. <p>
- * <p>
- * The {@code AstNode} hierarchy sits atop the older {@link Node} class,
- * which was designed for code generation.  The {@code Node} class is a
- * flexible, weakly-typed class suitable for creating and rewriting code
- * trees, but using it requires you to remember the exact ordering of the
- * child nodes, which are kept in a linked list.  The {@code AstNode}
- * hierarchy is a strongly-typed facade with named accessors for children
- * and common properties, but under the hood it's still using a linked list
- * of child nodes.  It isn't a very good idea to use the child list directly
- * unless you know exactly what you're doing.</p>
- * <p>
- * Note that {@code AstNode} records additional information, including
- * the node's position, length, and parent node.  Also, some {@code AstNode}
- * subclasses record some of their child nodes in instance members, since
- * they are not needed for code generation.  In a nutshell, only the code
- * generator should be mixing and matching {@code AstNode} and {@code Node}
- * objects.<p>
- * <p>
- * All offset fields in all subclasses of AstNode are relative to their
- * parent.  For things like paren, bracket and keyword positions, the
- * position is relative to the current node.  The node start position is
- * relative to the parent node. <p>
- * <p>
- * During the actual parsing, node positions are absolute; adding the node to
- * its parent fixes up the offsets to be relative.  By the time you see the AST
- * (e.g. using the {@code Visitor} interface), the offsets are relative. <p>
- * <p>
- * {@code AstNode} objects have property lists accessible via the
- * {@link #getProp} and {@link #putProp} methods.  The property lists are
- * integer-keyed with arbitrary {@code Object} values.  For the most part the
- * parser generating the AST avoids using properties, preferring fields for
- * elements that are always set.  Property lists are intended for user-defined
- * annotations to the tree.  The Rhino code generator acts as a client and
- * uses node properties extensively.  You are welcome to use the property-list
- * API for anything your client needs.<p>
- * <p>
- * This hierarchy does not have separate branches for expressions and
- * statements, as the distinction in JavaScript is not as clear-cut as in
- * Java or C++.
+ * Base class for AST node types. The goal of the AST is to represent the physical source code, to
+ * make it useful for code-processing tools such as IDEs or pretty-printers. The parser must not
+ * rewrite the parse tree when producing this representation.
+ *
+ * <p>The {@code AstNode} hierarchy sits atop the older {@link Node} class, which was designed for
+ * code generation. The {@code Node} class is a flexible, weakly-typed class suitable for creating
+ * and rewriting code trees, but using it requires you to remember the exact ordering of the child
+ * nodes, which are kept in a linked list. The {@code AstNode} hierarchy is a strongly-typed facade
+ * with named accessors for children and common properties, but under the hood it's still using a
+ * linked list of child nodes. It isn't a very good idea to use the child list directly unless you
+ * know exactly what you're doing. Note that {@code AstNode} records additional information,
+ * including the node's position, length, and parent node. Also, some {@code AstNode} subclasses
+ * record some of their child nodes in instance members, since they are not needed for code
+ * generation. In a nutshell, only the code generator should be mixing and matching {@code AstNode}
+ * and {@code Node} objects.
+ *
+ * <p>All offset fields in all subclasses of AstNode are relative to their parent. For things like
+ * paren, bracket and keyword positions, the position is relative to the current node. The node
+ * start position is relative to the parent node.
+ *
+ * <p>During the actual parsing, node positions are absolute; adding the node to its parent fixes up
+ * the offsets to be relative. By the time you see the AST (e.g. using the {@code Visitor}
+ * interface), the offsets are relative.
+ *
+ * <p>{@code AstNode} objects have property lists accessible via the {@link #getProp} and {@link
+ * #putProp} methods. The property lists are integer-keyed with arbitrary {@code Object} values. For
+ * the most part the parser generating the AST avoids using properties, preferring fields for
+ * elements that are always set. Property lists are intended for user-defined annotations to the
+ * tree. The Rhino code generator acts as a client and uses node properties extensively. You are
+ * welcome to use the property-list API for anything your client needs.
+ *
+ * <p>This hierarchy does not have separate branches for expressions and statements, as the
+ * distinction in JavaScript is not as clear-cut as in Java or C++.
  */
-public abstract class AstNode extends Node implements Comparable<AstNode>{
+public abstract class AstNode extends Node implements Comparable<AstNode> {
 
     protected int position = -1;
     protected int length = 1;
@@ -70,7 +77,10 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
     protected AstNode inlineComment;
     private static final Map<Integer, String> operatorNames = new HashMap<>();
 
-    static{
+    private static final int MAX_INDENT = 42;
+    private static final String[] INDENTATIONS = new String[MAX_INDENT + 1];
+
+    static {
         operatorNames.put(Token.IN, "in");
         operatorNames.put(Token.TYPEOF, "typeof");
         operatorNames.put(Token.INSTANCEOF, "instanceof");
@@ -78,6 +88,8 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
         operatorNames.put(Token.COMMA, ",");
         operatorNames.put(Token.COLON, ":");
         operatorNames.put(Token.OR, "||");
+        operatorNames.put(Token.NULLISH_COALESCING, "??");
+        operatorNames.put(Token.QUESTION_DOT, "?.");
         operatorNames.put(Token.AND, "&&");
         operatorNames.put(Token.INC, "++");
         operatorNames.put(Token.DEC, "--");
@@ -98,6 +110,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
         operatorNames.put(Token.MUL, "*");
         operatorNames.put(Token.DIV, "/");
         operatorNames.put(Token.MOD, "%");
+        operatorNames.put(Token.EXP, "**");
         operatorNames.put(Token.NOT, "!");
         operatorNames.put(Token.BITNOT, "~");
         operatorNames.put(Token.POS, "+");
@@ -106,7 +119,9 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
         operatorNames.put(Token.SHNE, "!==");
         operatorNames.put(Token.ASSIGN, "=");
         operatorNames.put(Token.ASSIGN_BITOR, "|=");
+        operatorNames.put(Token.ASSIGN_LOGICAL_OR, "||=");
         operatorNames.put(Token.ASSIGN_BITAND, "&=");
+        operatorNames.put(Token.ASSIGN_LOGICAL_AND, "&&=");
         operatorNames.put(Token.ASSIGN_LSH, "<<=");
         operatorNames.put(Token.ASSIGN_RSH, ">>=");
         operatorNames.put(Token.ASSIGN_URSH, ">>>=");
@@ -116,134 +131,165 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
         operatorNames.put(Token.ASSIGN_DIV, "/=");
         operatorNames.put(Token.ASSIGN_MOD, "%=");
         operatorNames.put(Token.ASSIGN_BITXOR, "^=");
+        operatorNames.put(Token.ASSIGN_EXP, "**=");
+        operatorNames.put(Token.ASSIGN_NULLISH, "??=");
         operatorNames.put(Token.VOID, "void");
+
+        StringBuilder sb = new StringBuilder();
+        INDENTATIONS[0] = sb.toString();
+        for (int i = 1; i <= MAX_INDENT; i++) {
+            sb.append("  ");
+            INDENTATIONS[i] = sb.toString();
+        }
     }
 
-    public AstNode(){
+    public static class PositionComparator implements Comparator<AstNode>, Serializable {
+        private static final long serialVersionUID = 1551233591343412911L;
+
+        /**
+         * Sorts nodes by (relative) start position. The start positions are relative to their
+         * parent, so this comparator is only meaningful for comparing siblings.
+         */
+        @Override
+        public int compare(AstNode n1, AstNode n2) {
+            return n1.position - n2.position;
+        }
+
+        @Serial
+        private void readObject(ObjectInputStream stream)
+                throws IOException, ClassNotFoundException {
+            Context.checkDeserializationEnabled();
+            stream.defaultReadObject();
+        }
+
+        @Serial
+        private void writeObject(ObjectOutputStream stream) throws IOException {
+            Context.checkSerializationEnabled();
+            stream.defaultWriteObject();
+        }
+
+        @Serial
+        private void readObjectNoData() throws InvalidObjectException {
+            throw new InvalidObjectException("Missing serialized Rhino object data");
+        }
+    }
+
+    public AstNode() {
         super(Token.ERROR);
     }
 
     /**
      * Constructs a new AstNode
+     *
      * @param pos the start position
      */
-    public AstNode(int pos){
+    public AstNode(int pos) {
         this();
         position = pos;
     }
 
     /**
      * Constructs a new AstNode
+     *
      * @param pos the start position
-     * @param len the number of characters spanned by the node in the source
-     * text
+     * @param len the number of characters spanned by the node in the source text
      */
-    public AstNode(int pos, int len){
+    public AstNode(int pos, int len) {
         this();
         position = pos;
         length = len;
     }
 
-    /**
-     * Returns relative position in parent
-     */
-    public int getPosition(){
+    /** Returns relative position in parent */
+    public int getPosition() {
         return position;
     }
 
-    /**
-     * Sets relative position in parent
-     */
-    public void setPosition(int position){
+    /** Sets relative position in parent */
+    public void setPosition(int position) {
         this.position = position;
     }
 
     /**
-     * Returns the absolute document position of the node.
-     * Computes it by adding the node's relative position
-     * to the relative positions of all its parents.
+     * Returns the absolute document position of the node. Computes it by adding the node's relative
+     * position to the relative positions of all its parents.
      */
-    public int getAbsolutePosition(){
+    public int getAbsolutePosition() {
         int pos = position;
         AstNode parent = this.parent;
-        while(parent != null){
+        while (parent != null) {
             pos += parent.getPosition();
             parent = parent.getParent();
         }
         return pos;
     }
 
-    /**
-     * Returns node length
-     */
-    public int getLength(){
+    /** Returns node length */
+    public int getLength() {
         return length;
     }
 
-    /**
-     * Sets node length
-     */
-    public void setLength(int length){
+    /** Sets node length */
+    public void setLength(int length) {
         this.length = length;
     }
 
     /**
-     * Sets the node start and end positions.
-     * Computes the length as ({@code end} - {@code position}).
+     * Sets the node start and end positions. Computes the length as ({@code end} - {@code
+     * position}).
      */
-    public void setBounds(int position, int end){
+    public void setBounds(int position, int end) {
         setPosition(position);
         setLength(end - position);
     }
 
     /**
-     * Make this node's position relative to a parent.
-     * Typically only used by the parser when constructing the node.
-     * @param parentPosition the absolute parent position; the
-     * current node position is assumed to be absolute and is
-     * decremented by parentPosition.
+     * Make this node's position relative to a parent. Typically only used by the parser when
+     * constructing the node.
+     *
+     * @param parentPosition the absolute parent position; the current node position is assumed to
+     *     be absolute and is decremented by parentPosition.
      */
-    public void setRelative(int parentPosition){
+    public void setRelative(int parentPosition) {
         this.position -= parentPosition;
     }
 
-    /**
-     * Returns the node parent, or {@code null} if it has none
-     */
-    public AstNode getParent(){
+    /** Returns the node parent, or {@code null} if it has none */
+    public AstNode getParent() {
         return parent;
     }
 
     /**
-     * Sets the node parent.  This method automatically adjusts the
-     * current node's start position to be relative to the new parent.
+     * Sets the node parent. This method automatically adjusts the current node's start position to
+     * be relative to the new parent.
+     *
      * @param parent the new parent. Can be {@code null}.
      */
-    public void setParent(AstNode parent){
-        if(parent == this.parent){
+    public void setParent(AstNode parent) {
+        if (parent == this.parent) {
             return;
         }
 
         // Convert position back to absolute.
-        if(this.parent != null){
+        if (this.parent != null) {
             setRelative(-this.parent.getAbsolutePosition());
         }
 
         this.parent = parent;
-        if(parent != null){
+        if (parent != null) {
             setRelative(parent.getAbsolutePosition());
         }
     }
 
     /**
-     * Adds a child or function to the end of the block.
-     * Sets the parent of the child to this node, and fixes up
-     * the start position of the child to be relative to this node.
-     * Sets the length of this node to include the new child.
+     * Adds a child or function to the end of the block. Sets the parent of the child to this node,
+     * and fixes up the start position of the child to be relative to this node. Sets the length of
+     * this node to include the new child.
+     *
      * @param kid the child
      * @throws IllegalArgumentException if kid is {@code null}
      */
-    public void addChild(AstNode kid){
+    public void addChild(AstNode kid) {
         assertNotNull(kid);
         int end = kid.getPosition() + kid.getLength();
         setLength(end - this.getPosition());
@@ -253,56 +299,50 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
 
     /**
      * Returns the root of the tree containing this node.
-     * @return the {@link AstRoot} at the root of this node's parent
-     * chain, or {@code null} if the topmost parent is not an {@code AstRoot}.
+     *
+     * @return the {@link AstRoot} at the root of this node's parent chain, or {@code null} if the
+     *     topmost parent is not an {@code AstRoot}.
      */
-    public AstRoot getAstRoot(){
-        AstNode parent = this;  // this node could be the AstRoot
-        while(parent != null && !(parent instanceof AstRoot)){
+    public AstRoot getAstRoot() {
+        AstNode parent = this; // this node could be the AstRoot
+        while (parent != null && !(parent instanceof AstRoot)) {
             parent = parent.getParent();
         }
-        return (AstRoot)parent;
+        return (AstRoot) parent;
     }
 
     /**
-     * Emits source code for this node.  Callee is responsible for calling this
-     * function recursively on children, incrementing indent as appropriate.<p>
-     * <p>
-     * Note: if the parser was in error-recovery mode, some AST nodes may have
-     * {@code null} children that are expected to be non-{@code null}
-     * when no errors are present.  In this situation, the behavior of the
-     * {@code toSource} method is undefined: {@code toSource}
-     * implementations may assume that the AST node is error-free, since it is
-     * intended to be invoked only at runtime after a successful parse.<p>
-     * @param depth the current recursion depth, typically beginning at 0
-     * when called on the root node.
+     * Emits source code for this node. Callee is responsible for calling this function recursively
+     * on children, incrementing indent as appropriate.
+     *
+     * <p>Note: if the parser was in error-recovery mode, some AST nodes may have {@code null}
+     * children that are expected to be non-{@code null} when no errors are present. In this
+     * situation, the behavior of the {@code toSource} method is undefined: {@code toSource}
+     * implementations may assume that the AST node is error-free, since it is intended to be
+     * invoked only at runtime after a successful parse.
+     *
+     * @param depth the current recursion depth, typically beginning at 0 when called on the root
+     *     node.
      */
     public abstract String toSource(int depth);
 
-    /**
-     * Prints the source indented to depth 0.
-     */
-    public String toSource(){
+    /** Prints the source indented to depth 0. */
+    public String toSource() {
         return this.toSource(0);
     }
 
     /**
      * Constructs an indentation string.
+     *
      * @param indent the number of indentation steps
      */
-    public String makeIndent(int indent){
-        StringBuilder sb = new StringBuilder();
-        for(int i = 0; i < indent; i++){
-            sb.append("  ");
-        }
-        return sb.toString();
+    public String makeIndent(int indent) {
+        indent = Math.min(MAX_INDENT, Math.max(0, indent));
+        return INDENTATIONS[indent];
     }
 
-    /**
-     * Returns a short, descriptive name for the node, such as
-     * "ArrayComprehension".
-     */
-    public String shortName(){
+    /** Returns a short, descriptive name for the node, such as "ArrayComprehension". */
+    public String shortName() {
         String classname = getClass().getName();
         int last = classname.lastIndexOf(".");
         return classname.substring(last + 1);
@@ -310,42 +350,43 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
 
     /**
      * Returns the string name for this operator.
+     *
      * @param op the token type, e.g. {@link Token#ADD} or {@link Token#TYPEOF}
      * @return the source operator string, such as "+" or "typeof"
      */
-    public static String operatorToString(int op){
+    public static String operatorToString(int op) {
         String result = operatorNames.get(op);
-        if(result == null)
-            throw new IllegalArgumentException("Invalid operator: " + op);
+        if (result == null) throw new IllegalArgumentException("Invalid operator: " + op);
         return result;
     }
 
     /**
-     * Visits this node and its children in an arbitrary order. <p>
-     * <p>
-     * It's up to each node subclass to decide the order for processing
-     * its children.  The subclass also decides (and should document)
-     * which child nodes are not passed to the {@code NodeVisitor}.
-     * For instance, nodes representing keywords like {@code each} or
-     * {@code in} may not be passed to the visitor object.  The visitor
-     * can simply query the current node for these children if desired.<p>
-     * <p>
-     * Generally speaking, the order will be deterministic; the order is
-     * whatever order is decided by each child node.  Normally child nodes
-     * will try to visit their children in lexical order, but there may
-     * be exceptions to this rule.<p>
+     * Visits this node and its children in an arbitrary order.
+     *
+     * <p>It's up to each node subclass to decide the order for processing its children. The
+     * subclass also decides (and should document) which child nodes are not passed to the {@code
+     * NodeVisitor}. For instance, nodes representing keywords like {@code each} or {@code in} may
+     * not be passed to the visitor object. The visitor can simply query the current node for these
+     * children if desired.
+     *
+     * <p>Generally speaking, the order will be deterministic; the order is whatever order is
+     * decided by each child node. Normally child nodes will try to visit their children in lexical
+     * order, but there may be exceptions to this rule.
+     *
      * @param visitor the object to call with this node and its children
      */
     public abstract void visit(NodeVisitor visitor);
 
     // subclasses with potential side effects should override this
     @Override
-    public boolean hasSideEffects(){
-        switch(getType()){
+    public boolean hasSideEffects() {
+        switch (getType()) {
             case Token.ASSIGN:
             case Token.ASSIGN_ADD:
             case Token.ASSIGN_BITAND:
+            case Token.ASSIGN_LOGICAL_AND:
             case Token.ASSIGN_BITOR:
+            case Token.ASSIGN_LOGICAL_OR:
             case Token.ASSIGN_BITXOR:
             case Token.ASSIGN_DIV:
             case Token.ASSIGN_LSH:
@@ -354,6 +395,8 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
             case Token.ASSIGN_RSH:
             case Token.ASSIGN_SUB:
             case Token.ASSIGN_URSH:
+            case Token.ASSIGN_EXP:
+            case Token.ASSIGN_NULLISH:
             case Token.BLOCK:
             case Token.BREAK:
             case Token.CALL:
@@ -367,7 +410,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
             case Token.DO:
             case Token.ELSE:
             case Token.ENTERWITH:
-            case Token.ERROR:         // Avoid cascaded error messages
+            case Token.ERROR: // Avoid cascaded error messages
             case Token.EXPORT:
             case Token.EXPR_RESULT:
             case Token.FINALLY:
@@ -381,7 +424,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
             case Token.INC:
             case Token.JSR:
             case Token.LABEL:
-            case Token.LEAVEWITH:
+            case Token.LEAVE_SCOPE:
             case Token.LET:
             case Token.LETEXPR:
             case Token.LOCAL_BLOCK:
@@ -419,28 +462,28 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
 
     /**
      * Bounces an IllegalArgumentException up if arg is {@code null}.
+     *
      * @param arg any method argument
      * @throws IllegalArgumentException if the argument is {@code null}
      */
-    protected void assertNotNull(Object arg){
-        if(arg == null)
-            throw new IllegalArgumentException("arg cannot be null");
+    protected void assertNotNull(Object arg) {
+        if (arg == null) throw new IllegalArgumentException("arg cannot be null");
     }
 
     /**
      * Prints a comma-separated item list into a {@link StringBuilder}.
+     *
      * @param items a list to print
      * @param sb a {@link StringBuilder} into which to print
      */
-    protected <T extends AstNode> void printList(List<T> items,
-                                                 StringBuilder sb){
+    protected <T extends AstNode> void printList(List<T> items, StringBuilder sb) {
         int max = items.size();
         int count = 0;
-        for(AstNode item : items){
+        for (AstNode item : items) {
             sb.append(item.toSource(0));
-            if(count++ < max - 1){
+            if (count++ < max - 1) {
                 sb.append(", ");
-            }else if(item instanceof EmptyExpression){
+            } else if (item instanceof EmptyExpression) {
                 sb.append(",");
             }
         }
@@ -449,8 +492,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
     /**
      * @see Kit#codeBug
      */
-    public static RuntimeException codeBug()
-    throws RuntimeException{
+    public static RuntimeException codeBug() throws RuntimeException {
         throw Kit.codeBug();
     }
 
@@ -460,96 +502,97 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
     // Node.toString to be Node.dumpTree and change callers to use that.
     // For now, need original toString, to compare output to old Rhino's.
 
-//     @Override
-//     public String toString() {
-//         return this.getClass().getName() + ": " +
-//             Token.typeToName(getType());
-//     }
+    //     @Override
+    //     public String toString() {
+    //         return this.getClass().getName() + ": " +
+    //             Token.typeToName(getType());
+    //     }
 
     /**
-     * Returns the innermost enclosing function, or {@code null} if not in a
-     * function.  Begins the search with this node's parent.
+     * Returns the innermost enclosing function, or {@code null} if not in a function. Begins the
+     * search with this node's parent.
+     *
      * @return the {@link FunctionNode} enclosing this node, else {@code null}
      */
-    public FunctionNode getEnclosingFunction(){
+    public FunctionNode getEnclosingFunction() {
         AstNode parent = this.getParent();
-        while(parent != null && !(parent instanceof FunctionNode)){
+        while (parent != null && !(parent instanceof FunctionNode)) {
             parent = parent.getParent();
         }
-        return (FunctionNode)parent;
+        return (FunctionNode) parent;
     }
 
     /**
-     * Returns the innermost enclosing {@link Scope} node, or {@code null}
-     * if we're not nested in a scope.  Begins the search with this node's parent.
-     * Note that this is not the same as the defining scope for a {@link Name}.
+     * Returns the innermost enclosing {@link Scope} node, or {@code null} if we're not nested in a
+     * scope. Begins the search with this node's parent. Note that this is not the same as the
+     * defining scope for a {@link Name}.
+     *
      * @return the {@link Scope} enclosing this node, else {@code null}
      */
-    public Scope getEnclosingScope(){
+    public Scope getEnclosingScope() {
         AstNode parent = this.getParent();
-        while(parent != null && !(parent instanceof Scope)){
+        while (parent != null && !(parent instanceof Scope)) {
             parent = parent.getParent();
         }
-        return (Scope)parent;
+        return (Scope) parent;
     }
 
     /**
-     * Permits AST nodes to be sorted based on start position and length.
-     * This makes it easy to sort Comment and Error nodes into a set of
-     * other AST nodes:  just put them all into a {@link java.util.SortedSet},
-     * for instance.
+     * Permits AST nodes to be sorted based on start position and length. This makes it easy to sort
+     * Comment and Error nodes into a set of other AST nodes: just put them all into a {@link
+     * java.util.SortedSet}, for instance.
+     *
      * @param other another node
-     * @return -1 if this node's start position is less than {@code other}'s
-     * start position.  If tied, -1 if this node's length is less than
-     * {@code other}'s length.  If the lengths are equal, sorts abitrarily
-     * on hashcode unless the nodes are the same per {@link #equals}.
+     * @return -1 if this node's start position is less than {@code other}'s start position. If
+     *     tied, -1 if this node's length is less than {@code other}'s length. If the lengths are
+     *     equal, sorts arbitrarily on hashcode unless the nodes are the same per {@link #equals}.
      */
     @Override
-    public int compareTo(AstNode other){
-        if(this.equals(other)) return 0;
+    public int compareTo(AstNode other) {
+        if (this.equals(other)) return 0;
         int abs1 = this.getAbsolutePosition();
         int abs2 = other.getAbsolutePosition();
-        if(abs1 < abs2) return -1;
-        if(abs2 < abs1) return 1;
+        if (abs1 < abs2) return -1;
+        if (abs2 < abs1) return 1;
         int len1 = this.getLength();
         int len2 = other.getLength();
-        if(len1 < len2) return -1;
-        if(len2 < len1) return 1;
+        if (len1 < len2) return -1;
+        if (len2 < len1) return 1;
         return this.hashCode() - other.hashCode();
     }
 
     /**
-     * Returns the depth of this node.  The root is depth 0, its
-     * children are depth 1, and so on.
+     * Returns the depth of this node. The root is depth 0, its children are depth 1, and so on.
+     *
      * @return the node depth in the tree
      */
-    public int depth(){
+    public int depth() {
         return parent == null ? 0 : 1 + parent.depth();
     }
 
-    protected static class DebugPrintVisitor implements NodeVisitor{
-        private final StringBuilder buffer;
+    protected static class DebugPrintVisitor implements NodeVisitor {
+        private StringBuilder buffer;
         private static final int DEBUG_INDENT = 2;
 
-        public DebugPrintVisitor(StringBuilder buf){
+        public DebugPrintVisitor(StringBuilder buf) {
             buffer = buf;
         }
 
         @Override
-        public String toString(){
+        public String toString() {
             return buffer.toString();
         }
 
-        private String makeIndent(int depth){
+        private static String makeIndent(int depth) {
             StringBuilder sb = new StringBuilder(DEBUG_INDENT * depth);
-            for(int i = 0; i < (DEBUG_INDENT * depth); i++){
+            for (int i = 0; i < (DEBUG_INDENT * depth); i++) {
                 sb.append(" ");
             }
             return sb.toString();
         }
 
         @Override
-        public boolean visit(AstNode node){
+        public boolean visit(AstNode node) {
             int tt = node.getType();
             String name = Token.typeToName(tt);
             buffer.append(node.getAbsolutePosition()).append("\t");
@@ -557,47 +600,48 @@ public abstract class AstNode extends Node implements Comparable<AstNode>{
             buffer.append(name).append(" ");
             buffer.append(node.getPosition()).append(" ");
             buffer.append(node.getLength());
-            if(tt == Token.NAME){
-                buffer.append(" ").append(((Name)node).getIdentifier());
-            }else if(tt == Token.STRING){
-                buffer.append(" ").append(((StringLiteral)node).getValue(true));
+            if (tt == Token.NAME) {
+                buffer.append(" ").append(((Name) node).getIdentifier());
+            } else if (tt == Token.STRING) {
+                buffer.append(" ").append(((StringLiteral) node).getValue(true));
+            } else if (tt == Token.FUNCTION) {
+                buffer.append(" functionType=").append(((FunctionNode) node).getFunctionType());
             }
             buffer.append("\n");
-            return true;  // process kids
+            return true; // process kids
         }
     }
 
     /**
-     * Return the line number recorded for this node.
-     * If no line number was recorded, searches the parent chain.
+     * Return the line number recorded for this node. If no line number was recorded, searches the
+     * parent chain.
+     *
      * @return the nearest line number, or -1 if none was found
      */
     @Override
-    public int getLineno(){
-        if(lineno != -1)
-            return lineno;
-        if(parent != null)
-            return parent.getLineno();
+    public int getLineno() {
+        if (lineno != -1) return lineno;
+        if (parent != null) return parent.getLineno();
         return -1;
     }
 
     /**
-     * Returns a debugging representation of the parse tree
-     * starting at this node.
-     * @return a very verbose indented printout of the tree.
-     * The format of each line is:  abs-pos  name position length [identifier]
+     * Returns a debugging representation of the parse tree starting at this node.
+     *
+     * @return a very verbose indented printout of the tree. The format of each line is: abs-pos
+     *     name position length [identifier]
      */
-    public String debugPrint(){
+    public String debugPrint() {
         DebugPrintVisitor dpv = new DebugPrintVisitor(new StringBuilder(1000));
         visit(dpv);
         return dpv.toString();
     }
 
-    public AstNode getInlineComment(){
+    public AstNode getInlineComment() {
         return inlineComment;
     }
 
-    public void setInlineComment(AstNode inlineComment){
+    public void setInlineComment(AstNode inlineComment) {
         this.inlineComment = inlineComment;
     }
 }

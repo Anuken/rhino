@@ -1,0 +1,76 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/*
+ * Tests for the Object.getOwnPropertyDescriptor(obj, prop) method
+ */
+package rhino.tests.es5;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import rhino.Context;
+import rhino.EcmaError;
+import rhino.EvaluatorException;
+import rhino.ScopeObject;
+
+public class RegexpTest {
+
+    private Context cx;
+    private ScopeObject scope;
+
+    @BeforeEach
+    public void setUp() {
+        cx = Context.enter();
+        cx.setLanguageVersion(Context.VERSION_1_8);
+        scope = cx.initStandardObjects();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        Context.exit();
+    }
+
+    /** see https://github.com/mozilla/rhino/issues/684. */
+    @Test
+    public void sideEffect() {
+        Object result2 =
+                cx.evaluateString(
+                        scope,
+                        "var a = 'hello world';"
+                                + "a.replace(/(.)/g, '#');"
+                                + "var res = '';"
+                                + "a.replace([], function (b, c) { res += c; });"
+                                + "res;",
+                        "test",
+                        1,
+                        null);
+        assertEquals("0", result2);
+    }
+
+    @Test
+    public void unsupportedFlag() {
+        try {
+            cx.evaluateString(scope, "/abc/o;", "test", 1, null);
+            fail("EvaluatorException expected");
+        } catch (EvaluatorException e) {
+            assertEquals("invalid flag 'o' after regular expression (test#1)", e.getMessage());
+        }
+    }
+
+    @Test
+    public void unsupportedFlagCtor() {
+        try {
+            cx.evaluateString(scope, "new RegExp('abc', 'o');", "test", 1, null);
+            fail("EcmaError expected");
+        } catch (EcmaError e) {
+            assertEquals(
+                    "SyntaxError: invalid flag 'o' after regular expression (test#1)",
+                    e.getMessage());
+        }
+    }
+}

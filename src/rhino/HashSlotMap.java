@@ -1,121 +1,114 @@
+/* -*- Mode: java; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package rhino;
 
-import rhino.ScriptableObject.*;
-
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 
 /**
  * This class implements the SlotMap interface using a java.util.HashMap. This class has more
  * overhead than EmbeddedSlotMap, especially because it puts each "Slot" inside an intermediate
- * object. However it is much more resistant to large number of hash collisions than
- * EmbeddedSlotMap and therefore we use this implementation when an object gains a large
- * number of properties.
+ * object. However it is much more resistant to large number of hash collisions than EmbeddedSlotMap
+ * and therefore we use this implementation when an object gains a large number of properties.
  */
+public class HashSlotMap<T extends PropHolder<T>> implements SlotMap<T> {
 
-public class HashSlotMap
-implements SlotMap{
+    private final LinkedHashMap<Object, Slot<T>> map;
 
-    private final LinkedHashMap<Object, ScriptableObject.Slot> map =
-    new LinkedHashMap<>();
+    public HashSlotMap() {
+        map = new LinkedHashMap<>();
+    }
+
+    protected HashSlotMap(int capacity) {
+        map = new LinkedHashMap<>(capacity);
+    }
+
+    public HashSlotMap(SlotMap<T> oldMap) {
+        map = new LinkedHashMap<>(oldMap.size());
+        for (var n : oldMap) {
+            add(null, n.copySlot());
+        }
+    }
+
+    public HashSlotMap(SlotMap<T> oldMap, Slot<T> newSlot) {
+        map = new LinkedHashMap<>(oldMap.dirtySize() + 1);
+        for (var n : oldMap) {
+            add(null, n.copySlot());
+        }
+        add(null, newSlot);
+    }
 
     @Override
-    public int size(){
+    public int size() {
         return map.size();
     }
 
     @Override
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return map.isEmpty();
     }
 
     @Override
-    public ScriptableObject.Slot query(Object key, int index){
-        Object name = key == null ? String.valueOf(index) : key;
+    public Slot<T> query(Object key, int index) {
+        Object name = makeKey(key, index);
         return map.get(name);
     }
 
     @Override
-    public ScriptableObject.Slot get(Object key, int index, ScriptableObject.SlotAccess accessType){
-        Object name = key == null ? String.valueOf(index) : key;
-        ScriptableObject.Slot slot = map.get(name);
-        switch(accessType){
-            case QUERY:
-                return slot;
-            case MODIFY:
-            case MODIFY_CONST:
-                if(slot != null)
-                    return slot;
-                break;
-            case MODIFY_GETTER_SETTER:
-                if(slot instanceof ScriptableObject.GetterSlot)
-                    return slot;
-                break;
-            case CONVERT_ACCESSOR_TO_DATA:
-                if(!(slot instanceof ScriptableObject.GetterSlot))
-                    return slot;
-                break;
+    public Slot<T> modify(SlotMapOwner<T> owner, Object key, int index, int attributes) {
+        Object name = makeKey(key, index);
+        Slot<T> slot = map.get(name);
+        if (slot == null) {
+            slot = new StandardSlot<T>(key, index, attributes);
+            map.put(name, slot);
         }
-
-        return createSlot(key, index, name, accessType);
+        return slot;
     }
 
-    private ScriptableObject.Slot createSlot(Object key, int index,
-                                             Object name, ScriptableObject.SlotAccess accessType){
-        ScriptableObject.Slot slot = map.get(name);
-        if(slot != null){
-            ScriptableObject.Slot newSlot;
-
-            if(accessType == SlotAccess.MODIFY_GETTER_SETTER
-            && !(slot instanceof ScriptableObject.GetterSlot)){
-                newSlot = new ScriptableObject.GetterSlot(name, slot.indexOrHash, slot.getAttributes());
-            }else if(accessType == SlotAccess.CONVERT_ACCESSOR_TO_DATA
-            && (slot instanceof ScriptableObject.GetterSlot)){
-                newSlot = new ScriptableObject.Slot(name, slot.indexOrHash, slot.getAttributes());
-            }else if(accessType == SlotAccess.MODIFY_CONST){
-                return null;
-            }else{
-                return slot;
-            }
-            newSlot.value = slot.value;
-            map.put(name, newSlot);
-            return newSlot;
+    @SuppressWarnings("unchecked")
+    @Override
+    public <S extends Slot<T>> S compute(
+            SlotMapOwner<T> owner,
+            CompoundOperationMap<T> compoundOp,
+            Object key,
+            int index,
+            SlotComputer<S, T> c) {
+        Object name = makeKey(key, index);
+        Slot<T> existing = map.get(name);
+        S ret = c.compute(key, index, existing, compoundOp, owner);
+        if (ret != null) {
+            map.put(name, ret);
+        } else if (existing != null) {
+            map.remove(name);
         }
-
-        ScriptableObject.Slot newSlot = (accessType == SlotAccess.MODIFY_GETTER_SETTER
-        ? new ScriptableObject.GetterSlot(key, index, 0)
-        : new ScriptableObject.Slot(key, index, 0));
-        if(accessType == SlotAccess.MODIFY_CONST){
-            newSlot.setAttributes(ScriptableObject.CONST);
-        }
-        addSlot(newSlot);
-        return newSlot;
+        return ret;
     }
 
     @Override
-    public void addSlot(ScriptableObject.Slot newSlot){
-        Object name = newSlot.name == null ? String.valueOf(newSlot.indexOrHash) : newSlot.name;
+    public void add(SlotMapOwner<T> owner, Slot<T> newSlot) {
+        Object name = makeKey(newSlot);
         map.put(name, newSlot);
     }
 
     @Override
-    public void remove(Object key, int index){
-        Object name = key == null ? String.valueOf(index) : key;
-        ScriptableObject.Slot slot = map.get(name);
-        if(slot != null){
-            // non-configurable
-            if((slot.getAttributes() & ScriptableObject.PERMANENT) != 0){
-                Context cx = Context.getContext();
-                if(cx.isStrictMode()){
-                    throw ScriptRuntime.typeError1("msg.delete.property.with.configurable.false", key);
-                }
-                return;
-            }
-            map.remove(name);
-        }
+    public Iterator<Slot<T>> iterator() {
+        return map.values().iterator();
+    }
+
+    private Object makeKey(Object name, int index) {
+        return name == null ? index : name;
+    }
+
+    private Object makeKey(Slot<T> slot) {
+        return slot.getKey();
     }
 
     @Override
-    public Iterator<ScriptableObject.Slot> iterator(){
-        return map.values().iterator();
+    public SlotMap<T> copyMap() {
+        return new HashSlotMap<>(this);
     }
 }
