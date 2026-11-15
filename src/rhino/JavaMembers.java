@@ -447,6 +447,7 @@ class JavaMembers{
             Map<String, Object> ht = isStatic ? staticMembers : members;
             Object member = ht.get(name);
             if(member == null || (member instanceof NativeJavaMethod && !Modifier.isPrivate(mods))){ //change: fields will always mask methods
+                if(member != null) (isStatic ? staticMaskedMethods : maskedMethods).put(name, (NativeJavaMethod)member);
                 ht.put(name, field);
             }else if(member instanceof NativeJavaMethod){
                 NativeJavaMethod method = (NativeJavaMethod)member;
@@ -751,6 +752,12 @@ class JavaMembers{
         return members;
     }
 
+    /** @return the methods named like a field, which the field hides from property access, or null */
+    NativeJavaMethod getMaskedMethod(String name, boolean isStatic){
+        NativeJavaMethod method = (isStatic ? staticMaskedMethods : maskedMethods).get(name);
+        return method == null && !isStatic ? staticMaskedMethods.get(name) : method;
+    }
+
     RuntimeException reportMemberNotFound(String memberName){
         return Context.reportRuntimeError2(
         "msg.java.member.not.found", cl.getName(), memberName);
@@ -761,6 +768,8 @@ class JavaMembers{
     private Map<String, FieldAndMethods> fieldAndMethods;
     private final Map<String, Object> staticMembers;
     private Map<String, FieldAndMethods> staticFieldAndMethods;
+    private final Map<String, NativeJavaMethod> maskedMethods = new HashMap<>();
+    private final Map<String, NativeJavaMethod> staticMaskedMethods = new HashMap<>();
     NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
 }
 

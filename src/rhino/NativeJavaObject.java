@@ -73,6 +73,11 @@ implements Scriptable, SymbolScriptable, Wrapper{
         return members.get(this, name, javaObject, false);
     }
 
+    /** @return the methods with a name that a field hides from property access, or null */
+    NativeJavaMethod getMaskedMethod(String name){
+        return members.getMaskedMethod(name, false);
+    }
+
     @Override
     public Object get(Symbol key, Scriptable start){
         // Native Java objects have no Symbol members

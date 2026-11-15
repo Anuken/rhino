@@ -2182,6 +2182,11 @@ public class ScriptRuntime{
         }
 
         Object value = ScriptableObject.getProperty(thisObj, property);
+        //fields hide methods with the same name, but a call can only mean the method
+        if(!(value instanceof Callable) && thisObj instanceof NativeJavaObject){
+            NativeJavaMethod method = ((NativeJavaObject)thisObj).getMaskedMethod(property);
+            if(method != null) value = method;
+        }
         if(!(value instanceof Callable)){
             Object noSuchMethod = ScriptableObject.getProperty(thisObj, "__noSuchMethod__");
             if(noSuchMethod instanceof Callable)

@@ -41,6 +41,11 @@ public class NativeJavaClass extends NativeJavaObject implements Function{
     }
 
     @Override
+    NativeJavaMethod getMaskedMethod(String name){
+        return members.getMaskedMethod(name, true);
+    }
+
+    @Override
     public String getClassName(){
         return "JavaClass";
     }

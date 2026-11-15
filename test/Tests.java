@@ -177,6 +177,27 @@ public class Tests{
         "3,3,3");
     }
 
+    @Test
+    public void fieldsMaskMethodsExceptInCalls(){
+        assertSameAtBothLevels("var m = new Tests.Masked(); m.value + ',' + m.value(1)", "5,6");
+        assertSameAtBothLevels("Tests.Masked.count + ',' + Tests.Masked.count()", "2,3");
+        assertSameAtBothLevels("var m = new JavaAdapter(Tests.Masked, { value(add){ return this.super$value(add) * 10; } }); m.value + ',' + m.value(1)", "5,60");
+    }
+
+    public static class Masked{
+        public static int count = 2;
+
+        public int value = 5;
+
+        public static int count(){
+            return count + 1;
+        }
+
+        public int value(int add){
+            return value + add;
+        }
+    }
+
     public static boolean testPredicate(java.util.function.Predicate<Integer> pred, int number){
         return pred.test(number);
     }
