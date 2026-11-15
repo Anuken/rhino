@@ -6,6 +6,9 @@ import java.lang.reflect.*;
 import java.util.*;
 
 public final class JavaAdapter implements IdFunctionCall{
+    /** If set, creates adapter classes instead of generating their bytecode. */
+    public static AdapterFactory adapterFactory;
+
     /**
      * Provides a key with which to distinguish previously generated
      * adapter classes stored in a hash table.
@@ -157,6 +160,12 @@ public final class JavaAdapter implements IdFunctionCall{
         // next argument is implementation, must be scriptable
         Scriptable obj = ScriptableObject.ensureScriptable(args[classCount]);
 
+        if(adapterFactory != null){
+            Object[] ctorArgs = new Object[N - classCount - 1];
+            System.arraycopy(args, classCount + 1, ctorArgs, 0, ctorArgs.length);
+            return FactoryAdapter.get(adapterFactory, scope, superClass, interfaces, obj).create(cx, obj, ctorArgs);
+        }
+
         Class<?> adapterClass = getAdapterClass(scope, superClass, interfaces, obj);
         Object adapter;
 
@@ -210,7 +219,7 @@ public final class JavaAdapter implements IdFunctionCall{
         }
     }
 
-    private static ObjToIntMap getObjectFunctionNames(Scriptable obj){
+    static ObjToIntMap getObjectFunctionNames(Scriptable obj){
         Object[] ids = ScriptableObject.getPropertyIds(obj);
         ObjToIntMap map = new ObjToIntMap(ids.length);
         for(int i = 0; i != ids.length; ++i){
@@ -290,8 +299,54 @@ public final class JavaAdapter implements IdFunctionCall{
             generateEmptyCtor(cfw, adapterName, superName, scriptClassName);
         }
 
-        ObjToIntMap generatedOverrides = new ObjToIntMap();
         ObjToIntMap generatedMethods = new ObjToIntMap();
+        for(AdapterMethod override : getOverrides(functionNames, superClass, interfaces)){
+            Method method = override.method;
+            Class<?>[] argTypes = method.getParameterTypes();
+            generateMethod(cfw, adapterName, method.getName(), argTypes, method.getReturnType(), true);
+            generatedMethods.put(method.getName(), 0);
+            // if a method was overridden, generate a "super$method"
+            // which lets the delegate call the superclass' version.
+            if(override.hasSuper){
+                generateSuper(cfw, adapterName, superName, method.getName(), getMethodSignature(method, argTypes),
+                argTypes, method.getReturnType());
+            }
+        }
+
+        // Generate Java methods for remaining properties that are not
+        // overrides.
+        ObjToIntMap.Iterator iter = new ObjToIntMap.Iterator(functionNames);
+        for(iter.start(); !iter.done(); iter.next()){
+            String functionName = (String)iter.getKey();
+            if(generatedMethods.has(functionName))
+                continue;
+            int length = iter.getValue();
+            Class<?>[] parms = new Class[length];
+            for(int k = 0; k < length; k++)
+                parms[k] = ScriptRuntime.ObjectClass;
+            generateMethod(cfw, adapterName, functionName, parms,
+            ScriptRuntime.ObjectClass, false);
+        }
+        return cfw.toByteArray();
+    }
+
+    /** A method an adapter class overrides. */
+    static final class AdapterMethod{
+        final Method method;
+        /** Whether the superclass implements it, so the adapter has a super$ method for it. */
+        final boolean hasSuper;
+
+        AdapterMethod(Method method, boolean hasSuper){
+            this.method = method;
+            this.hasSuper = hasSuper;
+        }
+    }
+
+    /** @return the methods an adapter for these functions overrides, with one for each signature */
+    static ArrayList<AdapterMethod> getOverrides(ObjToIntMap functionNames, Class<?> superClass, Class<?>[] interfaces){
+        ArrayList<AdapterMethod> overrides = new ArrayList<>();
+        HashSet<String> generated = new HashSet<>();
+        int interfacesCount = interfaces == null ? 0 : interfaces.length;
 
         // generate methods to satisfy all specified interfaces.
         for(int i = 0; i < interfacesCount; i++){
@@ -316,77 +371,32 @@ public final class JavaAdapter implements IdFunctionCall{
                 }
                 // make sure to generate only one instance of a particular
                 // method/signature.
-                String methodSignature = getMethodSignature(method, argTypes);
-                String methodKey = methodName + methodSignature;
-                if(!generatedOverrides.has(methodKey)){
-                    generateMethod(cfw, adapterName, methodName, argTypes,
-                    method.getReturnType(), true);
-                    generatedOverrides.put(methodKey, 0);
-                    generatedMethods.put(methodName, 0);
+                if(generated.add(methodName + getMethodSignature(method, argTypes))){
+                    overrides.add(new AdapterMethod(method, false));
                 }
             }
         }
 
         // Now, go through the superclass's methods, checking for abstract
         // methods or additional methods to override.
-
-        // generate any additional overrides that the object might contain.
-        Method[] methods = getOverridableMethods(superClass);
-        for(Method method : methods){
-            int mods = method.getModifiers();
+        for(Method method : getOverridableMethods(superClass)){
             // if a method is marked abstract, must implement it or the
             // resulting class won't be instantiable. otherwise, if the object
             // has a property of the same name, then an override is intended.
-            boolean isAbstractMethod = Modifier.isAbstract(mods);
+            boolean isAbstractMethod = Modifier.isAbstract(method.getModifiers());
             String methodName = method.getName();
-            if(isAbstractMethod || functionNames.has(methodName)){
-                // make sure to generate only one instance of a particular
-                // method/signature.
-                Class<?>[] argTypes = method.getParameterTypes();
-                String methodSignature = getMethodSignature(method, argTypes);
-                String methodKey = methodName + methodSignature;
-                if(!generatedOverrides.has(methodKey)){
-                    generateMethod(cfw, adapterName, methodName, argTypes,
-                    method.getReturnType(), true);
-                    generatedOverrides.put(methodKey, 0);
-                    generatedMethods.put(methodName, 0);
-
-                    // if a method was overridden, generate a "super$method"
-                    // which lets the delegate call the superclass' version.
-                    if(!isAbstractMethod){
-                        generateSuper(cfw, adapterName, superName,
-                        methodName, methodSignature,
-                        argTypes, method.getReturnType());
-                    }
-                }
+            if((isAbstractMethod || functionNames.has(methodName))
+            && generated.add(methodName + getMethodSignature(method, method.getParameterTypes()))){
+                overrides.add(new AdapterMethod(method, !isAbstractMethod));
             }
         }
-
-        // Generate Java methods for remaining properties that are not
-        // overrides.
-        ObjToIntMap.Iterator iter = new ObjToIntMap.Iterator(functionNames);
-        for(iter.start(); !iter.done(); iter.next()){
-            String functionName = (String)iter.getKey();
-            if(generatedMethods.has(functionName))
-                continue;
-            int length = iter.getValue();
-            Class<?>[] parms = new Class[length];
-            for(int k = 0; k < length; k++)
-                parms[k] = ScriptRuntime.ObjectClass;
-            generateMethod(cfw, adapterName, functionName, parms,
-            ScriptRuntime.ObjectClass, false);
-        }
-        return cfw.toByteArray();
+        return overrides;
     }
 
     static boolean methodIsDefault(Method method){
-        if(Kit.isIos) return false;
-        //android/iOS compatibility shim
-        try{
-            return method.isDefault();
-        }catch(Throwable throwable){
-            return false;
-        }
+        //Method.isDefault() is missing on some platforms
+        int mods = method.getModifiers();
+        return method.getDeclaringClass().isInterface() && !Modifier.isAbstract(mods) && !Modifier.isStatic(mods);
     }
 
     static Method[] getOverridableMethods(Class<?> clazz){

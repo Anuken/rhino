@@ -212,6 +212,11 @@ public class NativeJavaClass extends NativeJavaObject implements Function{
     }
 
     static Object constructInternal(Object[] args, MemberBox ctor){
+        return ctor.newInstance(convertArgs(args, ctor));
+    }
+
+    /** Converts JavaScript arguments to the parameter types of a constructor or method. */
+    static Object[] convertArgs(Object[] args, MemberBox ctor){
         Class<?>[] argTypes = ctor.argTypes;
 
         if(ctor.vararg){
@@ -263,7 +268,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function{
             }
         }
 
-        return ctor.newInstance(args);
+        return args;
     }
 
     @Override

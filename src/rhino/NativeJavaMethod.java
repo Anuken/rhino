@@ -109,6 +109,11 @@ public class NativeJavaMethod extends BaseFunction{
         return sb.toString();
     }
 
+    /** Calls the method chosen for a call from JavaScript, with converted arguments. */
+    Object invoke(MemberBox method, Object javaObject, Object[] args){
+        return method.invoke(javaObject, args);
+    }
+
     @Override
     public Object call(Context cx, Scriptable scope, Scriptable thisObj,
                        Object[] args){
@@ -202,7 +207,7 @@ public class NativeJavaMethod extends BaseFunction{
             printDebug("Calling ", meth, args);
         }
 
-        Object retval = meth.invoke(javaObject, args);
+        Object retval = invoke(meth, javaObject, args);
         Class<?> staticType = meth.method().getReturnType();
 
         if(debug){
