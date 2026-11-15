@@ -146,16 +146,17 @@ public class BuiltInSlot<T extends ScriptableObject>
         }
     }
 
-    private static <T extends ScriptableObject> boolean defaultSetter(
+    //package-private: RoboVM can't link lambdas from nested classes to private methods
+    static <T extends ScriptableObject> boolean defaultSetter(
             T builtIn, Object value, Scriptable owner, Scriptable start, boolean isThrow) {
         return true;
     }
 
-    private static <T extends ScriptableObject> void defaultAttrSetter(T builtIn, int attributes) {
+    static <T extends ScriptableObject> void defaultAttrSetter(T builtIn, int attributes) {
         // Do nothing.
     }
 
-    private static <T extends ScriptableObject> boolean defaultPropDescSetter(
+    static <T extends ScriptableObject> boolean defaultPropDescSetter(
             T builtIn,
             BuiltInSlot<T> current,
             Object id,
