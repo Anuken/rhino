@@ -4,8 +4,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import rhino.lc.type.TypeInfoFactory;
 
+//doesn't extend TypeInfoFactory: RoboVM resolves the re-inherited abstract methods over FactoryBase's defaults
 /**
  * {@link Concurrent}: provides strong reference, thread-safe, performant cache
  *
@@ -13,7 +13,7 @@ import rhino.lc.type.TypeInfoFactory;
  *
  * @author ZZZank
  */
-interface CachedFactory extends TypeInfoFactory {
+interface CachedFactory {
     <K, V> Map<K, V> createCache();
 
     interface Concurrent extends CachedFactory {

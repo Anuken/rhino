@@ -37,20 +37,38 @@ public final class ExecutableBox {
     private final boolean varArgs;
     private final boolean isStatic;
 
+    private static boolean loggedGenericFailure;
+
+    static void genericFailed(Member member, Throwable e) {
+        if (!loggedGenericFailure) {
+            loggedGenericFailure = true;
+            System.err.println("Rhino: generic types of " + member + " could not be resolved; using erased types.");
+            e.printStackTrace();
+        }
+    }
+
     public ExecutableBox(Method method, TypeInfoFactory factory, Class<?> parent) {
         this.member = method;
         this.varArgs = method.isVarArgs();
 
-        var argTypes = factory.createList(method.getGenericParameterTypes());
-        var returnType = factory.create(method.getGenericReturnType());
-        var mapping = factory.getConsolidationMapping(parent);
-        if (mapping.isEmpty()) {
-            this.argTypes = argTypes;
-            this.returnType = returnType;
-        } else {
-            this.argTypes = TypeInfoFactory.consolidateAll(argTypes, mapping);
-            this.returnType = returnType.consolidate(mapping);
+        List<TypeInfo> argTypes;
+        TypeInfo returnType;
+        try {
+            argTypes = factory.createList(method.getGenericParameterTypes());
+            returnType = factory.create(method.getGenericReturnType());
+            var mapping = factory.getConsolidationMapping(parent);
+            if (!mapping.isEmpty()) {
+                argTypes = TypeInfoFactory.consolidateAll(argTypes, mapping);
+                returnType = returnType.consolidate(mapping);
+            }
+        } catch (RuntimeException | LinkageError | AssertionError e) {
+            // generic reflection is unreliable on some runtimes (RoboVM); erased types still work
+            genericFailed(method, e);
+            argTypes = factory.createList(method.getParameterTypes());
+            returnType = factory.create(method.getReturnType());
         }
+        this.argTypes = argTypes;
+        this.returnType = returnType;
         this.argTypeArray = this.argTypes.toArray(TypeInfoFactory.EMPTY_ARRAY);
         this.isStatic = Modifier.isStatic(method.getModifiers());
         ReflectUtils.skipAccessCheck(method, method);
@@ -59,7 +77,14 @@ public final class ExecutableBox {
     public ExecutableBox(Constructor<?> constructor, TypeInfoFactory factory) {
         this.member = constructor;
         this.varArgs = constructor.isVarArgs();
-        this.argTypes = factory.createList(constructor.getGenericParameterTypes());
+        List<TypeInfo> argTypes;
+        try {
+            argTypes = factory.createList(constructor.getGenericParameterTypes());
+        } catch (RuntimeException | LinkageError | AssertionError e) {
+            genericFailed(constructor, e);
+            argTypes = factory.createList(constructor.getParameterTypes());
+        }
+        this.argTypes = argTypes;
         this.argTypeArray = this.argTypes.toArray(TypeInfoFactory.EMPTY_ARRAY);
         this.returnType = TypeInfo.NONE;
         this.isStatic = false;

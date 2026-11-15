@@ -18,9 +18,19 @@ public final class NativeJavaField {
     public NativeJavaField(Field field, TypeInfoFactory typeFactory) {
         this.field = field;
         this.isFinal = Modifier.isFinal(field.getModifiers());
-        var genericType = field.getGenericType();
-        this.type = typeFactory.create(genericType);
-        this.generic = !(genericType instanceof Class);
+        TypeInfo type;
+        boolean generic;
+        try {
+            var genericType = field.getGenericType();
+            type = typeFactory.create(genericType);
+            generic = !(genericType instanceof Class);
+        } catch (RuntimeException | LinkageError | AssertionError e) {
+            ExecutableBox.genericFailed(field, e);
+            type = typeFactory.create(field.getType());
+            generic = false;
+        }
+        this.type = type;
+        this.generic = generic;
         ReflectUtils.skipAccessCheck(field, field);
     }
 
