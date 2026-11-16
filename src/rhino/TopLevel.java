@@ -128,6 +128,9 @@ public class TopLevel extends ScopeObject {
     private EnumMap<Builtins, BaseFunction> ctors;
     private EnumMap<NativeErrors, BaseFunction> errors;
     private transient ScriptableObject globalThis;
+    // Symbol-keyed entries (internal prototypes like %TypedArray%) are kept apart, so the own map
+    // stays empty until a lexical declaration lands and global name lookups skip it cheaply.
+    private final ScopeObject symbols = new ScopeObject(null);
     // associated values that LiveConnect needs for every wrapped Java object, cached once present
     private transient volatile ClassCache classCache;
     private transient volatile TypeInfoFactory typeInfoFactory;
@@ -489,8 +492,44 @@ public class TopLevel extends ScopeObject {
     }
 
     @Override
+    public Object get(Symbol key, VarScope start) {
+        return symbols.get(key, symbols);
+    }
+
+    @Override
+    public boolean has(Symbol key, VarScope start) {
+        return symbols.has(key, symbols);
+    }
+
+    @Override
+    public void put(Symbol key, VarScope start, Object value) {
+        symbols.put(key, symbols, value);
+    }
+
+    @Override
+    public void delete(Symbol key) {
+        symbols.delete(key);
+    }
+
+    @Override
+    public void defineProperty(Symbol key, Object value, int attributes) {
+        symbols.defineProperty(key, value, attributes);
+    }
+
+    @Override
+    public void setAttributes(Symbol key, int attributes) {
+        symbols.setAttributes(key, attributes);
+    }
+
+    @Override
+    public int getAttributes(Symbol key) {
+        return symbols.getAttributes(key);
+    }
+
+    @Override
     public void sealObject() {
         globalThis.sealObject();
+        symbols.sealObject();
         super.sealObject();
     }
 
