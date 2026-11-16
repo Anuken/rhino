@@ -10,8 +10,6 @@ package rhino.sourcemap;
  */
 public class SourceMapException extends RuntimeException {
 
-    private static final long serialVersionUID = 1L;
-
     public SourceMapException(String message) {
         super(message);
     }

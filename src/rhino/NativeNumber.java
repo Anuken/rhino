@@ -11,7 +11,6 @@ import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.ScriptRuntime.wrapNumber;
 
-import java.io.Serial;
 import java.text.NumberFormat;
 import java.util.IllformedLocaleException;
 import java.util.Locale;
@@ -25,8 +24,6 @@ import rhino.dtoa.DecimalFormatter;
  * @author Norris Boyd
  */
 final class NativeNumber extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 3504516769741512101L;
-
     /**
      * @see <a
      *     href="https://www.ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer">20.1.2.6

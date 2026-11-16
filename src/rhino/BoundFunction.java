@@ -6,16 +6,12 @@
 
 package rhino;
 
-import java.io.Serial;
-
 /**
  * The class for results of the Function.bind() operation EcmaScript 5 spec, 15.3.4.5
  *
  * @author Raphael Speyer
  */
 public class BoundFunction extends BaseFunction {
-
-    @Serial private static final long serialVersionUID = 2118137342826470729L;
 
     private final Callable targetFunction;
     private final Scriptable boundThis;

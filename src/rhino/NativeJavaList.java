@@ -5,7 +5,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package rhino;
 
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import rhino.lc.type.TypeInfo;
@@ -43,8 +42,6 @@ import rhino.lc.type.VariableTypeInfo;
  * Undefined}
  */
 public class NativeJavaList extends NativeJavaObject {
-
-    @Serial private static final long serialVersionUID = 660285467829047519L;
 
     private final List<Object> list;
     private final TypeInfo elementType;

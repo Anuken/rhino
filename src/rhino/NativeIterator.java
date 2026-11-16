@@ -9,7 +9,6 @@ package rhino;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -22,7 +21,6 @@ import java.util.Iterator;
  * @author Norris Boyd
  */
 public final class NativeIterator extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -4136968203581667681L;
     private static final Object ITERATOR_TAG = "Iterator";
     private static final String CLASS_NAME = "Iterator";
 
@@ -137,8 +135,6 @@ public final class NativeIterator extends ScriptableObject {
     }
 
     public static class StopIteration extends NativeObject {
-        @Serial private static final long serialVersionUID = 2485151085722377663L;
-
         private Object value = Undefined.instance;
 
         public StopIteration() {}
@@ -587,8 +583,6 @@ public final class NativeIterator extends ScriptableObject {
      * The result of Iterator.from for an iterator that does not inherit from Iterator.prototype.
      */
     static final class WrapForValidIterator extends ScriptableObject {
-        @Serial private static final long serialVersionUID = 3270658294016733504L;
-
         private static final Object PROTOTYPE_KEY = "WrapForValidIteratorPrototype";
 
         private static final ClassDescriptor DESCRIPTOR =

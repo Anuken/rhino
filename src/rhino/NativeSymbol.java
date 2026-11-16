@@ -9,7 +9,6 @@ package rhino;
 import static rhino.SymbolKey.TO_PRIMITIVE;
 import static rhino.SymbolKey.TO_STRING_TAG;
 
-import java.io.Serial;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -20,8 +19,6 @@ import java.util.WeakHashMap;
  * Symbol and others cannot.
  */
 public class NativeSymbol extends ScriptableObject implements Symbol {
-    @Serial private static final long serialVersionUID = -589539749749830003L;
-
     public static final String CLASS_NAME = "Symbol";
     public static final String TYPE_NAME = "symbol";
 

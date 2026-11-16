@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import rhino.ClassDescriptor;
 import rhino.Context;
 import rhino.JSFunction;
@@ -26,8 +25,6 @@ import rhino.VarScope;
  * It also implements List&lt;Integer&gt; for direct manipulation in Java.
  */
 public class NativeInt32Array extends NativeTypedArrayView<Integer> {
-    @Serial private static final long serialVersionUID = 2090724894289667699L;
-
     private static final String CLASS_NAME = "Int32Array";
     private static final int BYTES_PER_ELEMENT = 4;
 

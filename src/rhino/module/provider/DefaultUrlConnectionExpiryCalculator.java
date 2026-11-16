@@ -4,14 +4,7 @@
 
 package rhino.module.provider;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.net.URLConnection;
-import rhino.Context;
 
 /**
  * The default heuristic for calculating cache expiry of URL-based resources. It is simply
@@ -24,8 +17,7 @@ import rhino.Context;
  *     Exp $
  */
 public class DefaultUrlConnectionExpiryCalculator
-        implements UrlConnectionExpiryCalculator, Serializable {
-    @Serial private static final long serialVersionUID = 6649125723317726741L;
+        implements UrlConnectionExpiryCalculator {
     private final long relativeExpiry;
 
     /** Creates a new default expiry calculator with one minute relative expiry. */
@@ -48,22 +40,5 @@ public class DefaultUrlConnectionExpiryCalculator
     @Override
     public long calculateExpiry(URLConnection urlConnection) {
         return System.currentTimeMillis() + relativeExpiry;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

@@ -6,8 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
-
 /**
  * This class implements a JavaScript function that may be used as a constructor by delegating to an
  * interface that can be easily implemented as a lambda. The LambdaFunction class may be used to add
@@ -22,8 +20,6 @@ import java.io.Serial;
  */
 public class LambdaConstructor extends LambdaFunction {
 
-    @Serial private static final long serialVersionUID = 2691205302914111400L;
-
     /** If this flag is set, the constructor may be invoked as an ordinary function */
     public static final int CONSTRUCTOR_FUNCTION = 1;
 
@@ -33,7 +29,6 @@ public class LambdaConstructor extends LambdaFunction {
     /** By default, the constructor may be invoked either way */
     public static final int CONSTRUCTOR_DEFAULT = CONSTRUCTOR_FUNCTION | CONSTRUCTOR_NEW;
 
-    // Lambdas may be serialized, which means that we need the target to be serializable.
     protected final Constructable targetConstructor;
     private final int flags;
 

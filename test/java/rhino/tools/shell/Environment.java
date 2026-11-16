@@ -27,8 +27,6 @@ import rhino.VarScope;
  * @author Patrick C. Beard
  */
 public class Environment extends ScriptableObject {
-    static final long serialVersionUID = -430727378460177065L;
-
     private Environment thePrototypeInstance = null;
 
     public static void defineClass(VarScope scope) {

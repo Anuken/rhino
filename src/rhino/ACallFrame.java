@@ -9,12 +9,6 @@ package rhino;
 import rhino.debug.DebugFrame;
 import rhino.debug.DebuggableScript;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -22,27 +16,7 @@ import java.util.Arrays;
  * interpreter's CallFrame and InterpreterV2's CallFrameV2 to be used interchangeably for stack
  * traces and debugging purposes.
  */
-public abstract class ACallFrame<T extends ACallFrame<T, U>, U extends ACompilerData<?, U>>
-        implements Serializable {
-    private static final long serialVersionUID = 6100049821156242226L;
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized call-frame data");
-    }
-
+public abstract class ACallFrame<T extends ACallFrame<T, U>, U extends ACompilerData<?, U>> {
     public final T parentFrame;
     public final short frameIndex;
     public final ACallFrame<?, ?> previousInterpreterFrame;

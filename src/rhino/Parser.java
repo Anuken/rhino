@@ -180,7 +180,6 @@ public class Parser {
 
     // Exception to unwind
     public static class ParserException extends RuntimeException {
-        private static final long serialVersionUID = 5882582646773765630L;
     }
 
     static interface Transformer {

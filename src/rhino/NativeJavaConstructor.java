@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import rhino.lc.ReflectUtils;
 import rhino.lc.member.ExecutableBox;
 
@@ -22,8 +21,6 @@ import rhino.lc.member.ExecutableBox;
  * @see NativeJavaClass
  */
 public class NativeJavaConstructor extends BaseFunction {
-    @Serial private static final long serialVersionUID = -8149253217482668463L;
-
     ExecutableBox ctor;
 
     public NativeJavaConstructor(VarScope scope, ExecutableBox ctor) {

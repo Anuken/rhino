@@ -14,10 +14,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
 import java.io.PrintStream;
 import java.io.Reader;
-import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -66,8 +64,6 @@ import rhino.tools.ToolErrorReporter;
  * @author Norris Boyd
  */
 public class Global extends ImporterTopLevel {
-    @Serial private static final long serialVersionUID = 4029130780977538005L;
-
     private static final String[] TOP_COMMANDS = {
         "defineClass",
         

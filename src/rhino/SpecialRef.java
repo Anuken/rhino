@@ -6,11 +6,7 @@
 
 package rhino;
 
-import java.io.Serial;
-
 class SpecialRef extends Ref {
-    @Serial private static final long serialVersionUID = -7521596632456797847L;
-
     private static final int SPECIAL_NONE = 0;
     private static final int SPECIAL_PROTO = 1;
     private static final int SPECIAL_PARENT = 2;

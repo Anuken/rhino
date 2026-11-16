@@ -6,12 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -39,9 +33,7 @@ import rhino.lc.type.VariableTypeInfo;
  * @see NativeJavaPackage
  * @see NativeJavaClass
  */
-public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, Serializable {
-
-    @Serial private static final long serialVersionUID = -6948590651130498591L;
+public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper {
 
     static void init(Context cx, TopLevel scope, boolean sealed) {
         JavaIterableIterator.init(cx, scope, sealed);
@@ -967,61 +959,6 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
                 "msg.conversion.not.allowed", String.valueOf(value), type);
     }
 
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-
-        out.writeBoolean(isAdapter);
-        if (isAdapter) {
-            if (adapter_writeAdapterObject == null) {
-                throw new IOException();
-            }
-            Object[] args = {javaObject, out};
-            try {
-                adapter_writeAdapterObject.invoke(null, args);
-            } catch (Exception ex) {
-                throw new IOException();
-            }
-        } else {
-            out.writeObject(javaObject);
-        }
-
-        if (staticType != TypeInfo.NONE) {
-            out.writeObject(staticType.asClass().getName());
-        } else {
-            out.writeObject(null);
-        }
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-
-        isAdapter = in.readBoolean();
-        if (isAdapter) {
-            if (adapter_readAdapterObject == null) throw new ClassNotFoundException();
-            Object[] args = {this, in};
-            try {
-                javaObject = adapter_readAdapterObject.invoke(null, args);
-            } catch (Exception ex) {
-                throw new IOException();
-            }
-        } else {
-            javaObject = in.readObject();
-        }
-
-        String className = (String) in.readObject();
-        if (className != null) {
-            staticType = TypeInfoFactory.GLOBAL.create(Class.forName(className));
-        } else {
-            staticType = TypeInfo.NONE;
-        }
-
-        initMembers();
-    }
-
     private static Callable symbol_iterator =
             (cx, scope, thisObj, args) -> {
                 if (!(thisObj instanceof NativeJavaObject)) {
@@ -1035,7 +972,6 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
             };
 
     private static final class JavaIterableIterator extends ES6Iterator {
-        @Serial private static final long serialVersionUID = -2636492890037940863L;
         private static final String ITERATOR_TAG = "JavaIterableIterator";
 
         private static final ClassDescriptor DESCRIPTOR =
@@ -1089,40 +1025,17 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
     /** The parent scope of this object. */
     protected VarScope parent;
 
-    protected transient Object javaObject;
+    protected Object javaObject;
 
-    protected transient TypeInfo staticType;
-    protected transient JavaMembers members;
-    private transient Map<String, FieldAndMethods> fieldAndMethods;
-    private transient Map<VariableTypeInfo, TypeInfo> consolidationMapping;
-    protected transient boolean isAdapter;
+    protected TypeInfo staticType;
+    protected JavaMembers members;
+    private Map<String, FieldAndMethods> fieldAndMethods;
+    private Map<VariableTypeInfo, TypeInfo> consolidationMapping;
+    protected boolean isAdapter;
 
     private static final Object COERCED_INTERFACE_KEY = "Coerced Interface";
     private static final Map<Class<?>, String[]> interfaceMethods =
             Collections.synchronizedMap(new WeakHashMap<>());
-    private static Method adapter_writeAdapterObject;
-    private static Method adapter_readAdapterObject;
-
-    static {
-        // Reflection in java is verbose
-        Class<?>[] sig2 = new Class[2];
-        Class<?> cl = Kit.classOrNull("rhino.JavaAdapter");
-        if (cl != null) {
-            try {
-                sig2[0] = ScriptRuntime.ObjectClass;
-                sig2[1] = Kit.classOrNull("java.io.ObjectOutputStream");
-                adapter_writeAdapterObject = cl.getMethod("writeAdapterObject", sig2);
-
-                sig2[0] = ScriptRuntime.ScriptableClass;
-                sig2[1] = Kit.classOrNull("java.io.ObjectInputStream");
-                adapter_readAdapterObject = cl.getMethod("readAdapterObject", sig2);
-
-            } catch (NoSuchMethodException e) {
-                adapter_writeAdapterObject = null;
-                adapter_readAdapterObject = null;
-            }
-        }
-    }
 
     @Override
     @SuppressWarnings("EqualsGetClass")
@@ -1135,10 +1048,5 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
     @Override
     public int hashCode() {
         return javaObject == null ? 0 : javaObject.hashCode();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

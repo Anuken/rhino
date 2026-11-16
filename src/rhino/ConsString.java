@@ -6,10 +6,6 @@
 
 package rhino;
 
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayDeque;
 
 /**
@@ -26,9 +22,7 @@ import java.util.ArrayDeque;
  *
  * <p>Both the name and the concept are borrowed from V8.
  */
-public class ConsString implements CharSequence, Serializable {
-
-    @Serial private static final long serialVersionUID = -8432806714471372570L;
+public class ConsString implements CharSequence {
 
     private CharSequence left, right;
     private final int length;
@@ -45,19 +39,6 @@ public class ConsString implements CharSequence, Serializable {
         right = str2;
         length = left.length() + right.length();
         isFlat = false;
-    }
-
-    // Replace with string representation when serializing
-    private Object writeReplace() {
-        return this.toString();
-    }
-
-    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
-        throw new InvalidObjectException("ConsString must be serialized as a String");
-    }
-
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("ConsString must be serialized as a String");
     }
 
     @Override

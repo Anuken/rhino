@@ -9,7 +9,6 @@ package rhino;
 import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 
-import java.io.Serial;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -27,8 +26,6 @@ import rhino.json.JsonParser;
  * @author Matthew Crumley, Raphael Speyer
  */
 public final class NativeJSON extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -4567599697595654984L;
-
     private static final String JSON_TAG = "JSON";
 
     private static final int MAX_STRINGIFY_GAP_LENGTH = 10;

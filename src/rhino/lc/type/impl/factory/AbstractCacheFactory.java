@@ -1,14 +1,8 @@
 package rhino.lc.type.impl.factory;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
 import java.lang.reflect.TypeVariable;
 import java.util.Collections;
 import java.util.Map;
-import rhino.Context;
 import rhino.lc.type.TypeInfo;
 import rhino.lc.type.TypeInfoFactory;
 import rhino.lc.type.VariableTypeInfo;
@@ -18,15 +12,11 @@ import rhino.lc.type.impl.VariableTypeInfoImpl;
  * {@link TypeInfoFactory} implementation with cache. The exact characteristic if the factory
  * depends on the characteristic of map backend created via {@link #initCache()}
  *
- * <p>This factory is serializable, but none of its cached objects will be serialized.
- *
  * @author ZZZank
  */
 public abstract class AbstractCacheFactory implements FactoryBase, CachedFactory {
-    @Serial private static final long serialVersionUID = 4533445095188189419L;
-
-    private transient Map<TypeVariable<?>, VariableTypeInfoImpl> variableCache;
-    private transient Map<Class<?>, Map<VariableTypeInfo, TypeInfo>> consolidationMappingCache;
+    private Map<TypeVariable<?>, VariableTypeInfoImpl> variableCache;
+    private Map<Class<?>, Map<VariableTypeInfo, TypeInfo>> consolidationMappingCache;
 
     public AbstractCacheFactory() {
         initCache();
@@ -74,23 +64,5 @@ public abstract class AbstractCacheFactory implements FactoryBase, CachedFactory
             consolidationMappingCache.put(from, got);
         }
         return got;
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        initCache();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

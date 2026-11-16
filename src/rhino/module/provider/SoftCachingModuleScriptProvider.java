@@ -4,15 +4,9 @@
 
 package rhino.module.provider;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import rhino.Context;
@@ -31,9 +25,8 @@ import rhino.module.ModuleScript;
  *     $
  */
 public class SoftCachingModuleScriptProvider extends CachingModuleScriptProviderBase {
-    @Serial private static final long serialVersionUID = 523398435792363456L;
-    private transient ReferenceQueue<Script> scriptRefQueue = new ReferenceQueue<>();
-    private transient ConcurrentMap<String, ScriptReference> scripts =
+    private ReferenceQueue<Script> scriptRefQueue = new ReferenceQueue<>();
+    private ConcurrentMap<String, ScriptReference> scripts =
             new ConcurrentHashMap<>(16, .75f, getConcurrencyLevel());
 
     /**
@@ -110,32 +103,5 @@ public class SoftCachingModuleScriptProvider extends CachingModuleScriptProvider
         String getModuleId() {
             return moduleId;
         }
-    }
-
-    @Serial
-    @SuppressWarnings("unchecked")
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        scriptRefQueue = new ReferenceQueue<>();
-        scripts = new ConcurrentHashMap<>();
-        final Map<String, CachedModuleScript> serScripts = (Map) in.readObject();
-        for (Map.Entry<String, CachedModuleScript> entry : serScripts.entrySet()) {
-            final CachedModuleScript cachedModuleScript = entry.getValue();
-            putLoadedModule(
-                    entry.getKey(),
-                    cachedModuleScript.getModule(),
-                    cachedModuleScript.getValidator());
-        }
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        final Map<String, CachedModuleScript> serScripts = new HashMap<>();
-        for (Map.Entry<String, ScriptReference> entry : scripts.entrySet()) {
-            final CachedModuleScript cachedModuleScript = entry.getValue().getCachedModuleScript();
-            if (cachedModuleScript != null) {
-                serScripts.put(entry.getKey(), cachedModuleScript);
-            }
-        }
-        out.writeObject(serScripts);
     }
 }

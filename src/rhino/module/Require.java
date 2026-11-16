@@ -5,7 +5,6 @@
 package rhino.module;
 
 import java.io.File;
-import java.io.Serial;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -46,7 +45,6 @@ import rhino.VarScope;
  * @version $Id: Require.java,v 1.4 2011/04/07 20:26:11 hannes%helma.at Exp $
  */
 public class Require extends BaseFunction {
-    @Serial private static final long serialVersionUID = 5682218649242405574L;
     private final ModuleScriptProvider moduleScriptProvider;
     private final TopLevel nativeScope;
     private final Scriptable paths;

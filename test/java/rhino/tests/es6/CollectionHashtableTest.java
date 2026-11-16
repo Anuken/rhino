@@ -6,18 +6,11 @@ package rhino.tests.es6;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import rhino.Context;
 import rhino.Hashtable;
 import rhino.Hashtable.Entry;
-import rhino.Undefined;
 
 /**
  * These are some tests for the Hashtable implementation that's used by the collection classes in
@@ -292,13 +285,4 @@ public class CollectionHashtableTest {
         assertEquals("bb", e.key());
         assertFalse(i.hasNext());
     }
-
-    /** Test serialization of an empty object. */
-
-
-    /**
-     * Test serialization of a non-empty object with a bunch of different data types, including the
-     * iteration order.
-     */
-
 }

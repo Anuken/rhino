@@ -1,7 +1,5 @@
 package rhino.tests.type_info.test_object;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +11,7 @@ import java.util.Map;
  * @author ZZZank
  */
 @SuppressWarnings("unused")
-public class MethodBasedBean implements Serializable {
-    @Serial private static final long serialVersionUID = 1L;
-
+public class MethodBasedBean {
     private List<Integer> integers = new ArrayList<>();
     private List<Double> doubles = new ArrayList<>();
     private List<Number> numbers = new ArrayList<>();

@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,12 +28,9 @@ import rhino.lc.type.VariableTypeInfo;
  */
 public class NativeJavaMethod extends BaseFunction {
 
-    @Serial private static final long serialVersionUID = -3440381785576412928L;
-
-    // TODO: serialization support by read/write class and method name
     final ExecutableBox[] methods;
     private final String functionName;
-    private transient volatile ResolvedOverload[] overloadCache;
+    private volatile ResolvedOverload[] overloadCache;
 
     NativeJavaMethod(VarScope scope, ExecutableBox[] methods, String name) {
         super(scope);

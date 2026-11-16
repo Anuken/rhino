@@ -10,9 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serial;
 import java.util.WeakHashMap;
 
 /**
@@ -22,8 +19,6 @@ import java.util.WeakHashMap;
  * the "value" that we put in the WeakHashMap here is not one that contains the key.
  */
 public class NativeWeakSet extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 2065753364224029534L;
-
     private static final String CLASS_NAME = "WeakSet";
 
     private static final ClassDescriptor DESCRIPTOR;
@@ -48,7 +43,7 @@ public class NativeWeakSet extends ScriptableObject {
 
     private boolean instanceOfWeakSet = false;
 
-    private transient WeakHashMap<Object, Boolean> map = new WeakHashMap<>();
+    private WeakHashMap<Object, Boolean> map = new WeakHashMap<>();
 
     static Object init(Context cx, VarScope scope, boolean sealed) {
         return DESCRIPTOR.buildConstructor(cx, scope, new NativeObject(), sealed);
@@ -130,11 +125,5 @@ public class NativeWeakSet extends ScriptableObject {
             throw ScriptRuntime.typeErrorById("msg.incompat.call", name);
         }
         return ns;
-    }
-
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
     }
 }

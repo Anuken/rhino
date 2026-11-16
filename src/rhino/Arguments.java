@@ -6,8 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
-
 /**
  * This class implements the "arguments" object.
  *
@@ -17,8 +15,6 @@ import java.io.Serial;
  * @author Norris Boyd
  */
 class Arguments extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 4275508002492040609L;
-
     private static final String CLASS_NAME = "Arguments";
 
     // Fields to hold caller, callee and length properties,

@@ -9,7 +9,6 @@ package rhino;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -29,8 +28,6 @@ import rhino.ScriptRuntime.StringIdOrIndex;
  * @author Norris Boyd
  */
 public class NativeObject extends ScriptableObject implements Map {
-    @Serial private static final long serialVersionUID = -6345305608474346996L;
-
     private static final Object OBJECT_TAG = "Object";
     private static final String CLASS_NAME = "Object";
 

@@ -11,12 +11,6 @@ import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.ScriptableObject.DONTENUM;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
@@ -28,9 +22,7 @@ import java.util.Map;
  *
  * @author Mike Shaver
  */
-public class NativeGlobal implements Serializable {
-    static final long serialVersionUID = 6080442165748707530L;
-
+public class NativeGlobal {
     private static final ClassDescriptor DESCRIPTOR;
     private static final JSDescriptor<JSFunction> EVAL_DESCRIPTOR;
     private static final Map<TopLevel.NativeErrors, ClassDescriptor> ERROR_DESCRIPTORS;
@@ -705,22 +697,5 @@ public class NativeGlobal implements Serializable {
             utf8Buffer[0] = (byte) (0x100 - (1 << (8 - utf8Length)) + ucs4Char);
         }
         return utf8Length;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.SymbolKey.TO_STRING_TAG;
 
-import java.io.Serial;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -32,8 +31,6 @@ import rhino.VarScope;
  * manipulating it directly.
  */
 public class NativeDataView extends NativeArrayBufferView {
-    @Serial private static final long serialVersionUID = 1427967607557438968L;
-
     public static final String CLASS_NAME = "DataView";
 
     public static final ClassDescriptor DESCRIPTOR;

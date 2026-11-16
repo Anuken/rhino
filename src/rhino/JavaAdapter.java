@@ -8,12 +8,8 @@ package rhino;
 
 import static rhino.ScriptableObject.DONTENUM;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -62,8 +58,6 @@ public final class JavaAdapter {
 
     /** The JavaAdapter constructor. */
     static final class AdapterConstructor extends LambdaConstructor {
-        private static final long serialVersionUID = 1L;
-
         AdapterConstructor(VarScope scope) {
             super(scope, "JavaAdapter", 1, JavaAdapter::js_createAdapter);
         }
@@ -250,70 +244,6 @@ public final class JavaAdapter {
                         ? interfaces
                         : Arrays.copyOf(interfaces, interfaceCount);
         return classCount;
-    }
-
-    // Needed by NativeJavaObject serializer
-    public static void writeAdapterObject(Object javaObject, ObjectOutputStream out)
-            throws IOException {
-        Class<?> cl = javaObject.getClass();
-        out.writeObject(cl.getSuperclass().getName());
-
-        Class<?>[] interfaces = cl.getInterfaces();
-        String[] interfaceNames = new String[interfaces.length];
-
-        for (int i = 0; i < interfaces.length; i++) interfaceNames[i] = interfaces[i].getName();
-
-        out.writeObject(interfaceNames);
-
-        try {
-            Object delegee = cl.getField("delegee").get(javaObject);
-            out.writeObject(delegee);
-            return;
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-        }
-        throw new IOException();
-    }
-
-    // Needed by NativeJavaObject de-serializer
-    public static Object readAdapterObject(Scriptable self, ObjectInputStream in)
-            throws IOException, ClassNotFoundException {
-        ContextFactory factory;
-        Context cx = Context.getCurrentContext();
-        if (cx != null) {
-            factory = cx.getFactory();
-        } else {
-            factory = null;
-        }
-
-        var sig = new JavaAdapterSignature();
-        sig.superClass = Class.forName((String) in.readObject());
-
-        String[] interfaceNames = (String[]) in.readObject();
-        sig.interfaces = new Class[interfaceNames.length];
-
-        for (int i = 0; i < interfaceNames.length; i++)
-            sig.interfaces[i] = Class.forName(interfaceNames[i]);
-
-        Scriptable delegee = (Scriptable) in.readObject();
-        sig.names = getObjectFunctionNames(delegee);
-
-        Class<?> adapterClass = getAdapterClass(self.getParentScope(), sig);
-
-        Class<?>[] ctorParms = {
-            ScriptRuntime.ContextFactoryClass,
-            ScriptRuntime.ScriptableClass,
-            ScriptRuntime.ScriptableClass
-        };
-        Object[] ctorArgs = {factory, delegee, self};
-        try {
-            return adapterClass.getConstructor(ctorParms).newInstance(ctorArgs);
-        } catch (InstantiationException
-                | IllegalAccessException
-                | InvocationTargetException
-                | NoSuchMethodException e) {
-        }
-
-        throw new ClassNotFoundException("adapter");
     }
 
     static Map<String, Integer> getObjectFunctionNames(Scriptable obj) {

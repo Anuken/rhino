@@ -1,6 +1,5 @@
 package rhino.tests.type_info;
 
-import java.io.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import rhino.*;
@@ -52,13 +51,5 @@ public class CustomTypeInfoFactoryTest {
 
             Assertions.assertInstanceOf(LegacyCacheFactory.Concurrent.class, typeFactory);
         }
-    }
-
-
-    private static ScopeObject simulateDeser(byte[] data)
-            throws IOException, ClassNotFoundException {
-        var input = new ByteArrayInputStream(data);
-        var objectIn = new ObjectInputStream(input);
-        return (ScopeObject) objectIn.readObject();
     }
 }

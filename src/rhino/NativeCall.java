@@ -10,8 +10,6 @@ import static rhino.ScriptableObject.CONST;
 import static rhino.ScriptableObject.LEGACY_CONST;
 import static rhino.ScriptableObject.PERMANENT;
 
-import java.io.Serial;
-
 /**
  * This class implements the activation object.
  *
@@ -21,8 +19,6 @@ import java.io.Serial;
  * @author Norris Boyd
  */
 public final class NativeCall extends DeclarationScope {
-    @Serial private static final long serialVersionUID = -7471457301304454454L;
-
     private static final Object CALL_TAG = "Call";
 
     NativeCall(
@@ -103,5 +99,5 @@ public final class NativeCall extends DeclarationScope {
     final JSFunction function;
     final Object[] originalArgs;
 
-    transient NativeCall parentActivationCall;
+    NativeCall parentActivationCall;
 }

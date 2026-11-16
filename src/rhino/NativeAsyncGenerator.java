@@ -14,8 +14,6 @@ import java.util.ArrayDeque;
  * object queues the next, throw and return requests and settles their promises as the body runs.
  */
 final class NativeAsyncGenerator extends ScriptableObject {
-    private static final long serialVersionUID = 1L;
-
     private static final String ASYNC_ITERATOR_PROTOTYPE = "AsyncIteratorPrototype";
     private static final String ASYNC_GENERATOR_PROTOTYPE = "AsyncGeneratorPrototype";
 
@@ -61,12 +59,12 @@ final class NativeAsyncGenerator extends ScriptableObject {
         }
     }
 
-    private final transient VarScope scope;
-    private final transient ES6Generator generator;
-    private final transient ArrayDeque<Request> queue = new ArrayDeque<>();
+    private final VarScope scope;
+    private final ES6Generator generator;
+    private final ArrayDeque<Request> queue = new ArrayDeque<>();
     private State state = State.SUSPENDED_START;
     // The iterator of the yield* being evaluated
-    private transient AsyncIteration delegate;
+    private AsyncIteration delegate;
 
     NativeAsyncGenerator(VarScope scope, JSFunction function, ES6Generator generator) {
         this.scope = ScriptableObject.getTopLevelScope(scope);

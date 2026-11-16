@@ -7,17 +7,12 @@ package rhino;
 import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * The iterator objects returned by the lazy Iterator.prototype helpers and Iterator.concat, which
  * inherit from %IteratorHelperPrototype%. Each one runs its steps as a state machine in place of
  * the spec's generator closure.
  */
 final class NativeIteratorHelper extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -1840357095738372915L;
-
     private static final String CLASS_NAME = "Iterator Helper";
     private static final Object PROTOTYPE_KEY = "IteratorHelperPrototype";
 
@@ -36,9 +31,7 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     /** The steps of one kind of helper, run between its yields. */
-    abstract static class Body implements Serializable {
-        @Serial private static final long serialVersionUID = 1L;
-
+    abstract static class Body {
         /** Runs until the next yield, returning its value, or {@link IteratorRecord#DONE}. */
         abstract Object step(Context cx, VarScope scope);
 
@@ -131,8 +124,6 @@ final class NativeIteratorHelper extends ScriptableObject {
 
     /** A helper over a single underlying iterator, which return() closes in either state. */
     abstract static class SingleBody extends Body {
-        @Serial private static final long serialVersionUID = 1L;
-
         final IteratorRecord iterated;
 
         SingleBody(IteratorRecord iterated) {
@@ -161,8 +152,6 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     static final class MapBody extends SingleBody {
-        @Serial private static final long serialVersionUID = 1L;
-
         private final Callable mapper;
         private double counter;
 
@@ -183,8 +172,6 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     static final class FilterBody extends SingleBody {
-        @Serial private static final long serialVersionUID = 1L;
-
         private final Callable predicate;
         private double counter;
 
@@ -214,8 +201,6 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     static final class TakeBody extends SingleBody {
-        @Serial private static final long serialVersionUID = 1L;
-
         private double remaining;
 
         TakeBody(IteratorRecord iterated, double limit) {
@@ -237,8 +222,6 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     static final class DropBody extends SingleBody {
-        @Serial private static final long serialVersionUID = 1L;
-
         private double remaining;
 
         DropBody(IteratorRecord iterated, double limit) {
@@ -261,8 +244,6 @@ final class NativeIteratorHelper extends ScriptableObject {
     }
 
     static final class FlatMapBody extends SingleBody {
-        @Serial private static final long serialVersionUID = 1L;
-
         private final Callable mapper;
         private double counter;
         private IteratorRecord inner;
@@ -321,8 +302,6 @@ final class NativeIteratorHelper extends ScriptableObject {
 
     /** Iterator.concat: opens each iterable in turn, with nothing to close before starting. */
     static final class ConcatBody extends Body {
-        @Serial private static final long serialVersionUID = 1L;
-
         private final Object[] iterables;
         private final Callable[] openMethods;
         private int index;

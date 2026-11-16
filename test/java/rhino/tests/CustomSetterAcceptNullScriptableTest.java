@@ -21,8 +21,6 @@ import rhino.TopLevel;
 public class CustomSetterAcceptNullScriptableTest {
 
     public static class Foo extends ScriptableObject {
-        private static final long serialVersionUID = -8771045033217033529L;
-
         @Override
         public String getClassName() {
             return "Foo";
@@ -32,8 +30,6 @@ public class CustomSetterAcceptNullScriptableTest {
     }
 
     public static class Foo2 extends ScriptableObject {
-        private static final long serialVersionUID = -8880603824656138628L;
-
         @Override
         public String getClassName() {
             return "Foo2";

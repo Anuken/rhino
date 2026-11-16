@@ -6,7 +6,6 @@
 
 package rhino.tests.examples;
 
-import java.io.Serial;
 import rhino.ScriptableObject;
 import rhino.annotations.JSConstructor;
 import rhino.annotations.JSFunction;
@@ -21,8 +20,6 @@ import rhino.annotations.JSGetter;
  * JavaScript methods. Each call to getCount() returns the current value and then increments it.
  */
 public class Counter extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 438270592527335642L;
-
     /**
      * The zero-argument constructor used by Rhino runtime to create instances. Initializes the
      * counter with a default value of 0.

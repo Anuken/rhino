@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.Map;
@@ -26,8 +25,6 @@ import rhino.lc.type.TypeInfo;
  * @see NativeJavaPackage
  */
 public class NativeJavaClass extends NativeJavaObject implements Function {
-    @Serial private static final long serialVersionUID = -6460763940409461664L;
-
     // Special property for getting the underlying Java class object.
     static final String javaClassPropertyName = "__javaObject__";
 

@@ -1,12 +1,9 @@
 package rhino.typedarrays;
 
-import java.io.Serial;
 import java.math.BigInteger;
 import rhino.ScriptRuntime;
 
 public abstract class NativeBigIntArrayView extends NativeTypedArrayView<BigInteger> {
-    @Serial private static final long serialVersionUID = -3349222145964894609L;
-
     protected NativeBigIntArrayView() {}
 
     protected NativeBigIntArrayView(NativeArrayBuffer ab, int off, int len, int byteLen) {

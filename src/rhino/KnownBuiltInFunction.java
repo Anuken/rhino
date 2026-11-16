@@ -6,15 +6,11 @@
 
 package rhino;
 
-import java.io.Serial;
-
 /**
  * This class implements a lambda function which is known to the runtime system and which may be
  * treated specially by the interpreter or runtime.
  */
 public class KnownBuiltInFunction extends LambdaFunction {
-
-    @Serial private static final long serialVersionUID = 4527445659952834584L;
 
     private final Object tag;
 

@@ -11,7 +11,6 @@ import static rhino.ClassDescriptor.Builder.alias;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,8 +33,6 @@ import rhino.ClassDescriptor.BuiltInJSCodeExec;
  * @author Mike McCabe
  */
 public class NativeArray extends ScriptableObject implements List {
-    @Serial private static final long serialVersionUID = 7331366857676127338L;
-
     /*
      * Optimization possibilities and open issues:
      * - Long vs. double schizophrenia. I suspect it might be better
@@ -2492,7 +2489,7 @@ public class NativeArray extends ScriptableObject implements List {
     private int lengthAttr = DONTENUM | PERMANENT;
 
     /** modCount required for subList/iterators */
-    private transient int modCount;
+    private int modCount;
 
     /**
      * Fast storage for dense arrays. Sparse arrays will use the superclass's hashtable storage

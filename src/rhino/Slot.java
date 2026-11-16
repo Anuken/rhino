@@ -1,11 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import rhino.ScriptableObject.DescriptorInfo;
 
 /**
@@ -14,10 +8,10 @@ import rhino.ScriptableObject.DescriptorInfo;
  * primitive type or another object. Separate classes are used to represent properties that have
  * various types of getter and setter methods.
  */
-public abstract class Slot<T extends PropHolder<T>> implements Serializable {
+public abstract class Slot<T extends PropHolder<T>> {
     Object value;
-    transient Slot<T> next; // next in hash table bucket
-    transient Slot<T> orderedNext; // next in linked list
+    Slot<T> next; // next in hash table bucket
+    Slot<T> orderedNext; // next in linked list
 
     Slot() {}
 
@@ -99,21 +93,4 @@ public abstract class Slot<T extends PropHolder<T>> implements Serializable {
     public abstract Object getName();
 
     public abstract int getIndexOrHash();
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
-    }
 }

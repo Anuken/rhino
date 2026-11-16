@@ -5,16 +5,7 @@ import static rhino.ScriptableObject.READONLY;
 import static rhino.ScriptableObject.STRICTLY_READONLY;
 import static rhino.ScriptableObject.UNINITIALIZED_CONST;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
-
-public class ScopeObject extends SlotMapOwner<VarScope> implements VarScope, Serializable {
-    @Serial private static final long serialVersionUID = 2283542168979106620L;
-
+public class ScopeObject extends SlotMapOwner<VarScope> implements VarScope {
     private final VarScope parentScope;
 
     public ScopeObject(VarScope parentScope) {
@@ -371,24 +362,5 @@ public class ScopeObject extends SlotMapOwner<VarScope> implements VarScope, Ser
             return true;
         }
         return slot.setValue(value, this, start);
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-        writeMaps(out);
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        readMaps(in);
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized ScopeObject data");
     }
 }

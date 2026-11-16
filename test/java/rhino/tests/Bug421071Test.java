@@ -80,8 +80,6 @@ public class Bug421071Test {
     }
 
     private class TopLevelScope extends ImporterTopLevel {
-        private static final long serialVersionUID = 7831526694313927899L;
-
         public TopLevelScope(Context context) {
             super(context);
         }

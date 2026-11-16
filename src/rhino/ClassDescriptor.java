@@ -4,12 +4,6 @@ import static rhino.ScriptableObject.DONTENUM;
 import static rhino.ScriptableObject.PERMANENT;
 import static rhino.ScriptableObject.READONLY;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -784,9 +778,7 @@ public class ClassDescriptor {
         return code instanceof BuiltInJSCode;
     }
 
-    private static class BuiltInJSCode extends JSCode<JSFunction> implements Serializable {
-
-        private static final long serialVersionUID = -346984669839537590L;
+    private static class BuiltInJSCode extends JSCode<JSFunction> {
 
         private final JSCodeExec<JSFunction> exec;
         private final JSCodeResume<JSFunction> resume;
@@ -816,24 +808,6 @@ public class ClassDescriptor {
                 int operation,
                 Object value) {
             return resume.resume(cx, executableObject, state, scope, operation, value);
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

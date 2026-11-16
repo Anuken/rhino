@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import rhino.ClassDescriptor;
 import rhino.Context;
 import rhino.JSFunction;
@@ -26,8 +25,6 @@ import rhino.VarScope;
  * interface. It also implements List&lt;Float&gt; for direct manipulation in Java.
  */
 public class NativeFloat16Array extends NativeTypedArrayView<Float> {
-    @Serial private static final long serialVersionUID = -6624401421392903192L;
-
     private static final String CLASS_NAME = "Float16Array";
     private static final int BYTES_PER_ELEMENT = 2;
 

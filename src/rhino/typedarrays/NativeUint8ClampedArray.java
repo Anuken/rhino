@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import rhino.ClassDescriptor;
 import rhino.Context;
 import rhino.JSFunction;
@@ -27,8 +26,6 @@ import rhino.VarScope;
  * insertion.
  */
 public class NativeUint8ClampedArray extends NativeTypedArrayView<Integer> {
-    @Serial private static final long serialVersionUID = -1383405116607004281L;
-
     private static final String CLASS_NAME = "Uint8ClampedArray";
 
     private static final ClassDescriptor DESCRIPTOR;

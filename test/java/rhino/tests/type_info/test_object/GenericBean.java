@@ -1,14 +1,9 @@
 package rhino.tests.type_info.test_object;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * @author ZZZank
  */
-public class GenericBean<M extends Number> implements Serializable {
-    @Serial private static final long serialVersionUID = 1L;
-
+public class GenericBean<M extends Number> {
     private M value;
 
     public M publicValue;

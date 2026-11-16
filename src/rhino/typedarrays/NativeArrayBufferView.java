@@ -6,7 +6,6 @@
 
 package rhino.typedarrays;
 
-import java.io.Serial;
 import rhino.ScriptableObject;
 import rhino.Undefined;
 
@@ -16,8 +15,6 @@ import rhino.Undefined;
  * affect all.
  */
 public abstract class NativeArrayBufferView extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 6884475582973958419L;
-
     /** Many view objects can share the same backing array */
     protected final NativeArrayBuffer arrayBuffer;
 

@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.Serial;
 import rhino.ScriptableObject.DescriptorInfo;
 
 /**
@@ -12,8 +11,6 @@ import rhino.ScriptableObject.DescriptorInfo;
  * using some native functionality without using reflection.
  */
 public class LambdaSlot extends StandardSlot<Scriptable> {
-    @Serial private static final long serialVersionUID = -3046681698806493052L;
-
     LambdaSlot(Object name, int index) {
         super(name, index, 0);
     }
@@ -33,8 +30,8 @@ public class LambdaSlot extends StandardSlot<Scriptable> {
         return newSlot;
     }
 
-    transient ScriptableObject.ValueGetter getter;
-    transient ScriptableObject.ValueSetter setter;
+    ScriptableObject.ValueGetter getter;
+    ScriptableObject.ValueSetter setter;
 
     @Override
     boolean isValueSlot() {

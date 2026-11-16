@@ -10,11 +10,7 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.Symbol.Kind.REGULAR;
 
-import java.io.Serial;
-
 public final class ES6Generator extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -1617667918827493330L;
-
     static final SymbolKey GENERATOR_TAG = new SymbolKey("GeneratorPrototype", REGULAR);
 
     private static final ClassDescriptor DESCRIPTOR;

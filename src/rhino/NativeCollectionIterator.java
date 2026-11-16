@@ -1,17 +1,12 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
 import java.util.Collections;
 import java.util.Iterator;
 
 public class NativeCollectionIterator extends ES6Iterator {
-    @Serial private static final long serialVersionUID = 7094840979404373443L;
     private String className;
     private Type type;
-    private transient Iterator<Hashtable.Entry> iterator = Collections.emptyIterator();
+    private Iterator<Hashtable.Entry> iterator = Collections.emptyIterator();
 
     enum Type {
         KEYS,
@@ -56,22 +51,5 @@ public class NativeCollectionIterator extends ES6Iterator {
             default:
                 throw new AssertionError();
         }
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-        className = (String) stream.readObject();
-        type = (Type) stream.readObject();
-        iterator = Collections.emptyIterator();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-        stream.writeObject(className);
-        stream.writeObject(type);
     }
 }

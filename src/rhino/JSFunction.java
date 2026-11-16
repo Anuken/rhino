@@ -17,8 +17,8 @@ public class JSFunction extends BaseFunction implements ScriptOrFn<JSFunction> {
     private Scriptable homeObject;
     private ClassRuntime.ClassData classData;
     // top level scope of topLevelFor, the declaration scope it was looked up from
-    private transient TopLevel topLevel;
-    private transient VarScope topLevelFor;
+    private TopLevel topLevel;
+    private VarScope topLevelFor;
 
     public JSFunction(
             Context cx,

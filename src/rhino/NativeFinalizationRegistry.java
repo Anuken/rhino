@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
  *     FinalizationRegistry Objects</a>
  */
 public class NativeFinalizationRegistry extends ScriptableObject {
-    private static final long serialVersionUID = 1L;
     private static final String CLASS_NAME = "FinalizationRegistry";
 
     private static final ClassDescriptor DESCRIPTOR;

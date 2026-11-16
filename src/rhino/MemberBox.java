@@ -6,12 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -21,21 +15,19 @@ import java.lang.reflect.Modifier;
 
 /**
  * Wrapper class for Method and Constructor instances to cache getParameterTypes() results, recover
- * from IllegalAccessException in some cases and provide serialization support.
+ * from IllegalAccessException in some cases.
  *
  * @author Igor Bukanov
  */
-final class MemberBox implements Serializable {
-    @Serial private static final long serialVersionUID = 8260700214130563887L;
+final class MemberBox {
+    private Member memberObject;
+    private Class<?>[] argTypes;
+    private Class<?> returnType;
+    private NullabilityDetector.NullabilityAccessor argNullability;
 
-    private transient Member memberObject;
-    private transient Class<?>[] argTypes;
-    private transient Class<?> returnType;
-    private transient NullabilityDetector.NullabilityAccessor argNullability;
-
-    transient Function asGetterFunction;
-    transient Function asSetterFunction;
-    transient Object delegateTo;
+    Function asGetterFunction;
+    Function asSetterFunction;
+    Object delegateTo;
 
     final VarScope scope;
 
@@ -355,43 +347,5 @@ final class MemberBox implements Serializable {
             }
         }
         return null;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        boolean isMethod = in.readBoolean();
-        String name = (String) in.readObject();
-        Class<?> declaring = (Class<?>) in.readObject();
-        Class<?>[] parms = (Class<?>[]) in.readObject();
-
-        try {
-            if (isMethod) {
-                var member = declaring.getMethod(name, parms);
-                init(member);
-            } else {
-                var member = declaring.getConstructor(parms);
-                init(member);
-            }
-        } catch (NoSuchMethodException e) {
-            throw new IOException("Cannot find member: " + e);
-        }
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-        out.writeBoolean(memberObject instanceof Method);
-        out.writeObject(memberObject.getName());
-        out.writeObject(memberObject.getDeclaringClass());
-
-        out.writeObject(argTypes);
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

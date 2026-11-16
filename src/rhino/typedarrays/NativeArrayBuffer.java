@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -63,8 +62,6 @@ import rhino.VarScope;
  * are just one instruction. This prevents "tearing" for non-atomic access in shared buffers.
  */
 public class NativeArrayBuffer extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 3110411773054879549L;
-
     public static final String ARRAY_CLASS_NAME = "ArrayBuffer";
     public static final String SHARED_CLASS_NAME = "SharedArrayBuffer";
 

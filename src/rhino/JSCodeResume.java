@@ -1,12 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * This interface represent a thing which can be executed in JavaScript, which could be a generator,
  * or potentially in future an async function.
@@ -38,7 +31,7 @@ public interface JSCodeResume<T extends ScriptOrFn<T>> {
     public static JSCodeResume<?> NULL_RESUMABLE = new NullResume<>();
 
     public final class NullResume<T extends ScriptOrFn<T>>
-            implements JSCodeResume<T>, Serializable {
+            implements JSCodeResume<T> {
 
         private NullResume() {}
 
@@ -52,24 +45,6 @@ public interface JSCodeResume<T extends ScriptOrFn<T>> {
                 Object value) {
             Kit.codeBug("Attempt to resume a non-generator function");
             return null;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 }

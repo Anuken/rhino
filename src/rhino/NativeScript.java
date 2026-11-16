@@ -8,7 +8,6 @@ package rhino;
 
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.util.EnumSet;
 
 /**
@@ -24,8 +23,6 @@ import java.util.EnumSet;
  * @author Norris Boyd
  */
 class NativeScript extends BaseFunction {
-    @Serial private static final long serialVersionUID = -6795101161980121700L;
-
     private static final String SCRIPT_TAG = "Script";
 
     private static final ClassDescriptor DESCRIPTOR;

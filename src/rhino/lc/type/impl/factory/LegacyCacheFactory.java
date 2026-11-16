@@ -14,8 +14,8 @@ import rhino.lc.type.impl.InterfaceTypeInfo;
  * @author ZZZank
  */
 public abstract class LegacyCacheFactory extends AbstractCacheFactory {
-    private transient Map<Class<?>, TypeInfo> classCache;
-    private transient volatile TypeInfo lastCreated;
+    private Map<Class<?>, TypeInfo> classCache;
+    private volatile TypeInfo lastCreated;
 
     @Override
     protected void initCache() {

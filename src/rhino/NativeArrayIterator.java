@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import rhino.typedarrays.NativeTypedArrayView;
 
 public final class NativeArrayIterator extends ES6Iterator {
@@ -16,7 +15,6 @@ public final class NativeArrayIterator extends ES6Iterator {
         VALUES
     }
 
-    @Serial private static final long serialVersionUID = 3370645355934941865L;
     private static final String ITERATOR_TAG = "ArrayIterator";
 
     private static final ClassDescriptor DESCRIPTOR =

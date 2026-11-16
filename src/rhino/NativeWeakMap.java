@@ -10,9 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serial;
 import java.util.WeakHashMap;
 
 /**
@@ -24,8 +21,6 @@ import java.util.WeakHashMap;
  * same semantics.
  */
 public class NativeWeakMap extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 8670434366883930453L;
-
     private static final String CLASS_NAME = "WeakMap";
 
     private static final ClassDescriptor DESCRIPTOR;
@@ -51,7 +46,7 @@ public class NativeWeakMap extends ScriptableObject {
 
     private boolean instanceOfWeakMap = false;
 
-    private transient WeakHashMap<Object, Object> map = new WeakHashMap<>();
+    private WeakHashMap<Object, Object> map = new WeakHashMap<>();
 
     private static final Object NULL_VALUE = new Object();
 
@@ -150,11 +145,5 @@ public class NativeWeakMap extends ScriptableObject {
         }
 
         return nm;
-    }
-
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
     }
 }

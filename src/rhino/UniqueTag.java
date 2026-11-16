@@ -6,19 +6,10 @@
 
 package rhino;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
- * Class instances represent serializable tags to mark special Object values.
- *
- * <p>Compatibility note: under jdk 1.1 use rhino.serialize.ScriptableInputStream
- * to read serialized instances of UniqueTag as under this JDK version the default ObjectInputStream
- * would not restore them correctly as it lacks support for readResolve method
+ * Class instances represent tags to mark special Object values.
  */
-public final class UniqueTag implements Serializable {
-    @Serial private static final long serialVersionUID = -4320556826714577259L;
-
+public final class UniqueTag {
     private static final int ID_NOT_FOUND = 1;
     private static final int ID_NULL_VALUE = 2;
     private static final int ID_DOUBLE_MARK = 3;
@@ -45,20 +36,6 @@ public final class UniqueTag implements Serializable {
 
     private UniqueTag(int tagId) {
         this.tagId = tagId;
-    }
-
-    public Object readResolve() {
-        switch (tagId) {
-            case ID_NOT_FOUND:
-                return NOT_FOUND;
-            case ID_NULL_VALUE:
-                return NULL_VALUE;
-            case ID_DOUBLE_MARK:
-                return DOUBLE_MARK;
-            case ID_UNINITIALIZED:
-                return UNINITIALIZED;
-        }
-        throw new IllegalStateException(String.valueOf(tagId));
     }
 
     // Overridden for better debug printouts

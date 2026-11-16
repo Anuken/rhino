@@ -8,15 +8,11 @@ package rhino;
 
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
-
 /**
  * This class is used by the V8 extension "Error.prepareStackTrace." It is passed to that function,
  * which may then use it to format the stack as it sees fit.
  */
 public class NativeCallSite extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 2688372752566593594L;
-
     private ScriptStackElement element;
 
     private static final ClassDescriptor DESCRIPTOR;

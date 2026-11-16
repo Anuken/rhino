@@ -8,16 +8,12 @@ package rhino;
 
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
-
 /**
  * This class implements the Boolean native object. See ECMA 15.6.
  *
  * @author Norris Boyd
  */
 final class NativeBoolean extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -3716996899943880933L;
-
     private static final String CLASS_NAME = "Boolean";
 
     private static final ClassDescriptor DESCRIPTOR;

@@ -10,13 +10,10 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.math.BigInteger;
 
 /** This class implements the BigInt native object. */
 final class NativeBigInt extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 1335609231306775449L;
-
     private static final String CLASS_NAME = "BigInt";
 
     private static final ClassDescriptor DESCRIPTOR;

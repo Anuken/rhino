@@ -4,7 +4,6 @@
 
 package rhino.tools.shell;
 
-import java.io.Serial;
 import java.nio.charset.Charset;
 import rhino.Context;
 import rhino.NativeConsole;
@@ -13,8 +12,6 @@ import rhino.VarScope;
 
 /** Provide a printer use in console API */
 class ShellConsolePrinter implements NativeConsole.ConsolePrinter {
-    @Serial private static final long serialVersionUID = 5869832740127501857L;
-
     @Override
     public void print(
             Context cx,

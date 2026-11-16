@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.math.BigInteger;
 import rhino.ClassDescriptor;
 import rhino.Context;
@@ -27,8 +26,6 @@ import rhino.VarScope;
  * interface. It also implements List&lt;Double&gt; for direct manipulation in Java.
  */
 public class NativeBigUint64Array extends NativeBigIntArrayView {
-    @Serial private static final long serialVersionUID = 6278562787625694949L;
-
     private static final String CLASS_NAME = "BigUint64Array";
     private static final int BYTES_PER_ELEMENT = 8;
 

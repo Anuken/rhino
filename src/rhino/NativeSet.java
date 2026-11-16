@@ -11,10 +11,7 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
-
 public class NativeSet extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -8442212766987072986L;
     private static final String CLASS_NAME = "Set";
     static final String ITERATOR_TAG = "Set Iterator";
 

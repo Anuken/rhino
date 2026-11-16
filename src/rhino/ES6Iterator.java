@@ -9,11 +9,7 @@ package rhino;
 import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 
-import java.io.Serial;
-
 public abstract class ES6Iterator extends ScriptableObject {
-
-    @Serial private static final long serialVersionUID = 2438373029140003950L;
 
     public static final String NEXT_METHOD = "next";
     public static final String DONE_PROPERTY = "done";

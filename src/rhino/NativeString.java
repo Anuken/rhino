@@ -16,7 +16,6 @@ import rhino.AbstractEcmaStringOperations.ReplacementOperation;
 import rhino.ClassDescriptor.BuiltInJSCodeExec;
 import rhino.ScriptRuntime.StringIdOrIndex;
 
-import java.io.Serial;
 import java.text.Collator;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -40,8 +39,6 @@ import java.util.Map;
  * @author Ronald Brill
  */
 final class NativeString extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 920268368584188687L;
-
     private static final String CLASS_NAME = "String";
 
     private final CharSequence string;

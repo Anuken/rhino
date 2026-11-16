@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,8 +14,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NativeConsole extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 5694613212458273057L;
-
     private static final String CLASS_NAME = "Console";
 
     private static final String DEFAULT_LABEL = "default";

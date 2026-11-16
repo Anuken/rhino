@@ -10,12 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,8 +19,6 @@ import java.util.List;
  * <p>ECMA 15.11
  */
 final class NativeError extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -5338413581437645187L;
-
     private static final String ERROR_TAG = "Error";
     private static final String STACK_TAG = "stack";
 
@@ -396,10 +388,8 @@ final class NativeError extends ScriptableObject {
      * properties that are "global." We can't make them static because there can be many contexts in
      * the same JVM.
      */
-    private static final class ProtoProps implements Serializable {
+    private static final class ProtoProps {
         static final String KEY = "_ErrorPrototypeProps";
-
-        @Serial private static final long serialVersionUID = 1907180507775337939L;
 
         int stackTraceLimit = DEFAULT_STACK_LIMIT;
         Function prepareStackTrace;
@@ -431,30 +421,10 @@ final class NativeError extends ScriptableObject {
                 prepareStackTrace = (Function) value;
             }
         }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
-        }
     }
 
     /** Captures the script stack of an error object that may never be thrown. */
     private static final class StackCapture extends RhinoException {
-        @Serial private static final long serialVersionUID = 4130216839123480374L;
-
         StackCapture(String details) {
             super(details);
         }

@@ -6,16 +6,12 @@
 
 package rhino;
 
-import java.io.Serializable;
-
 /**
  * The code of an async function. Its body is compiled as a generator whose yields are the
  * function's awaits: a call creates the generator and a promise, and then resumes the generator
  * each time an awaited value settles, until the body completes and settles the promise.
  */
-final class AsyncFunctionCode extends JSCode<JSFunction> implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+final class AsyncFunctionCode extends JSCode<JSFunction> {
     final JSCode<JSFunction> body;
 
     AsyncFunctionCode(JSCode<JSFunction> body) {

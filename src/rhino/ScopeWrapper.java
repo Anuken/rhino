@@ -1,10 +1,6 @@
 package rhino;
 
-import java.io.Serial;
-
 public class ScopeWrapper extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -3481312197060837332L;
-
     private final VarScope scope;
 
     public ScopeWrapper(VarScope scope) {

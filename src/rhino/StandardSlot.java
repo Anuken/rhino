@@ -1,8 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serial;
 import java.util.Objects;
 
 /**
@@ -12,7 +9,6 @@ import java.util.Objects;
  * various types of getter and setter methods.
  */
 public class StandardSlot<T extends PropHolder<T>> extends Slot<T> {
-    @Serial private static final long serialVersionUID = -6090581677123995491L;
     private final Object name;
     private int indexOrHash;
     private short attributes;
@@ -54,13 +50,6 @@ public class StandardSlot<T extends PropHolder<T>> extends Slot<T> {
         attributes = (short) oldSlot.getAttributes();
         name = oldSlot.getName();
         indexOrHash = oldSlot.getIndexOrHash();
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-        if (name != null) {
-            indexOrHash = name.hashCode();
-        }
     }
 
     @Override

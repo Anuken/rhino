@@ -6,12 +6,9 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.util.Objects;
 
 public final class NativeContinuation extends ScriptableObject implements Function {
-    @Serial private static final long serialVersionUID = 1794167133757605367L;
-
     private static final String CLASS_NAME = "Continuation";
 
     private static final ClassDescriptor DESCRIPTOR;

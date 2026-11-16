@@ -7,12 +7,7 @@ package rhino.module.provider;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Reader;
-import java.io.Serial;
-import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -20,7 +15,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
 import java.util.List;
-import rhino.Context;
 
 /**
  * A URL-based script provider that can load modules against a set of base privileged and fallback
@@ -35,7 +29,6 @@ import rhino.Context;
  * @version $Id: UrlModuleSourceProvider.java,v 1.4 2011/04/07 20:26:12 hannes%helma.at Exp $
  */
 public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
-    @Serial private static final long serialVersionUID = 6253848745572187376L;
     private final Iterable<URI> privilegedUris;
     private final Iterable<URI> fallbackUris;
     private final UrlConnectionExpiryCalculator urlConnectionExpiryCalculator;
@@ -202,8 +195,7 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
                 || ((URLValidator) validator).entityNeedsRevalidation();
     }
 
-    private static class URLValidator implements Serializable {
-        @Serial private static final long serialVersionUID = -832296617758674059L;
+    private static class URLValidator {
         private final URI uri;
         private final long lastModified;
         private final String entityTags;
@@ -328,24 +320,6 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
 
         boolean entityNeedsRevalidation() {
             return System.currentTimeMillis() > expiry;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 }

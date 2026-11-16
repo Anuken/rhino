@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.Serial;
 import rhino.ScriptableObject.DescriptorInfo;
 
 /**
@@ -24,8 +23,6 @@ import rhino.ScriptableObject.DescriptorInfo;
  */
 public class BuiltInSlot<T extends ScriptableObject>
         extends CompactSlot<BuiltInSlot.Descriptor<T>, Scriptable, T> {
-    @Serial private static final long serialVersionUID = 8728562620206845355L;
-
     public interface Getter<T extends ScriptableObject> {
         Object apply(T builtIn, Scriptable start);
     }
@@ -51,8 +48,6 @@ public class BuiltInSlot<T extends ScriptableObject>
 
     public static class Descriptor<T extends ScriptableObject>
             extends CompactSlot.Descriptor<BuiltInSlot.Descriptor<T>, Scriptable, T> {
-        @Serial private static final long serialVersionUID = 8728562620206845355L;
-
         private final Getter<T> getter;
         private final Setter<T> setter;
         private final AttributeSetter<T> attrUpdater;

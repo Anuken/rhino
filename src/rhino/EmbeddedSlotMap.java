@@ -313,7 +313,7 @@ public class EmbeddedSlotMap<T extends PropHolder<T>> implements SlotMap<T> {
 
     /**
      * Add slot with keys that are known to absent from the table. This is an optimization to use
-     * when inserting into empty table, after table growth or during deserialization.
+     * when inserting into empty table, or after table growth.
      */
     private static <T extends PropHolder<T>> void addKnownAbsentSlot(
             Slot<T>[] addSlots, Slot<T> slot) {

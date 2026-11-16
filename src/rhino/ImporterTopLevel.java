@@ -11,7 +11,6 @@ package rhino;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.UniqueTag.NOT_FOUND;
 
-import java.io.Serial;
 import java.util.ArrayList;
 
 /**
@@ -49,8 +48,6 @@ import java.util.ArrayList;
  * @author Norris Boyd
  */
 public class ImporterTopLevel extends TopLevel {
-    @Serial private static final long serialVersionUID = -9095380847465315412L;
-
     private static final ClassDescriptor DESCRIPTOR;
 
     static {

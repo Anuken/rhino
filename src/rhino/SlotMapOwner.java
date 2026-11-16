@@ -2,9 +2,6 @@ package rhino;
 
 import static rhino.ScriptableObject.DONTENUM;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -590,8 +587,6 @@ public abstract class SlotMapOwner<T extends PropHolder<T>> implements PropHolde
      * with the given object and key only once. The method ignores any subsequent attempts to change
      * the already associated value.
      *
-     * <p>The associated values are not serialized.
-     *
      * @param key key object to select particular value.
      * @param value the value to associate
      * @return the passed value if the method is called first time for the given key or old value
@@ -786,34 +781,6 @@ public abstract class SlotMapOwner<T extends PropHolder<T>> implements PropHolde
             throw Context.reportRuntimeErrorById("msg.prop.not.found", key);
         }
         return slot;
-    }
-
-    protected void writeMaps(ObjectOutputStream out) throws IOException {
-        out.writeObject(associatedValues);
-        try (var map = startCompoundOp(false)) {
-            int objectsCount = map.dirtySize();
-            if (objectsCount == 0) {
-                out.writeInt(0);
-            } else {
-                out.writeInt(objectsCount);
-                for (var slot : getMap()) {
-                    out.writeObject(slot);
-                }
-            }
-        }
-    }
-
-    protected void readMaps(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        @SuppressWarnings("unchecked")
-        var map = (Map<Object, Object>) in.readObject();
-        associatedValues = map;
-        int tableSize = in.readInt();
-        setMap(createSlotMap(tableSize));
-        for (int i = 0; i < tableSize; i++) {
-            @SuppressWarnings("unchecked")
-            var slot = (Slot<T>) in.readObject();
-            getMap().add(this, slot);
-        }
     }
 
     /**

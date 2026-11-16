@@ -6,15 +6,11 @@
 
 package rhino;
 
-import java.io.Serializable;
-
 /**
  * The code of an async generator function. Its body is compiled as a generator, and a call wraps
  * that generator in a {@link NativeAsyncGenerator}.
  */
-final class AsyncGeneratorCode extends JSCode<JSFunction> implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+final class AsyncGeneratorCode extends JSCode<JSFunction> {
     final JSCode<JSFunction> body;
 
     AsyncGeneratorCode(JSCode<JSFunction> body) {

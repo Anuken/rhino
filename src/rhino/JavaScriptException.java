@@ -10,7 +10,6 @@ package rhino;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.io.Serial;
 
 /**
  * Java reflection of JavaScript exceptions. Instances of this class are thrown by the JavaScript
@@ -19,8 +18,6 @@ import java.io.Serial;
  * @author Mike McCabe
  */
 public class JavaScriptException extends RhinoException {
-    @Serial private static final long serialVersionUID = -7666130513694669293L;
-
     /**
      * @deprecated Use {@link WrappedException#WrappedException(Throwable)} to report exceptions in
      *     Java code.
@@ -187,5 +184,5 @@ public class JavaScriptException extends RhinoException {
     private Object value;
     private String details;
     // the exception whose Java stack trace this one takes when first asked for it
-    private transient volatile RhinoException stackSource;
+    private volatile RhinoException stackSource;
 }

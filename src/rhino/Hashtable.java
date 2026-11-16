@@ -6,12 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,9 +24,8 @@ import java.util.NoSuchElementException;
  * lets an iterator keep on iterating on a collection that was empty when it was created..
  */
 @SuppressWarnings("ReferenceEquality")
-public class Hashtable implements Serializable, Iterable<Hashtable.Entry> {
+public class Hashtable implements Iterable<Hashtable.Entry> {
 
-    @Serial private static final long serialVersionUID = -7151554912419543747L;
     private final HashMap<Object, Entry> map = new HashMap<>();
     private Entry first = null;
     private Entry last = null;
@@ -41,8 +34,7 @@ public class Hashtable implements Serializable, Iterable<Hashtable.Entry> {
      * One entry in the hash table. Override equals and hashcode because this is another area in
      * which JavaScript and Java differ. This entry also becomes a node in the linked list.
      */
-    public static final class Entry implements Serializable {
-        @Serial private static final long serialVersionUID = 4086572107122965503L;
+    public static final class Entry {
         Object key;
         Object value;
         boolean deleted;
@@ -112,24 +104,6 @@ public class Hashtable implements Serializable, Iterable<Hashtable.Entry> {
             } catch (ClassCastException cce) {
                 return false;
             }
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 
@@ -344,22 +318,5 @@ public class Hashtable implements Serializable, Iterable<Hashtable.Entry> {
             pos = pos.next;
             return e;
         }
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

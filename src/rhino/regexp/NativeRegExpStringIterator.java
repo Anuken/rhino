@@ -6,7 +6,6 @@
 
 package rhino.regexp;
 
-import java.io.Serial;
 import rhino.ClassDescriptor;
 import rhino.Context;
 import rhino.ES6Iterator;
@@ -18,7 +17,6 @@ import rhino.VarScope;
 
 // See ECMAScript spec 22.2.9.1
 public final class NativeRegExpStringIterator extends ES6Iterator {
-    @Serial private static final long serialVersionUID = -1622794465605583044L;
     private static final String ITERATOR_TAG = "RegExpStringIterator";
 
     private static final ClassDescriptor DESCRIPTOR =

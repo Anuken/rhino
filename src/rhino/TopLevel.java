@@ -8,10 +8,6 @@ package rhino;
 
 import static rhino.UniqueTag.NOT_FOUND;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
 import java.util.EnumMap;
 import rhino.lc.type.TypeInfoFactory;
 
@@ -37,8 +33,6 @@ import rhino.lc.type.TypeInfoFactory;
  * the class cache for each top-level scope.
  */
 public class TopLevel extends ScopeObject {
-
-    @Serial private static final long serialVersionUID = -4648046356662472260L;
 
     /** An enumeration of built-in ECMAScript objects. */
     public enum Builtins {
@@ -127,13 +121,13 @@ public class TopLevel extends ScopeObject {
 
     private EnumMap<Builtins, BaseFunction> ctors;
     private EnumMap<NativeErrors, BaseFunction> errors;
-    private transient ScriptableObject globalThis;
+    private ScriptableObject globalThis;
     // Symbol-keyed entries (internal prototypes like %TypedArray%) are kept apart, so the own map
     // stays empty until a lexical declaration lands and global name lookups skip it cheaply.
     private final ScopeObject symbols = new ScopeObject(null);
     // associated values that LiveConnect needs for every wrapped Java object, cached once present
-    private transient volatile ClassCache classCache;
-    private transient volatile TypeInfoFactory typeInfoFactory;
+    private volatile ClassCache classCache;
+    private volatile TypeInfoFactory typeInfoFactory;
 
     /** Returns the associated {@link ClassCache}, or null if there is none yet. */
     ClassCache getClassCache() {
@@ -157,20 +151,6 @@ public class TopLevel extends ScopeObject {
             typeInfoFactory = factory;
         }
         return factory;
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-        out.writeObject(globalThis);
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        globalThis = (ScriptableObject) in.readObject();
     }
 
     public TopLevel() {

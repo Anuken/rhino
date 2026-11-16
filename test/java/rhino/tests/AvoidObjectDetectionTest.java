@@ -17,8 +17,6 @@ import rhino.TopLevel;
 public class AvoidObjectDetectionTest {
 
     public static class Foo extends ScriptableObject {
-        private static final long serialVersionUID = -6284330659327161113L;
-
         @Override
         public String getClassName() {
             return "Foo";
@@ -26,8 +24,6 @@ public class AvoidObjectDetectionTest {
     }
 
     public static class Avoid extends ScriptableObject {
-        private static final long serialVersionUID = -1975590541658828651L;
-
         @Override
         public boolean avoidObjectDetection() {
             return true;

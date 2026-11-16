@@ -6,15 +6,9 @@ package rhino.module.provider;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import rhino.Context;
 import rhino.ScriptRuntime;
 import rhino.Scriptable;
 import rhino.ScriptableObject;
@@ -30,9 +24,7 @@ import rhino.ScriptableObject;
  * @author Attila Szegedi
  * @version $Id: ModuleSourceProviderBase.java,v 1.3 2011/04/07 20:26:12 hannes%helma.at Exp $
  */
-public abstract class ModuleSourceProviderBase implements ModuleSourceProvider, Serializable {
-    @Serial private static final long serialVersionUID = -5687971989835149396L;
-
+public abstract class ModuleSourceProviderBase implements ModuleSourceProvider {
     @Override
     public ModuleSource loadSource(String moduleId, Scriptable paths, Object validator)
             throws IOException, URISyntaxException {
@@ -159,22 +151,5 @@ public abstract class ModuleSourceProviderBase implements ModuleSourceProvider, 
     protected ModuleSource loadFromFallbackLocations(String moduleId, Object validator)
             throws IOException, URISyntaxException {
         return null;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

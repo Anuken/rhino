@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.lang.reflect.Array;
 import java.util.Objects;
 import rhino.lc.type.TypeInfo;
@@ -21,8 +20,6 @@ import rhino.lc.type.TypeInfoFactory;
  * @see NativeJavaPackage
  */
 public class NativeJavaArray extends NativeJavaObject implements SymbolScriptable {
-    @Serial private static final long serialVersionUID = -924022554283675333L;
-
     @Override
     public String getClassName() {
         return "JavaArray";

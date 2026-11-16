@@ -18,8 +18,6 @@ import rhino.TopLevel;
 
 public class CatchTest {
     public static class Foo extends ScriptableObject {
-        private static final long serialVersionUID = -8771045033217033529L;
-
         public String jsFunction_bar() throws IOException {
             throw new IOException("oops");
         }

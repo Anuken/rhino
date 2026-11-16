@@ -5,12 +5,6 @@ import static rhino.ScriptableObject.READONLY;
 import static rhino.ScriptableObject.STRICTLY_READONLY;
 import static rhino.UniqueTag.NOT_FOUND;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,10 +15,7 @@ public abstract class AInterpreter<T extends ACallFrame<T, U>, U extends ACompil
         implements Evaluator {
 
     protected static final class ContinuationJump<
-                    T extends ACallFrame<T, U>, U extends ACompilerData<?, U>>
-            implements Serializable {
-        private static final long serialVersionUID = 7687739156004308247L;
-
+                    T extends ACallFrame<T, U>, U extends ACompilerData<?, U>> {
         T capturedFrame;
         T branchFrame;
         Object result;
@@ -72,24 +63,6 @@ public abstract class AInterpreter<T extends ACallFrame<T, U>, U extends ACompil
                 this.branchFrame = chain1;
                 if (this.branchFrame != null && !this.branchFrame.frozen) Kit.codeBug();
             }
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

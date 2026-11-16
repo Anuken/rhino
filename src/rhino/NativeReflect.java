@@ -9,7 +9,6 @@ package rhino;
 import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import rhino.ScriptRuntime.StringIdOrIndex;
@@ -20,8 +19,6 @@ import rhino.ScriptRuntime.StringIdOrIndex;
  * @author Ronald Brill
  */
 final class NativeReflect extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 2920773905356325445L;
-
     private static final String REFLECT_TAG = "Reflect";
 
     private static final ClassDescriptor DESCRIPTOR;

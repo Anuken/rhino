@@ -8,11 +8,6 @@ package rhino;
 
 import static rhino.ClassDescriptor.Destination.CTOR;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,8 +19,6 @@ import java.util.Objects;
  * @author Ronald Brill
  */
 class NativeProxy extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 6676871870513494844L;
-
     private static final String PROXY_TAG = "Proxy";
 
     private static final String TRAP_GET_PROTOTYPE_OF = "getPrototypeOf";
@@ -74,24 +67,6 @@ class NativeProxy extends ScriptableObject {
                 revocableProxy = null;
             }
             return Undefined.instance;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

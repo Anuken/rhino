@@ -3,12 +3,6 @@ package rhino;
 import rhino.ast.FunctionNode;
 import rhino.debug.DebuggableScript;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,9 +13,7 @@ import java.util.List;
  * all the expensive parts of creating this to an object that can be cached and reused, while
  * function objects represented by {@link JSFunction}s become more lightweight in their creation.
  */
-public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable, DebuggableScript {
-    private static final long serialVersionUID = 5067677351589230234L;
-
+public final class JSDescriptor<T extends ScriptOrFn<T>> implements DebuggableScript {
     private static final int IS_STRICT_FLAG = 1;
     private static final int IS_SCRIPT_FLAG = 1 << 1;
     private static final int IS_TOP_LEVEL_FLAG = 1 << 2;
@@ -485,22 +477,5 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
         public void setCode(JSCode.Builder<T> code) {
             this.code = (JSCode.Builder<T>) code;
         }
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

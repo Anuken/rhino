@@ -8,17 +8,12 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serial;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 public class FunctionObject extends BaseFunction {
-    @Serial private static final long serialVersionUID = 8880062939740158370L;
-
     /**
      * Create a JavaScript function object from a Java method.
      *
@@ -499,27 +494,6 @@ public class FunctionObject extends BaseFunction {
         return parmsLength == VARARGS_CTOR;
     }
 
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        if (parmsLength > 0) {
-            var types = member.getArgTypes();
-            typeTags = new byte[parmsLength];
-            for (int i = 0; i != parmsLength; ++i) {
-                typeTags[i] = (byte) getTypeTag(types[i]);
-            }
-        }
-        if (member.isMethod()) {
-            Method method = member.method();
-            Class<?> returnType = method.getReturnType();
-            if (returnType == Void.TYPE) {
-                hasVoidReturn = true;
-            } else {
-                returnTypeTag = getTypeTag(returnType);
-            }
-        }
-    }
-
     private static final short VARARGS_METHOD = -1;
     private static final short VARARGS_CTOR = -2;
 
@@ -536,9 +510,9 @@ public class FunctionObject extends BaseFunction {
 
     MemberBox member;
     private String functionName;
-    private transient byte[] typeTags;
+    private byte[] typeTags;
     private int parmsLength;
-    private transient boolean hasVoidReturn;
-    private transient int returnTypeTag;
+    private boolean hasVoidReturn;
+    private int returnTypeTag;
     private boolean isStatic;
 }

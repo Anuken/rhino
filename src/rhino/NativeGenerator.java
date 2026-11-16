@@ -9,8 +9,6 @@ package rhino;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.Symbol.Kind.REGULAR;
 
-import java.io.Serial;
-
 /**
  * This class implements generator objects. See <a
  * href="http://developer.mozilla.org/en/docs/New_in_JavaScript_1.7#Generators">Generators</a>
@@ -18,8 +16,6 @@ import java.io.Serial;
  * @author Norris Boyd
  */
 public final class NativeGenerator extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -1383456283657974338L;
-
     private static final SymbolKey GENERATOR_TAG = new SymbolKey("GeneratorPrototype", REGULAR);
     private static final ClassDescriptor DESCRIPTOR;
 
@@ -153,7 +149,6 @@ public final class NativeGenerator extends ScriptableObject {
     private boolean locked;
 
     public static class GeneratorClosedException extends RuntimeException {
-        @Serial private static final long serialVersionUID = 2561315658662379681L;
         private final Object value;
 
         public GeneratorClosedException() {

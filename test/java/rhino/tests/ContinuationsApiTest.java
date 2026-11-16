@@ -8,12 +8,6 @@ package rhino.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import rhino.ConsString;
@@ -33,23 +27,11 @@ import rhino.WrappedException;
  * @author Norris Boyd
  */
 public class ContinuationsApiTest {
-    private static final class SerializationEnabledFactory extends ContextFactory {
-        @Override
-        protected boolean hasFeature(Context cx, int featureIndex) {
-            if (featureIndex == Context.FEATURE_JAVA_SERIALIZATION) {
-                return true;
-            }
-            return super.hasFeature(cx, featureIndex);
-        }
-    }
-
-    private static final ContextFactory factory = new SerializationEnabledFactory();
+    private static final ContextFactory factory = new ContextFactory();
 
     TopLevel globalScope;
 
-    public static class MyClass implements Serializable {
-
-        private static final long serialVersionUID = 4189002778806232070L;
+    public static class MyClass {
 
         public int f(int a) {
             try (Context cx = factory.enterContext()) {

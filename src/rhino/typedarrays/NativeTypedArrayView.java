@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.Symbol.Kind.REGULAR;
 
-import java.io.Serial;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,8 +51,6 @@ import rhino.Wrapper;
  */
 public abstract class NativeTypedArrayView<T> extends NativeArrayBufferView
         implements List<T>, RandomAccess, ExternalArrayData {
-    @Serial private static final long serialVersionUID = -4963053773152251274L;
-
     private static final ClassDescriptor DESCRIPTOR;
     private static final String TYPED_ARRAY_TAG = "%TypedArray%";
     private static final SymbolKey TYPED_ARRAY = new SymbolKey(TYPED_ARRAY_TAG, REGULAR);

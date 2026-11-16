@@ -1,12 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * Represents code that is executable, and potentially resumable. Those concepts are separated out
  * as {@link JSCodeExec} and {@link JSCodeResume} to allow for the use of functional interfaces.
@@ -49,9 +42,7 @@ public abstract class JSCode<T extends ScriptOrFn<T>> implements JSCodeExec<T>, 
     /** The call behavior of a class constructor, which may only be constructed. */
     public static final JSCode<JSFunction> CLASS_CONSTRUCTOR_CALL = new ClassConstructorCall();
 
-    private static class ClassConstructorCall extends JSCode<JSFunction> implements Serializable {
-
-        private static final long serialVersionUID = 1L;
+    private static class ClassConstructorCall extends JSCode<JSFunction> {
 
         @Override
         public Object execute(
@@ -63,15 +54,9 @@ public abstract class JSCode<T extends ScriptOrFn<T>> implements JSCodeExec<T>, 
         public Object resume(Context cx, JSFunction f, Object state, VarScope s, int op, Object v) {
             return null;
         }
-
-        private Object readResolve() {
-            return CLASS_CONSTRUCTOR_CALL;
-        }
     }
 
-    private static class NotCallable extends JSCode<JSFunction> implements Serializable {
-
-        private static final long serialVersionUID = -31340315773728063L;
+    private static class NotCallable extends JSCode<JSFunction> {
 
         @Override
         public Object execute(
@@ -82,24 +67,6 @@ public abstract class JSCode<T extends ScriptOrFn<T>> implements JSCodeExec<T>, 
         @Override
         public Object resume(Context cx, JSFunction f, Object state, VarScope s, int op, Object v) {
             return null;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 }

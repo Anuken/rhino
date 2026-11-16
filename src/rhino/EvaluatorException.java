@@ -6,12 +6,8 @@
 
 package rhino;
 
-import java.io.Serial;
-
 /** The class of exceptions thrown by the JavaScript engine. */
 public class EvaluatorException extends RhinoException {
-    @Serial private static final long serialVersionUID = -8743165779676009808L;
-
     public EvaluatorException(String detail) {
         super(detail);
     }

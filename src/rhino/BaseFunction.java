@@ -11,7 +11,6 @@ import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.Symbol.Kind.REGULAR;
 
 
-import java.io.Serial;
 import java.util.EnumSet;
 
 /**
@@ -24,8 +23,6 @@ import java.util.EnumSet;
  * @author Norris Boyd
  */
 public class BaseFunction extends ScriptableObject implements Function {
-    @Serial private static final long serialVersionUID = 5311394446546053859L;
-
     private static final Object FUNCTION_TAG = "Function";
     private static final String FUNCTION_CLASS = "Function";
     static final SymbolKey GENERATOR_FUNCTION_CLASS =
@@ -1026,7 +1023,7 @@ public class BaseFunction extends ScriptableObject implements Function {
     private final VarScope declarationScope;
     private Object prototypeProperty;
     // the first interface this function was converted to, see NativeJavaObject.coerceTypeImpl
-    transient volatile InterfaceProxy interfaceProxy;
+    volatile InterfaceProxy interfaceProxy;
     // the default prototype is created when first read while prototypeProperty is null
     private boolean lazyPrototype;
     private Object argumentsObj = NOT_FOUND;

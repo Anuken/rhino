@@ -1,11 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Objects;
 import rhino.ScriptableObject.DescriptorInfo;
 
@@ -18,8 +12,7 @@ public abstract class CompactSlot<
     public abstract static class Descriptor<
                     T extends CompactSlot.Descriptor<T, U, O>,
                     U extends PropHolder<U>,
-                    O extends ScriptableObject>
-            implements Serializable {
+                    O extends ScriptableObject> {
         private final Object name;
         private int indexOrHash;
 
@@ -51,25 +44,6 @@ public abstract class CompactSlot<
         DescriptorInfo getPropertyDescriptor(CompactSlot<T, U, O> slot, Context cx, U start) {
             return ScriptableObject.buildDataDescriptor(
                     getValue(slot, start), slot.getAttributes());
-        }
-
-        private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            in.defaultReadObject();
-            if (name != null) {
-                indexOrHash = name.hashCode();
-            }
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

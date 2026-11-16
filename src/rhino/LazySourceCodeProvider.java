@@ -1,11 +1,5 @@
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.util.Objects;
 
@@ -13,8 +7,7 @@ import java.util.Objects;
  * Can provide source code from a lazy {@link SourceCodeSupplier}, that for example can retrieve it
  * from the database.
  */
-public class LazySourceCodeProvider implements SourceCodeProvider, Serializable {
-    private static final long serialVersionUID = 1L;
+public class LazySourceCodeProvider implements SourceCodeProvider {
     private final SourceCodeSupplier sourceSupplier;
     private WeakReference<String> sourceCodeRef;
 
@@ -66,22 +59,5 @@ public class LazySourceCodeProvider implements SourceCodeProvider, Serializable 
         public String getRawSource() {
             return source;
         }
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

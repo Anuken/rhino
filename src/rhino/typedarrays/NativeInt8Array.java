@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import rhino.ClassDescriptor;
 import rhino.Context;
 import rhino.JSFunction;
@@ -25,8 +24,6 @@ import rhino.VarScope;
  * It also implements List&lt;Byte&gt; for direct manipulation in Java.
  */
 public class NativeInt8Array extends NativeTypedArrayView<Byte> {
-    @Serial private static final long serialVersionUID = 6655250857400433124L;
-
     private static final String CLASS_NAME = "Int8Array";
 
     private static final ClassDescriptor DESCRIPTOR;

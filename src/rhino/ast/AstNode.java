@@ -6,17 +6,10 @@
 
 package rhino.ast;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import rhino.Context;
 import rhino.Kit;
 import rhino.Node;
 import rhino.Token;
@@ -143,9 +136,7 @@ public abstract class AstNode extends Node implements Comparable<AstNode> {
         }
     }
 
-    public static class PositionComparator implements Comparator<AstNode>, Serializable {
-        private static final long serialVersionUID = 1551233591343412911L;
-
+    public static class PositionComparator implements Comparator<AstNode> {
         /**
          * Sorts nodes by (relative) start position. The start positions are relative to their
          * parent, so this comparator is only meaningful for comparing siblings.
@@ -153,24 +144,6 @@ public abstract class AstNode extends Node implements Comparable<AstNode> {
         @Override
         public int compare(AstNode n1, AstNode n2) {
             return n1.position - n2.position;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

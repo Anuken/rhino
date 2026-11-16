@@ -4,14 +4,7 @@
 
 package rhino.module;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.net.URI;
-import rhino.Context;
 import rhino.Script;
 
 /**
@@ -21,8 +14,7 @@ import rhino.Script;
  * @author Attila Szegedi
  * @version $Id: ModuleScript.java,v 1.3 2011/04/07 20:26:11 hannes%helma.at Exp $
  */
-public class ModuleScript implements Serializable {
-    @Serial private static final long serialVersionUID = -8287890021565388770L;
+public class ModuleScript {
     private final Script script;
     private final URI uri;
     private final URI base;
@@ -90,22 +82,5 @@ public class ModuleScript implements Serializable {
             }
         }
         return true;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

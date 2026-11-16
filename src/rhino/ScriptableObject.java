@@ -8,12 +8,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
@@ -51,11 +45,8 @@ import rhino.debug.DebuggableObject;
 public abstract class ScriptableObject extends SlotMapOwner<Scriptable>
         implements Scriptable,
                 SymbolScriptable,
-                Serializable,
                 DebuggableObject,
                 ConstProperties<Scriptable> {
-
-    @Serial private static final long serialVersionUID = 2829861078851942586L;
 
     /**
      * The empty property attribute.
@@ -115,13 +106,13 @@ public abstract class ScriptableObject extends SlotMapOwner<Scriptable>
     private VarScope parentScopeObject;
 
     // Where external array data is stored.
-    private transient ExternalArrayData externalData;
+    private ExternalArrayData externalData;
 
     private boolean isExtensible = true;
 
     // Private class members (#x) as alternating private names and values. Unlike properties they
     // are unaffected by extensibility and invisible to reflection.
-    private transient Object[] privateElements;
+    private Object[] privateElements;
 
     private static final Method GET_ARRAY_LENGTH;
 
@@ -3081,25 +3072,6 @@ public abstract class ScriptableObject extends SlotMapOwner<Scriptable>
         }
     }
 
-    @Serial
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        Context.checkSerializationEnabled();
-        out.defaultWriteObject();
-        writeMaps(out);
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        in.defaultReadObject();
-        readMaps(in);
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized ScriptableObject data");
-    }
-
     protected DescriptorInfo getOwnPropertyDescriptor(Context cx, Object id) {
         var slot = querySlot(cx, id);
         if (slot == null) return null;
@@ -3155,9 +3127,7 @@ public abstract class ScriptableObject extends SlotMapOwner<Scriptable>
      * their order, but simply move all the numeric properties to the front, since this method is
      * defined to be stable.
      */
-    public static final class KeyComparator implements Comparator<Object>, Serializable {
-        @Serial private static final long serialVersionUID = 6411335891523988149L;
-
+    public static final class KeyComparator implements Comparator<Object> {
         @Override
         public int compare(Object o1, Object o2) {
             if (o1 instanceof Integer) {
@@ -3170,24 +3140,6 @@ public abstract class ScriptableObject extends SlotMapOwner<Scriptable>
                 return 1;
             }
             return 0;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

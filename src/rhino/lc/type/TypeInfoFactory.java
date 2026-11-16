@@ -1,6 +1,5 @@
 package rhino.lc.type;
 
-import java.io.Serializable;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -29,12 +28,9 @@ import rhino.lc.type.impl.factory.LegacyCacheFactory;
  * <p>For mutating an existed TypeInfo, use {@link #toArray(TypeInfo)}, {@link
  * #attachParam(TypeInfo, TypeInfo...)}. These methods will not modify the original TypeInfo
  *
- * <p>This class is serializable, but cached TypeInfo (if implementation has a cache) will not be
- * de/serialized
- *
  * @author ZZZank
  */
-public interface TypeInfoFactory extends Serializable {
+public interface TypeInfoFactory {
 
     /**
      * TypeInfoFactory used by scope independent actions.
@@ -380,9 +376,6 @@ public interface TypeInfoFactory extends Serializable {
 
     private static TypeInfoFactory createGlobalFactory() {
         return new LegacyCacheFactory.WeakReference() {
-            private Object readResolve() {
-                return GLOBAL;
-            }
         };
     }
 }

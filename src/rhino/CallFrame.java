@@ -7,8 +7,6 @@ import java.util.Arrays;
 
 /** Class to hold data corresponding to one interpreted call stack frame. */
 final class CallFrame extends ACallFrame<CallFrame, InterpreterData<?>> implements Cloneable {
-    private static final long serialVersionUID = -2843792508994958978L;
-
     boolean isContinuationsTopFrame;
 
     // The values that change during interpretation

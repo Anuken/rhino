@@ -1,6 +1,5 @@
 package rhino;
 
-import java.io.Serial;
 import rhino.ScriptableObject.DescriptorInfo;
 
 /**
@@ -9,8 +8,6 @@ import rhino.ScriptableObject.DescriptorInfo;
  * and mutated by functions is visible via the slot's property descriptor.
  */
 public class AccessorSlot extends StandardSlot<Scriptable> {
-    @Serial private static final long serialVersionUID = 1677840254177335827L;
-
     AccessorSlot(Object name, int index) {
         super(name, index, 0);
     }
@@ -32,8 +29,8 @@ public class AccessorSlot extends StandardSlot<Scriptable> {
 
     // The Getter and Setter may each be of a different type (JavaScript function, Java
     // function, or neither). So, use an abstraction to distinguish them.
-    transient Getter getter;
-    transient Setter setter;
+    Getter getter;
+    Setter setter;
 
     @Override
     boolean isValueSlot() {

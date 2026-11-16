@@ -6,12 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,18 +16,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Igor Bukanov
  * @since Rhino 1.5 Release 5
  */
-public class ClassCache implements Serializable {
+public class ClassCache {
 
-    @Serial private static final long serialVersionUID = -8866246036237312215L;
     static final Object AKEY = "ClassCache";
     private volatile boolean cachingIsEnabled = true;
-    private transient volatile Map<Object, JavaMembers> classTable;
+    private volatile Map<Object, JavaMembers> classTable;
 
     /** The members found by the last lookup without a security context. */
-    transient volatile JavaMembers lastMembers;
+    volatile JavaMembers lastMembers;
 
-    private transient volatile Map<JavaAdapter.JavaAdapterSignature, Class<?>> classAdapterCache;
-    private transient volatile Map<Class<?>, Object> interfaceAdapterCache;
+    private volatile Map<JavaAdapter.JavaAdapterSignature, Class<?>> classAdapterCache;
+    private volatile Map<Class<?>, Object> interfaceAdapterCache;
     private int generatedClassSerial;
     private VarScope associatedScope;
 
@@ -224,22 +217,5 @@ public class ClassCache implements Serializable {
 
     VarScope getAssociatedScope() {
         return associatedScope;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

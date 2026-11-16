@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.alias;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -32,8 +31,6 @@ import java.util.TimeZone;
  *     <a href="https://dxr.mozilla.org/mozilla-central/source/js/src/jsdate.cpp">jsdate.cpp</a>
  */
 final class NativeDate extends ScriptableObject {
-    @Serial private static final long serialVersionUID = -8307438915861678966L;
-
     private static final String CLASS_NAME = "Date";
     private static final String js_NaN_date_str = "Invalid Date";
     private static final ClassDescriptor DESCRIPTOR;

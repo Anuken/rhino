@@ -11,12 +11,10 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.util.List;
 import java.util.Map;
 
 public class NativeMap extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 1171922614280016891L;
     private static final String CLASS_NAME = "Map";
     static final String ITERATOR_TAG = "Map Iterator";
 

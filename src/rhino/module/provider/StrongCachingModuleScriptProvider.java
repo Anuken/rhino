@@ -4,7 +4,6 @@
 
 package rhino.module.provider;
 
-import java.io.Serial;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import rhino.module.ModuleScript;
@@ -20,7 +19,6 @@ import rhino.module.ModuleScript;
  */
 public class StrongCachingModuleScriptProvider extends CachingModuleScriptProviderBase {
 
-    @Serial private static final long serialVersionUID = -8435427841788350515L;
     private final Map<String, CachedModuleScript> modules =
             new ConcurrentHashMap<>(16, .75f, getConcurrencyLevel());
 

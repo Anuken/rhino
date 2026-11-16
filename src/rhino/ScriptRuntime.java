@@ -32,12 +32,6 @@ import rhino.typedarrays.NativeUint8Array;
 import rhino.typedarrays.NativeUint8ClampedArray;
 import rhino.v8dtoa.DoubleConversion;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -88,8 +82,6 @@ public class ScriptRuntime {
     }
 
     static final class ThrowTypeError extends BaseFunction {
-        private static final long serialVersionUID = -5891740962154902286L;
-
         ThrowTypeError(VarScope scope) {
             super(scope);
             setPrototype(ScriptableObject.getFunctionPrototype(scope));
@@ -2649,8 +2641,7 @@ public class ScriptRuntime {
      * that the js/ref for..in can avoid maintaining a hash table and instead perform lookups to see
      * if a given property has already been enumerated.
      */
-    private static class IdEnumeration implements Serializable {
-        private static final long serialVersionUID = -8685189816346084720L;
+    private static class IdEnumeration {
         Scriptable obj;
         Object[] ids;
         HashSet<Object> used;
@@ -2663,24 +2654,6 @@ public class ScriptRuntime {
         boolean enumNumbers;
 
         Scriptable iterator;
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
-        }
     }
 
     public static Scriptable toIterator(Context cx, Scriptable obj, boolean keyOnly) {
@@ -6316,9 +6289,7 @@ public class ScriptRuntime {
      * appropriate "this" object, and the name of the property so that a proper exception can be
      * thrown if the result is not a function.
      */
-    public static final class LookupResult implements Serializable {
-        private static final long serialVersionUID = 8491017987326545970L;
-
+    public static final class LookupResult {
         private final Object result;
         private final Object thisObj;
         private final Object name;
@@ -6358,24 +6329,6 @@ public class ScriptRuntime {
          */
         public Object call(Context cx, VarScope scope, Object[] args) {
             return getCallable().call(cx, scope, thisObj, args);
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 

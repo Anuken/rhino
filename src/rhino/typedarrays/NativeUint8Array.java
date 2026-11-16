@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.Serial;
 import java.nio.Buffer;
 import rhino.ClassDescriptor;
 import rhino.Context;
@@ -30,8 +29,6 @@ import rhino.VarScope;
  * It also implements List&lt;Integer&gt; for direct manipulation in Java.
  */
 public class NativeUint8Array extends NativeTypedArrayView<Integer> {
-    @Serial private static final long serialVersionUID = 4309679036296927829L;
-
     private static final String CLASS_NAME = "Uint8Array";
 
     private static final ClassDescriptor DESCRIPTOR;

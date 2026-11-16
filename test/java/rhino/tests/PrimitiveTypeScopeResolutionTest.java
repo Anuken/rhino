@@ -78,7 +78,6 @@ public class PrimitiveTypeScopeResolutionTest {
 
     /** Simple utility allowing to better see the concerned scope while debugging */
     static class MySimpleScriptableObject extends ScriptableObject {
-        private static final long serialVersionUID = 1L;
         private String label_;
 
         MySimpleScriptableObject(String label) {
@@ -97,8 +96,6 @@ public class PrimitiveTypeScopeResolutionTest {
     }
 
     public static class MyObject extends ScriptableObject {
-        private static final long serialVersionUID = 1L;
-
         @Override
         public String getClassName() {
             return "MyObject";

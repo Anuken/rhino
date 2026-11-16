@@ -6,9 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * This class implements the Undefined value in JavaScript.
  *
@@ -19,9 +16,7 @@ import java.io.Serializable;
  * <p>Java code that needs to test whether something is undefined <b>must</b> use the "isUndefined"
  * method because of the multiple internal representations.
  */
-public class Undefined implements Serializable {
-    @Serial private static final long serialVersionUID = 9195680630202616767L;
-
+public class Undefined {
     /**
      * This is the standard value for "undefined" in Rhino. Java code that needs to represent
      * "undefined" should use this object (rather than a new instance of this class).
@@ -31,10 +26,6 @@ public class Undefined implements Serializable {
     private static final int instanceHash = System.identityHashCode(instance);
 
     private Undefined() {}
-
-    public Object readResolve() {
-        return instance;
-    }
 
     @Override
     public boolean equals(Object obj) {
@@ -55,7 +46,7 @@ public class Undefined implements Serializable {
      */
     public static final Scriptable SCRIPTABLE_UNDEFINED = new ScriptableUndefined();
 
-    private static class ScriptableUndefined implements Scriptable, Serializable {
+    private static class ScriptableUndefined implements Scriptable {
         private ScriptableUndefined() {}
 
         @Override

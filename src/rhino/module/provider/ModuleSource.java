@@ -4,15 +4,8 @@
 
 package rhino.module.provider;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Reader;
-import java.io.Serial;
-import java.io.Serializable;
 import java.net.URI;
-import rhino.Context;
 
 /**
  * Represents the source text of the module as a tuple of a reader, a URI, a security domain, and a
@@ -30,14 +23,12 @@ import rhino.Context;
  * frequent lookup of the resource), and to short-circuit the validation in case the validator
  * indicates the cached representation has not yet expired. All these are plainly recommendations;
  * the validators are considered opaque and should only make sure to implement {@link
- * Object#equals(Object)} as caches themselves can rely on it to compare them semantically. Also, it
- * is advisable to have them be serializable.
+ * Object#equals(Object)} as caches themselves can rely on it to compare them semantically.
  *
  * @author Attila Szegedi
  * @version $Id: ModuleSource.java,v 1.3 2011/04/07 20:26:12 hannes%helma.at Exp $
  */
-public class ModuleSource implements Serializable {
-    @Serial private static final long serialVersionUID = 7183957145984428890L;
+public class ModuleSource {
     private final Reader reader;
     private final URI uri;
     private final URI base;
@@ -94,22 +85,5 @@ public class ModuleSource implements Serializable {
      */
     public Object getValidator() {
         return validator;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

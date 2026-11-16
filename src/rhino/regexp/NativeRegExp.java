@@ -9,12 +9,6 @@ package rhino.regexp;
 import static rhino.ClassDescriptor.Destination.CTOR;
 import static rhino.ClassDescriptor.Destination.PROTO;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,8 +51,6 @@ import rhino.config.RhinoConfig;
  * @author Norris Boyd
  */
 public class NativeRegExp extends ScriptableObject {
-    @Serial private static final long serialVersionUID = 4965263491464903264L;
-
     private static final Object REGEXP_TAG = new Object();
 
     public static final int JSREG_GLOB = 0x1; // 'g' flag: global
@@ -5065,9 +5057,7 @@ public class NativeRegExp extends ScriptableObject {
     private int lastIndexAttr = DONTENUM | PERMANENT;
 } // class NativeRegExp
 
-class RECompiled implements Serializable {
-    @Serial private static final long serialVersionUID = -6144956577595844213L;
-
+class RECompiled {
     final char[] source; /* locked source string, sans // */
     int parenCount; /* number of parenthesized submatches */
     Map<String, List<Integer>>
@@ -5081,23 +5071,6 @@ class RECompiled implements Serializable {
 
     RECompiled(String str) {
         this.source = str.toCharArray();
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }
 
@@ -5272,8 +5245,7 @@ class REGlobalData {
  * use of the class converts the source representation into a bitmap.
  *
  */
-final class RECharSet implements Serializable {
-    @Serial private static final long serialVersionUID = 7931787979395898394L;
+final class RECharSet {
     ArrayList<Integer> unicodeProps = new ArrayList<Integer>();
     ArrayList<Integer> negUnicodeProps = new ArrayList<Integer>();
 
@@ -5285,23 +5257,6 @@ final class RECharSet implements Serializable {
     final int length;
     final NativeRegExp.ClassContents classContents;
 
-    transient volatile boolean converted;
-    transient volatile byte[] bits;
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
-    }
+    volatile boolean converted;
+    volatile byte[] bits;
 }

@@ -330,7 +330,6 @@ final class ClassRuntime {
     }
 
     private static final class SuperRef extends Ref {
-        private static final long serialVersionUID = 1L;
         private final Object thisValue;
         private final Object home;
         private final Object key;
@@ -453,7 +452,6 @@ final class ClassRuntime {
     }
 
     private static final class PrivateRef extends Ref {
-        private static final long serialVersionUID = 1L;
         private final Object obj;
         private final PrivateName name;
 

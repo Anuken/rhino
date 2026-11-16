@@ -6,7 +6,6 @@
 
 package rhino;
 
-import java.io.Serial;
 import java.util.EnumSet;
 import rhino.debug.DebuggableScript;
 
@@ -16,8 +15,6 @@ import rhino.debug.DebuggableScript;
  * @author Norris Boyd
  */
 public abstract class NativeFunction extends BaseFunction {
-
-    @Serial private static final long serialVersionUID = 8713897114082216401L;
 
     private boolean isShorthand;
 

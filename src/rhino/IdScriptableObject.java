@@ -6,13 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * Base class for native object implementation that uses IdFunctionObject to export its methods to
  * script via &lt;class-name&gt;.prototype object.
@@ -27,12 +20,9 @@ import java.io.Serializable;
  * scopeInit or fillConstructorProperties methods.
  */
 public abstract class IdScriptableObject extends ScriptableObject implements IdFunctionCall {
-    @Serial private static final long serialVersionUID = -3744239272168621609L;
-    private transient PrototypeValues prototypeValues;
+    private PrototypeValues prototypeValues;
 
-    private static final class PrototypeValues implements Serializable {
-        @Serial private static final long serialVersionUID = 3038645279153854371L;
-
+    private static final class PrototypeValues {
         private static final int NAME_SLOT = 1;
         private static final int SLOT_SPAN = 2;
 
@@ -310,24 +300,6 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
                 }
             }
             return value;
-        }
-
-        @Serial
-        private void readObject(ObjectInputStream stream)
-                throws IOException, ClassNotFoundException {
-            Context.checkDeserializationEnabled();
-            stream.defaultReadObject();
-        }
-
-        @Serial
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            Context.checkSerializationEnabled();
-            stream.defaultWriteObject();
-        }
-
-        @Serial
-        private void readObjectNoData() throws InvalidObjectException {
-            throw new InvalidObjectException("Missing serialized Rhino object data");
         }
     }
 
@@ -1020,26 +992,5 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
             }
         }
         return null;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-        int maxPrototypeId = stream.readInt();
-        if (maxPrototypeId != 0) {
-            activatePrototypeMap(maxPrototypeId);
-        }
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-        int maxPrototypeId = 0;
-        if (prototypeValues != null) {
-            maxPrototypeId = prototypeValues.getMaxId();
-        }
-        stream.writeInt(maxPrototypeId);
     }
 }

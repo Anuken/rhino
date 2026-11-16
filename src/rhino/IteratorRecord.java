@@ -4,13 +4,8 @@
 
 package rhino;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /** An Iterator Record, with the abstract operations that step and close it. */
-final class IteratorRecord implements Serializable {
-    @Serial private static final long serialVersionUID = 6084512407338622437L;
-
+final class IteratorRecord {
     /** Returned by {@link #stepValue} and {@link #step} once the iterator is done. */
     static final Object DONE = new Object();
 

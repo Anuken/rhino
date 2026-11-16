@@ -26,7 +26,6 @@ import rhino.testutils.Utils;
 public class TypeOfTest {
 
     public static class Foo extends ScriptableObject {
-        private static final long serialVersionUID = -8771045033217033529L;
         private final String typeOfValue_;
 
         public Foo(final String _typeOfValue) {

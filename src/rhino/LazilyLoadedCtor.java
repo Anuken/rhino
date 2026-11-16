@@ -6,12 +6,6 @@
 
 package rhino;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -21,8 +15,7 @@ import java.security.PrivilegedAction;
  *
  * <p>This improves startup time and average memory usage.
  */
-public final class LazilyLoadedCtor<T extends PropHolder<T>> implements Serializable {
-    @Serial private static final long serialVersionUID = -1531091529063000542L;
+public final class LazilyLoadedCtor<T extends PropHolder<T>> {
     private static final int STATE_BEFORE_INIT = 0;
     private static final int STATE_INITIALIZING = 1;
     private static final int STATE_WITH_VALUE = 2;
@@ -176,22 +169,5 @@ public final class LazilyLoadedCtor<T extends PropHolder<T>> implements Serializ
     @SuppressWarnings("unchecked")
     private static Class<? extends Scriptable> cast(Class<?> cl) {
         return (Class<? extends Scriptable>) cl;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

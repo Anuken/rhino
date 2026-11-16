@@ -4,14 +4,7 @@
 
 package rhino.module.provider;
 
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.StringTokenizer;
-import rhino.Context;
 
 /**
  * Breaks a "contentType; charset=encoding" MIME type into content type and encoding parts.
@@ -19,8 +12,7 @@ import rhino.Context;
  * @author Attila Szegedi
  * @version $Id: ParsedContentType.java,v 1.3 2011/04/07 20:26:12 hannes%helma.at Exp $
  */
-public final class ParsedContentType implements Serializable {
-    @Serial private static final long serialVersionUID = 2660291075921848672L;
+public final class ParsedContentType {
     private final String contentType;
     private final String encoding;
 
@@ -76,22 +68,5 @@ public final class ParsedContentType implements Serializable {
      */
     public String getEncoding() {
         return encoding;
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
-        Context.checkDeserializationEnabled();
-        stream.defaultReadObject();
-    }
-
-    @Serial
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        Context.checkSerializationEnabled();
-        stream.defaultWriteObject();
-    }
-
-    @Serial
-    private void readObjectNoData() throws InvalidObjectException {
-        throw new InvalidObjectException("Missing serialized Rhino object data");
     }
 }

@@ -4,7 +4,6 @@
 
 package rhino.module;
 
-import java.io.Serial;
 import java.net.URI;
 import rhino.DeclarationScope;
 import rhino.ScopeObject;
@@ -16,7 +15,6 @@ import rhino.VarScope;
  * URIs in order to resolve relative module IDs and check sandbox constraints.
  */
 public class ModuleScope extends DeclarationScope {
-    @Serial private static final long serialVersionUID = -877901398709024429L;
     private final URI uri;
     private final URI base;
 
