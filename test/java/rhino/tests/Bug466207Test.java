@@ -48,8 +48,7 @@ public class Bug466207Test {
                                     scope,
                                     "(['a', true, new java.util.HashMap(), 42, 'a']);",
                                     "testsrc",
-                                    1,
-                                    null);
+                                    1);
         }
     }
 
@@ -189,7 +188,7 @@ public class Bug466207Test {
         try (Context context = Context.enter()) {
             TopLevel scope = context.initStandardObjects();
             scope.put("list", scope, list);
-            context.evaluateString(scope, "list.pop()", "testsrc", 1, null);
+            context.evaluateString(scope, "list.pop()", "testsrc", 1);
         }
     }
 
@@ -199,8 +198,7 @@ public class Bug466207Test {
             TopLevel scope = context.initStandardObjects();
             NativeArray array =
                     (NativeArray)
-                            context.evaluateString(
-                                    scope, "new Array(4294967295)", "testsrc", 1, null);
+                            context.evaluateString(scope, "new Array(4294967295)", "testsrc", 1);
             assertEquals(4294967295L, array.getLength());
             try {
                 array.size();

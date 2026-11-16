@@ -39,7 +39,7 @@ public class ErrorReporterTest {
         cx.setErrorReporter(errorCollector);
 
         try {
-            cx.evaluateString(scope, "0xGGGG", "", 1, null);
+            cx.evaluateString(scope, "0xGGGG", "", 1);
         } catch (EvaluatorException e) {
         }
 
@@ -59,11 +59,7 @@ public class ErrorReporterTest {
 
         try {
             cx.evaluateString(
-                    scope,
-                    "var a = 'a';\nvar b = true;\nvar c = 0xGGGG;\n var d = 123;",
-                    "",
-                    1,
-                    null);
+                    scope, "var a = 'a';\nvar b = true;\nvar c = 0xGGGG;\n var d = 123;", "", 1);
         } catch (EvaluatorException e) {
         }
 
@@ -88,7 +84,7 @@ public class ErrorReporterTest {
 
         try {
             // The test for errors in re-parse with IRFactory after parsing with Parser.
-            cx.evaluateString(scope, "var a = 123;\n1=1", "", 1, null);
+            cx.evaluateString(scope, "var a = 123;\n1=1", "", 1);
         } catch (EvaluatorException e) {
         }
 
@@ -106,7 +102,7 @@ public class ErrorReporterTest {
         ErrorCollector errorCollector = new ErrorCollector();
         cx.setErrorReporter(errorCollector);
 
-        cx.evaluateString(scope, "var a = 123;\n\nfor (let [x, x] in {}) {}", "", 1, null);
+        cx.evaluateString(scope, "var a = 123;\n\nfor (let [x, x] in {}) {}", "", 1);
 
         assertEquals(1, errorCollector.errors.size());
 

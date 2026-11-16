@@ -20,7 +20,7 @@ public class Issue1206Test {
         try (Context cx = Context.enter()) {
             TopLevel scope = cx.initStandardObjects(null);
             scope.put("var1", scope, "hello");
-            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1, null);
+            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1);
             assertEquals("hello world", result);
         }
     }
@@ -30,7 +30,7 @@ public class Issue1206Test {
         try (Context cx = Context.enter()) {
             TopLevel scope = cx.initStandardObjects(null);
             scope.put("var1", scope, new StringBuffer("hello"));
-            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1, null);
+            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1);
             assertEquals("hello world", result);
         }
     }
@@ -40,7 +40,7 @@ public class Issue1206Test {
         try (Context cx = Context.enter()) {
             TopLevel scope = cx.initStandardObjects(null);
             scope.put("var1", scope, new StringBuilder("hello"));
-            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1, null);
+            Object result = cx.evaluateString(scope, "var1 = var1 + ' world'", "test", 1);
             assertEquals("hello world", result);
         }
     }

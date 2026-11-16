@@ -78,7 +78,7 @@ public class WrapFactoryTest {
                             + "var getResult = typeof object.get();";
 
             // execute script
-            cx.evaluateString(scope, script, "", 1, null);
+            cx.evaluateString(scope, script, "", 1);
 
             // evaluate result
             assertEquals(result, ScriptableObject.getProperty(scope, "result"));

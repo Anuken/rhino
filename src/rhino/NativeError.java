@@ -224,6 +224,11 @@ final class NativeError extends ScriptableObject {
         stackProvider = re;
     }
 
+    /** The exception providing the stack property unless it was set, or null. */
+    RhinoException getStackProvider() {
+        return stackProvider;
+    }
+
     public Object getStackDelegated() {
         if (stack != null) {
             return stack;

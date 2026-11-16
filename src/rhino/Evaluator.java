@@ -40,23 +40,18 @@ public interface Evaluator {
      * @param cx Current context
      * @param scope scope of the function
      * @param compiled the result returned by {@link #compileFunction}
-     * @param staticSecurityDomain security domain
      * @return Function object that can be called
      */
     Function createFunctionObject(
-            Context cx,
-            VarScope scope,
-            CompilationResult<JSFunction> compiled,
-            Object staticSecurityDomain);
+            Context cx, VarScope scope, CompilationResult<JSFunction> compiled);
 
     /**
      * Create a script object.
      *
      * @param compiled the result returned by {@link #compileScript}
-     * @param staticSecurityDomain security domain
      * @return Script object that can be evaluated
      */
-    Script createScriptObject(CompilationResult<JSScript> compiled, Object staticSecurityDomain);
+    Script createScriptObject(CompilationResult<JSScript> compiled);
 
     /**
      * Capture stack information from the given exception.

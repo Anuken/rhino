@@ -66,17 +66,20 @@ public final class Intrinsics {
             ASYNC_RETURN = 35, // (iteration) -> what to await for return()
             ASYNC_RETURN_CHECK = 36, // (awaited return result) -> undefined
             ASYNC_RETURN_QUIETLY = 37, // (iteration) -> what to await, closing on an exception
-            ASYNC_RETURN_NO_AWAIT = 38, // (iteration) -> undefined, closing on return
-            ASYNC_CAUGHT = 39, // (iteration, exception) -> undefined
-            ASYNC_THREW = 40, // (iteration) -> whether the loop threw
-            ASYNC_EXCEPTION = 41, // (iteration) -> what the loop threw
-            COUNT = 42;
+            YIELD_STAR_REQUEST = 38, // (value) -> what an async generator yields for yield*
+            DSTR_ABRUPT = 39, // (iterator, exception) -> undefined, closing it on an exception
+
+            // Temporal dead zone: see UniqueTag.UNINITIALIZED
+            UNINITIALIZED = 40, // () -> the value of a binding before its declaration runs
+            CHECK_INIT = 41, // (value, name) -> value, throwing if it is uninitialized
+            CHECK_INIT_ASSIGN = 42, // (value, current, name) -> value, throwing if current is
+            COUNT = 43;
 
     /** Flags of the spread calls: whether the call or the object access is optional chained. */
     public static final int OPTIONAL_CALLEE = 1, OPTIONAL_OBJECT = 2;
 
     private static final byte[] ARG_COUNTS = {
-        4, 4, 4, 4, 2, 1, 1, 4, 1, 2, 3, 4, 4, 3, 2, 3, 3, 2, 2, 2, 2, 4, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1
+        4, 4, 4, 4, 2, 1, 1, 4, 1, 2, 3, 4, 4, 3, 2, 3, 3, 2, 2, 2, 2, 4, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 0, 2, 3
     };
 
     private Intrinsics() {}
@@ -199,6 +202,16 @@ public final class Intrinsics {
             case DSTR_CLOSE:
                 ((DestructuringIterator) a0).close();
                 return Undefined.instance;
+            case UNINITIALIZED:
+                return UniqueTag.UNINITIALIZED;
+            case CHECK_INIT:
+                return ScriptRuntime.checkInitialized(a0, (String) a1);
+            case CHECK_INIT_ASSIGN:
+                ScriptRuntime.checkInitialized(a1, (String) a2);
+                return a0;
+            case DSTR_ABRUPT:
+                ((DestructuringIterator) a0).closeAbruptly(a1);
+                return Undefined.instance;
             case REQUIRE_OBJECT:
                 if (isNullish(a0)) {
                     throw ScriptRuntime.typeErrorById(
@@ -214,7 +227,7 @@ public final class Intrinsics {
             case ASYNC_VALUE:
                 return ((AsyncIteration) a0).value();
             case ASYNC_OPEN:
-                return ((AsyncIteration) a0).isOpen();
+                return AsyncIteration.isOpen(a0);
             case ASYNC_RETURN:
                 return ((AsyncIteration) a0).callReturn(cx, scope);
             case ASYNC_RETURN_CHECK:
@@ -222,18 +235,10 @@ public final class Intrinsics {
                 return Undefined.instance;
             case ASYNC_RETURN_QUIETLY:
                 return ((AsyncIteration) a0).callReturnQuietly(cx, scope);
-            case ASYNC_RETURN_NO_AWAIT:
-                ((AsyncIteration) a0).callReturnWithoutAwaiting(cx, scope);
-                return Undefined.instance;
-            case ASYNC_CAUGHT:
-                ((AsyncIteration) a0).caught(a1);
-                return Undefined.instance;
-            case ASYNC_THREW:
-                return ((AsyncIteration) a0).threw();
-            case ASYNC_EXCEPTION:
-                return ((AsyncIteration) a0).exception();
             case AWAIT_REQUEST:
                 return new NativeAsyncGenerator.AwaitRequest(a0);
+            case YIELD_STAR_REQUEST:
+                return new NativeAsyncGenerator.YieldStarRequest(a0);
             case INIT_INSTANCE:
                 ClassRuntime.initializeInstance(cx, scope, (Scriptable) a1, (JSFunction) a0);
                 return a1;

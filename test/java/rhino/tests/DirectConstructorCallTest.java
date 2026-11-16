@@ -27,7 +27,7 @@ public class DirectConstructorCallTest {
                     TopLevel scope = cx.initStandardObjects();
                     Function f =
                             cx.compileFunction(
-                                    scope, "function f(a) { this.x = a; }", "test.js", 1, null);
+                                    scope, "function f(a) { this.x = a; }", "test.js", 1);
 
                     // This used to fail with IllegalStateException: FAILED ASSERTION
                     Scriptable obj = f.construct(cx, scope, new Object[] {42});

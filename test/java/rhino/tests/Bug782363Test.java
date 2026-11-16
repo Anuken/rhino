@@ -150,7 +150,7 @@ public class Bug782363Test {
         sb.append("}; F()");
 
         TopLevel scope = cx.initStandardObjects();
-        Object ret = cx.evaluateString(scope, sb.toString(), "<eval>", 1, null);
+        Object ret = cx.evaluateString(scope, sb.toString(), "<eval>", 1);
         assertTrue(ret instanceof Number);
         assertEquals(expected, ((Number) ret).doubleValue(), 0);
     }

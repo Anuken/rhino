@@ -105,11 +105,7 @@ public class IterableTest {
 
                     try {
                         cx.evaluateString(
-                                scope,
-                                "(function(){for(x of foo) { return x; }})();",
-                                "<eval>",
-                                0,
-                                null);
+                                scope, "(function(){for(x of foo) { return x; }})();", "<eval>", 0);
 
                     } catch (Throwable t) {
                         assertEquals(EcmaError.class, t.getClass());
@@ -139,11 +135,7 @@ public class IterableTest {
 
                     try {
                         cx.evaluateString(
-                                scope,
-                                "(function(){for(x of foo) { return x; }})();",
-                                "<eval>",
-                                0,
-                                null);
+                                scope, "(function(){for(x of foo) { return x; }})();", "<eval>", 0);
                     } catch (Throwable t) {
                         assertEquals(EcmaError.class, t.getClass());
                         assertEquals("TypeError: [object Object] is not iterable", t.getMessage());
@@ -173,8 +165,7 @@ public class IterableTest {
                                     scope,
                                     "foo[Symbol.iterator] === Array.prototype[Symbol.iterator]",
                                     "<eval>",
-                                    0,
-                                    null));
+                                    0));
 
                     assertEquals(
                             123,
@@ -182,8 +173,7 @@ public class IterableTest {
                                     scope,
                                     "(function(){for(x of foo) { return x; }})();",
                                     "<eval>",
-                                    0,
-                                    null));
+                                    0));
 
                     return null;
                 });

@@ -150,7 +150,7 @@ public class ErrorHandlingTest {
                 cx -> {
                     try {
                         TopLevel scope = cx.initStandardObjects();
-                        cx.evaluateString(scope, script, "myScript.js", 1, null);
+                        cx.evaluateString(scope, script, "myScript.js", 1);
                         Assertions.fail("No error was thrown");
                     } catch (final Throwable t) {
                         exception.accept(t);

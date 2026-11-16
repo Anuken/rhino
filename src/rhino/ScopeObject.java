@@ -302,8 +302,12 @@ public class ScopeObject extends SlotMapOwner<VarScope> implements VarScope, Ser
 
     @Override
     public void defineConst(Context cx, String name, VarScope start) {
-        if (putConstImpl(
-                cx, name, 0, start, Undefined.instance, ScriptableObject.UNINITIALIZED_CONST))
+        // An ES6 const reads as uninitialized until its declaration runs
+        Object value =
+                cx.getLanguageVersion() >= Context.VERSION_ES6
+                        ? UniqueTag.UNINITIALIZED
+                        : Undefined.instance;
+        if (putConstImpl(cx, name, 0, start, value, ScriptableObject.UNINITIALIZED_CONST))
             return;
 
         if (start == this) throw Kit.codeBug();

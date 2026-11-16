@@ -1218,6 +1218,15 @@ class BodyCodegen {
                     // Intrinsics.invoke(a0, a1, a2, a3, id, cx, scope), missing arguments null.
                     // The id goes last, as a generator may save the stack while evaluating args.
                     int id = node.getExistingIntProp(Node.INTRINSIC_PROP);
+                    if (id == Intrinsics.CHECK_INIT) {
+                        // A temporal dead zone check, called directly as it is a hot one
+                        generateExpression(child, node);
+                        generateExpression(child.getNext(), node);
+                        addScriptRuntimeInvoke(
+                                "checkInitialized",
+                                "(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;");
+                        break;
+                    }
                     int argc = 0;
                     for (; child != null; child = child.getNext()) {
                         generateExpression(child, node);
@@ -1279,6 +1288,41 @@ class BodyCodegen {
                                     + ")Lrhino/Scriptable;");
                 }
                 break;
+
+            case Token.ITERATOR_GUARD:
+                {
+                    int guardStart = cfw.acquireLabel();
+                    int guardEnd = cfw.acquireLabel();
+                    int after = cfw.acquireLabel();
+                    cfw.markLabel(guardStart);
+                    generateExpression(child, node);
+                    int stack = cfw.getStackTop();
+                    cfw.markLabel(guardEnd);
+                    cfw.add(ByteCode.GOTO, after);
+                    // exception -> exception, iterator, exception
+                    int handler = cfw.acquireLabel();
+                    cfw.markHandler(handler);
+                    cfw.add(ByteCode.DUP);
+                    generateExpression(child.getNext(), node);
+                    cfw.add(ByteCode.SWAP);
+                    cfw.add(ByteCode.ACONST_NULL);
+                    cfw.add(ByteCode.ACONST_NULL);
+                    cfw.addPush(Intrinsics.DSTR_ABRUPT);
+                    cfw.addALoad(contextLocal);
+                    cfw.addALoad(variableObjectLocal);
+                    cfw.addInvoke(
+                            ByteCode.INVOKESTATIC,
+                            "rhino/Intrinsics",
+                            "invoke",
+                            "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;"
+                                    + "Ljava/lang/Object;ILrhino/Context;Lrhino/VarScope;)"
+                                    + "Ljava/lang/Object;");
+                    cfw.add(ByteCode.POP);
+                    cfw.add(ByteCode.ATHROW);
+                    cfw.addExceptionHandler(guardStart, guardEnd, handler, null);
+                    cfw.markLabel(after, stack);
+                    break;
+                }
 
             case Token.COMMA:
                 {
@@ -1719,102 +1763,6 @@ class BodyCodegen {
                     }
                 }
                 break;
-            case Token.REF_MEMBER:
-            case Token.REF_NS_MEMBER:
-            case Token.REF_NAME:
-            case Token.REF_NS_NAME:
-                {
-                    int memberTypeFlags = node.getIntProp(Node.MEMBER_TYPE_PROP, 0);
-                    // generate possible target, possible namespace and member
-                    do {
-                        generateExpression(child, node);
-                        child = child.getNext();
-                    } while (child != null);
-                    cfw.addALoad(contextLocal);
-                    String methodName, signature;
-                    switch (type) {
-                        case Token.REF_MEMBER:
-                            methodName = "memberRef";
-                            signature =
-                                    "(Ljava/lang/Object;"
-                                            + "Ljava/lang/Object;"
-                                            + "Lrhino/Context;"
-                                            + "I"
-                                            + ")Lrhino/Ref;";
-                            break;
-                        case Token.REF_NS_MEMBER:
-                            methodName = "memberRef";
-                            signature =
-                                    "(Ljava/lang/Object;"
-                                            + "Ljava/lang/Object;"
-                                            + "Ljava/lang/Object;"
-                                            + "Lrhino/Context;"
-                                            + "I"
-                                            + ")Lrhino/Ref;";
-                            break;
-                        case Token.REF_NAME:
-                            methodName = "nameRef";
-                            signature =
-                                    "(Ljava/lang/Object;"
-                                            + "Lrhino/Context;"
-                                            + "Lrhino/VarScope;"
-                                            + "I"
-                                            + ")Lrhino/Ref;";
-                            cfw.addALoad(variableObjectLocal);
-                            break;
-                        case Token.REF_NS_NAME:
-                            methodName = "nameRef";
-                            signature =
-                                    "(Ljava/lang/Object;"
-                                            + "Ljava/lang/Object;"
-                                            + "Lrhino/Context;"
-                                            + "Lrhino/VarScope;"
-                                            + "I"
-                                            + ")Lrhino/Ref;";
-                            cfw.addALoad(variableObjectLocal);
-                            break;
-                        default:
-                            throw Kit.codeBug();
-                    }
-                    cfw.addPush(memberTypeFlags);
-                    addScriptRuntimeInvoke(methodName, signature);
-                }
-                break;
-
-            case Token.DOTQUERY:
-                visitDotQuery(node, child);
-                break;
-
-            case Token.ESCXMLATTR:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke(
-                        "escapeAttributeValue",
-                        "(Ljava/lang/Object;"
-                                + "Lrhino/Context;"
-                                + ")Ljava/lang/String;");
-                break;
-
-            case Token.ESCXMLTEXT:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke(
-                        "escapeTextValue",
-                        "(Ljava/lang/Object;"
-                                + "Lrhino/Context;"
-                                + ")Ljava/lang/String;");
-                break;
-
-            case Token.DEFAULTNAMESPACE:
-                generateExpression(child, node);
-                cfw.addALoad(contextLocal);
-                addScriptRuntimeInvoke(
-                        "setDefaultNamespace",
-                        "(Ljava/lang/Object;"
-                                + "Lrhino/Context;"
-                                + ")Ljava/lang/Object;");
-                break;
-
             case Token.YIELD:
             case Token.YIELD_STAR:
                 generateYieldPoint(node, true);
@@ -2463,6 +2411,11 @@ class BodyCodegen {
                     "([I)V");
         }
 
+        if (isGenerator) {
+            visitGeneratorArrayLiteralElements(node, child, sourcePositions);
+            child = null;
+        }
+
         // Process each element
         int childIdx = 0;
         while (child != null) {
@@ -2535,6 +2488,52 @@ class BodyCodegen {
                         + ")Lrhino/Scriptable;");
     }
 
+    /**
+     * Stores the elements of an array literal with spread into the NewLiteralStorage on the stack.
+     * An element may yield, which saves the stack as objects, so the storage is kept in a local.
+     */
+    private void visitGeneratorArrayLiteralElements(
+            Node node, Node child, int[] sourcePositions) {
+        short storage = getNewWordLocal();
+        cfw.addAStore(storage);
+        for (int childIdx = 0; child != null; child = child.getNext(), childIdx++) {
+            if (child.getType() == Token.DOTDOTDOT) {
+                generateExpression(child.getFirstChild(), node);
+                short source = getNewWordLocal();
+                cfw.addAStore(source);
+                cfw.addALoad(storage);
+                cfw.add(ByteCode.CHECKCAST, "rhino/NewLiteralStorage");
+                cfw.addALoad(contextLocal);
+                cfw.addALoad(variableObjectLocal);
+                cfw.addALoad(source);
+                releaseWordLocal(source);
+                cfw.addLoadConstant(sourcePositions != null ? sourcePositions[childIdx] : 0);
+                cfw.addInvoke(
+                        ByteCode.INVOKEVIRTUAL,
+                        "rhino/NewLiteralStorage",
+                        "spread",
+                        "(Lrhino/Context;"
+                                + "Lrhino/VarScope;"
+                                + "Ljava/lang/Object;"
+                                + "I"
+                                + ")V");
+            } else {
+                generateExpression(child, node);
+                cfw.addALoad(storage);
+                cfw.add(ByteCode.CHECKCAST, "rhino/NewLiteralStorage");
+                cfw.add(ByteCode.SWAP);
+                cfw.addInvoke(
+                        ByteCode.INVOKEVIRTUAL,
+                        "rhino/NewLiteralStorage",
+                        "pushValue",
+                        "(Ljava/lang/Object;)V");
+            }
+        }
+        cfw.addALoad(storage);
+        cfw.add(ByteCode.CHECKCAST, "rhino/NewLiteralStorage");
+        releaseWordLocal(storage);
+    }
+
     /** load two arrays with property ids and values */
     private void addLoadProperties(Node node, Node child, Object[] properties, int count) {
         cfw.addALoad(contextLocal);
@@ -2569,13 +2568,16 @@ class BodyCodegen {
 
             for (int i = 0; i < count; ++i) {
                 if (child.getType() == Token.DOTDOTDOT) {
-                    cfw.addALoad(contextLocal); // stack: [context]
-                    cfw.addALoad(variableObjectLocal); // stack: [context, scope]
-                    generateExpression(
-                            child.getFirstChild(), node); // stack: [context, scope, sourceObj]
-                    cfw.addALoad(local); // stack: [context, scope, sourceObj, store]
+                    // The source may yield, so nothing else is on the stack yet
+                    generateExpression(child.getFirstChild(), node); // stack: [sourceObj]
+                    short source = getNewWordLocal();
+                    cfw.addAStore(source);
+                    cfw.addALoad(contextLocal);
+                    cfw.addALoad(variableObjectLocal);
+                    cfw.addALoad(local);
                     cfw.add(ByteCode.CHECKCAST, "rhino/NewLiteralStorage");
-                    cfw.add(ByteCode.SWAP); // stack: [context, scope, store, sourceObj]
+                    cfw.addALoad(source); // stack: [context, scope, store, sourceObj]
+                    releaseWordLocal(source);
                     cfw.addLoadConstant(0); // sourcePosition (unused for objects)
                     addOptRuntimeInvoke(
                             "spread",
@@ -2742,11 +2744,15 @@ class BodyCodegen {
                 "newObject",
                 "(Lrhino/VarScope;)Lrhino/Scriptable;");
         cfw.add(ByteCode.DUP);
+        int outerHomeObjectLocal = savedHomeObjectLocal;
         savedHomeObjectLocal = getNewWordLocal();
         cfw.addAStore(savedHomeObjectLocal);
         cfw.add(ByteCode.DUP);
 
         addLoadProperties(node, child, properties, count);
+        // A generator saves the live locals at each yield, so the local must not leak
+        releaseWordLocal(savedHomeObjectLocal);
+        savedHomeObjectLocal = outerHomeObjectLocal;
 
         // stack: [store]
         cfw.add(ByteCode.DUP); // stack: [store, store]
@@ -2829,7 +2835,7 @@ class BodyCodegen {
                 "callSpecial",
                 "(Lrhino/Context;"
                         + "Lrhino/Callable;"
-                        + "Lrhino/Scriptable;"
+                        + "Ljava/lang/Object;"
                         + "[Ljava/lang/Object;"
                         + "Lrhino/VarScope;"
                         + "Ljava/lang/Object;"
@@ -2839,14 +2845,16 @@ class BodyCodegen {
     }
 
     private void visitSpecialOptionalChainingCall(Node node, int specialType, Node child) {
-        generateLookupResult(child, node);
+        generateCallTarget(child, node);
         int afterLabel = cfw.acquireLabel();
         int doCallLabel = cfw.acquireLabel();
         cfw.add(ByteCode.DUP);
         addOptRuntimeInvoke("isNullOrUndefined", "(Ljava/lang/Object;)Z");
         cfw.add(ByteCode.IFEQ, doCallLabel);
 
-        // result is null, so push undefined and jump to end
+        // target is null, so push undefined and jump to end
+        cfw.add(ByteCode.POP);
+        addTakeLookupThis();
         cfw.add(ByteCode.POP);
         Codegen.pushUndefined(cfw);
         cfw.add(ByteCode.GOTO, afterLabel);
@@ -2855,8 +2863,9 @@ class BodyCodegen {
         cfw.markLabel(doCallLabel);
         cfw.addALoad(contextLocal);
         cfw.add(ByteCode.SWAP);
-        // stack: ... cx lookupResult
-        popFunctionAndThis();
+        // stack: ... cx target
+        addTakeLookupThis();
+        addToCallable();
         // stack: ... cx functionObj thisObj
 
         child = child.getNext();
@@ -2873,7 +2882,7 @@ class BodyCodegen {
                 "callSpecial",
                 "(Lrhino/Context;"
                         + "Lrhino/Callable;"
-                        + "Lrhino/Scriptable;"
+                        + "Ljava/lang/Object;"
                         + "[Ljava/lang/Object;"
                         + "Lrhino/VarScope;"
                         + "Ljava/lang/Object;"
@@ -2890,11 +2899,11 @@ class BodyCodegen {
         Node firstArgChild = child.getNext();
         Integer afterLabel = null;
 
-        // Push a LookupResult or null to the stack
-        generateLookupResult(child, node);
+        // Push the call target or null to the stack
+        generateCallTarget(child, node);
 
         if (node.getIntProp(Node.OPTIONAL_CHAINING, 0) == 1) {
-            // Generate code to check for null lookup result
+            // Generate code to check for null call target
             afterLabel = cfw.acquireLabel();
             int doCallLabel = cfw.acquireLabel();
 
@@ -2902,13 +2911,17 @@ class BodyCodegen {
             addOptRuntimeInvoke("isNullOrUndefined", "(Ljava/lang/Object;)Z");
             cfw.add(ByteCode.IFEQ, doCallLabel);
 
-            // If result is null, so return undefined and do nothing else
+            // If target is null, so return undefined and do nothing else
+            cfw.add(ByteCode.POP);
+            addTakeLookupThis();
             cfw.add(ByteCode.POP);
             Codegen.pushUndefined(cfw);
             cfw.add(ByteCode.GOTO, afterLabel);
 
             cfw.markLabel(doCallLabel);
         }
+        addTakeLookupThis();
+        // stack: ... target thisObj
 
         // We have to process the args now, and not later, because
         // that's what ECMAScript requires
@@ -2918,14 +2931,11 @@ class BodyCodegen {
         if (node.getIntProp(Node.SUPER_PROPERTY_ACCESS, 0) == 1) {
             // Extract the function but ignore the "this" that comes back
             // in favor of the one that we've been saving up for.
-            cfw.addInvoke(
-                    ByteCode.INVOKEVIRTUAL,
-                    "rhino.ScriptRuntime$LookupResult",
-                    "getCallable",
-                    "()Lrhino/Callable;");
+            cfw.add(ByteCode.POP);
+            addToCallableOnTop();
             cfw.addALoad(thisObjLocal);
         } else {
-            popFunctionAndThis();
+            addToCallable();
         }
 
         // stack: ... functionObj thisObj
@@ -2992,6 +3002,11 @@ class BodyCodegen {
         if (type == Token.NEW) {
             generateExpression(child, node);
             thisObjLocal = getNewWordLocal();
+            if (isGenerator) {
+                // Assigned after the arguments, which may yield and so save it
+                cfw.add(ByteCode.ACONST_NULL);
+                cfw.addAStore(thisObjLocal);
+            }
         } else {
             generateFunctionAndThisObj(child, node);
             thisObjLocal = getNewWordLocal();
@@ -3222,15 +3237,16 @@ class BodyCodegen {
      * stack.
      */
     private void generateFunctionAndThisObj(Node node, Node parent) {
-        generateLookupResult(node, parent);
-        popFunctionAndThis();
+        generateCallTarget(node, parent);
+        addTakeLookupThis();
+        addToCallable();
     }
 
     /**
-     * Generate code to look up a property or variable. The result is a ScriptRuntime.LookupResult
-     * object on the stack.
+     * Generate code to look up the target of a call, see ScriptRuntime.getPropCallTarget. The
+     * target is left on the stack, and its this object in the context for addTakeLookupThis.
      */
-    private void generateLookupResult(Node node, Node parent) {
+    private void generateCallTarget(Node node, Node parent) {
         // Place on stack (function object, function this) pair
         int type = node.getType();
         boolean isOptionalChainingCall = parent.getIntProp(Node.OPTIONAL_CHAINING, 0) == 1;
@@ -3258,17 +3274,15 @@ class BodyCodegen {
                         if (node.getIntProp(Node.ISNUMBER_PROP, -1) != -1) addDoubleWrap();
                         cfw.addALoad(contextLocal);
                         cfw.addALoad(variableObjectLocal);
-                        String name =
-                                isOptionalChainingCall
-                                        ? "getElemAndThisOptional"
-                                        : "getElemAndThis";
+                        cfw.addPush(isOptionalChainingCall);
                         addScriptRuntimeInvoke(
-                                name,
+                                "getElemCallTarget",
                                 "(Ljava/lang/Object;"
                                         + "Ljava/lang/Object;"
                                         + "Lrhino/Context;"
                                         + "Lrhino/VarScope;"
-                                        + ")Lrhino/ScriptRuntime$LookupResult;");
+                                        + "Z"
+                                        + ")Ljava/lang/Object;");
                     }
                     break;
                 }
@@ -3296,34 +3310,30 @@ class BodyCodegen {
                         }
                     }
                     cfw.addALoad(contextLocal);
-                    String name =
-                            isOptionalChainingCall ? "getValueAndThisOptional" : "getValueAndThis";
+                    cfw.addPush(isOptionalChainingCall);
                     addScriptRuntimeInvoke(
-                            name,
-                            "(Ljava/lang/Object;"
-                                    + "Lrhino/Context;"
-                                    + ")Lrhino/ScriptRuntime$LookupResult;");
+                            "getValueCallTarget",
+                            "(Ljava/lang/Object;Lrhino/Context;Z)Ljava/lang/Object;");
                     break;
                 }
         }
     }
 
-    /**
-     * Assume that a LookupResult is at the top of the stack, and push the callable and this object.
-     */
-    private void popFunctionAndThis() {
-        cfw.add(ByteCode.DUP);
-        cfw.addInvoke(
-                ByteCode.INVOKEVIRTUAL,
-                "rhino.ScriptRuntime$LookupResult",
-                "getCallable",
-                "()Lrhino/Callable;");
+    /** Pushes the this object left by generateCallTarget. */
+    private void addTakeLookupThis() {
+        cfw.addALoad(contextLocal);
+        addScriptRuntimeInvoke("takeLookupThis", "(Lrhino/Context;)Ljava/lang/Object;");
+    }
+
+    /** Turns the call target below the this object on the stack into its function. */
+    private void addToCallable() {
         cfw.add(ByteCode.SWAP);
-        cfw.addInvoke(
-                ByteCode.INVOKEVIRTUAL,
-                "rhino.ScriptRuntime$LookupResult",
-                "getThis",
-                "()Lrhino/Scriptable;");
+        addToCallableOnTop();
+        cfw.add(ByteCode.SWAP);
+    }
+
+    private void addToCallableOnTop() {
+        addScriptRuntimeInvoke("toCallable", "(Ljava/lang/Object;)Lrhino/Callable;");
     }
 
     private void updateLineNumber(Node node) {
@@ -3508,9 +3518,7 @@ class BodyCodegen {
         releaseWordLocal(savedVariableObject);
         cfw.markLabel(realEnd);
 
-        if (!isGenerator) {
-            exceptionManager.popExceptionInfo();
-        }
+        exceptionManager.popExceptionInfo();
     }
 
     private static final int JAVASCRIPT_EXCEPTION = 0;
@@ -3824,10 +3832,15 @@ class BodyCodegen {
         throw Kit.codeBug("bad finally target");
     }
 
+    private boolean isLiveLocal(int i) {
+        // The scope is always live, whatever the reference counts of its with and block scopes
+        return locals[i] != 0 || i == variableObjectLocal;
+    }
+
     private boolean generateSaveLocals(Node node) {
         int count = 0;
-        for (int i = 0; i < firstFreeLocal; i++) {
-            if (locals[i] != 0) count++;
+        for (int i = 0; i < locals.length; i++) {
+            if (isLiveLocal(i)) count++;
         }
 
         if (count == 0) {
@@ -3841,8 +3854,8 @@ class BodyCodegen {
         // create a locals list
         int[] ls = new int[count];
         int s = 0;
-        for (int i = 0; i < firstFreeLocal; i++) {
-            if (locals[i] != 0) {
+        for (int i = 0; i < locals.length; i++) {
+            if (isLiveLocal(i)) {
                 ls[s] = i;
                 s++;
             }
@@ -4797,7 +4810,15 @@ class BodyCodegen {
             throw Kit.codeBug();
         }
         int reg = varRegisters[varIndex];
-        Codegen.pushUndefined(cfw);
+        if (node.getIntProp(Node.TDZ_CHECK_PROP, 0) != 0) {
+            cfw.add(
+                    ByteCode.GETSTATIC,
+                    "rhino/UniqueTag",
+                    "UNINITIALIZED",
+                    "Lrhino/UniqueTag;");
+        } else {
+            Codegen.pushUndefined(cfw);
+        }
         cfw.addAStore(reg);
         if (fnCurrent.fnode.getParamAndVarConst()[varIndex]) {
             cfw.addPush(0);
@@ -4912,41 +4933,6 @@ class BodyCodegen {
         } else {
             addDynamicInvoke("PROP:SETELEMENT", Signatures.PROP_SET_ELEMENT);
         }
-    }
-
-    private void visitDotQuery(Node node, Node child) {
-        updateLineNumber(node);
-        generateExpression(child, node);
-        cfw.addALoad(variableObjectLocal);
-        addScriptRuntimeInvoke(
-                "enterDotQuery",
-                "(Ljava/lang/Object;"
-                        + "Lrhino/VarScope;"
-                        + ")Lrhino/VarScope;");
-        cfw.addAStore(variableObjectLocal);
-
-        // add push null/pop with label in between to simplify code for loop
-        // continue when it is necessary to pop the null result from
-        // updateDotQuery
-        cfw.add(ByteCode.ACONST_NULL);
-        int queryLoopStart = cfw.acquireLabel();
-        cfw.markLabel(queryLoopStart); // loop continue jumps here
-        cfw.add(ByteCode.POP);
-
-        generateExpression(child.getNext(), node);
-        addDynamicInvoke("MATH:TOBOOLEAN", Signatures.MATH_TO_BOOLEAN);
-        cfw.addALoad(variableObjectLocal);
-        addScriptRuntimeInvoke(
-                "updateDotQuery",
-                "(Z" + "Lrhino/VarScope;" + ")Ljava/lang/Object;");
-        cfw.add(ByteCode.DUP);
-        cfw.add(ByteCode.IFNULL, queryLoopStart);
-        // stack: ... non_null_result_of_updateDotQuery
-        cfw.addALoad(variableObjectLocal);
-        addScriptRuntimeInvoke(
-                "leaveDotQuery",
-                "(Lrhino/VarScope;" + ")Lrhino/VarScope;");
-        cfw.addAStore(variableObjectLocal);
     }
 
     private static int getLocalBlockRegister(Node node) {

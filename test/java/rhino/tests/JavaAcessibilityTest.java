@@ -162,7 +162,7 @@ public class JavaAcessibilityTest {
     private Object runScript(final String scriptSourceText) {
         return contextFactory.call(
                 context -> {
-                    Script script = context.compileString(scriptSourceText, "", 1, null);
+                    Script script = context.compileString(scriptSourceText, "", 1);
                     return script.exec(context, global, global.getGlobalThis());
                 });
     }

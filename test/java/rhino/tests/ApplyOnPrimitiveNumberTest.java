@@ -27,7 +27,7 @@ public class ApplyOnPrimitiveNumberTest {
         Utils.runWithAllModes(
                 _cx -> {
                     TopLevel scope = _cx.initStandardObjects();
-                    final Object result = _cx.evaluateString(scope, script, "test script", 0, null);
+                    final Object result = _cx.evaluateString(scope, script, "test script", 0);
                     assertEquals("object", ScriptRuntime.typeof(result));
                     assertEquals("1", Context.toString(result));
                     return null;

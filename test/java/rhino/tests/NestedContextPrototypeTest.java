@@ -81,8 +81,7 @@ public class NestedContextPrototypeTest {
                                     global,
                                     "MyClass = function() {};\n" + "myInstance = new MyClass();",
                                     "",
-                                    1,
-                                    null);
+                                    1);
                             if (sealed) {
                                 global.sealObject();
                             }
@@ -115,7 +114,7 @@ public class NestedContextPrototypeTest {
                                     throw new UnsupportedOperationException();
                             }
 
-                            return context.evaluateString(scope, scriptSourceText, "", 1, null);
+                            return context.evaluateString(scope, scriptSourceText, "", 1);
                         });
     }
 

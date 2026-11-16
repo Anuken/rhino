@@ -154,7 +154,7 @@ public class PortableBytecodeTest {
             cx.setLanguageVersion(Context.VERSION_ECMASCRIPT);
             cx.setInterpretedMode(interpreted);
             return Context.toString(
-                    cx.evaluateString(cx.initStandardObjects(), source, "portable.js", 1, null));
+                    cx.evaluateString(cx.initStandardObjects(), source, "portable.js", 1));
         }
     }
 

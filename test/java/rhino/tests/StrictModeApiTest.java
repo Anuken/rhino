@@ -59,7 +59,7 @@ public class StrictModeApiTest {
                         ScriptableObject.defineProperty(
                                 scope, "o", prototype, ScriptableObject.DONTENUM);
 
-                        cx.evaluateString(scope, script, "test_script", 1, null);
+                        cx.evaluateString(scope, script, "test_script", 1);
                         throw new RuntimeException("Should have failed!");
                     } catch (final EcmaError e) {
                         assertEquals(

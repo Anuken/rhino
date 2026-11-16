@@ -80,7 +80,7 @@ public class ForEachForOfTest {
                     List<Dto> dtos = Arrays.asList(dto);
                     scope.put("dtos", scope, dtos);
 
-                    cx.evaluateString(scope, script, "myScript.js", 1, null);
+                    cx.evaluateString(scope, script, "myScript.js", 1);
                     Assertions.assertEquals("bar", dto.getData());
                     return null;
                 });
@@ -97,7 +97,7 @@ public class ForEachForOfTest {
                     Dto[] dtos = new Dto[] {dto};
                     scope.put("dtos", scope, dtos);
 
-                    cx.evaluateString(scope, script, "myScript.js", 1, null);
+                    cx.evaluateString(scope, script, "myScript.js", 1);
                     Assertions.assertEquals("bar", dto.getData());
                     return null;
                 });
@@ -115,7 +115,7 @@ public class ForEachForOfTest {
                     dtos.add(dto);
                     scope.put("dtos", scope, dtos);
 
-                    cx.evaluateString(scope, script, "myScript.js", 1, null);
+                    cx.evaluateString(scope, script, "myScript.js", 1);
                     Assertions.assertEquals("bar", dto.getData());
                     return null;
                 });
@@ -133,7 +133,7 @@ public class ForEachForOfTest {
                     dtos.put(dto, dto);
                     scope.put("dtos", scope, dtos);
 
-                    cx.evaluateString(scope, script, "myScript.js", 1, null);
+                    cx.evaluateString(scope, script, "myScript.js", 1);
                     Assertions.assertEquals("bar", dto.getData());
                     return null;
                 });

@@ -294,8 +294,7 @@ public class TypedArrayJavaTest {
 
             for (String type : allNativeTypes) {
                 ScriptableObject obj =
-                        (ScriptableObject)
-                                cx.evaluateString(global, "new " + type + "(5)", "", 1, null);
+                        (ScriptableObject) cx.evaluateString(global, "new " + type + "(5)", "", 1);
                 obj.getAllIds();
             }
         }

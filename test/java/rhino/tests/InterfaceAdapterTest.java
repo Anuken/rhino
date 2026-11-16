@@ -32,7 +32,7 @@ public class InterfaceAdapterTest {
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
                     scope.put("list", scope, createList());
-                    Object o = cx.evaluateString(scope, js, "testNativeFunction.js", 1, null);
+                    Object o = cx.evaluateString(scope, js, "testNativeFunction.js", 1);
                     if (o instanceof Wrapper) {
                         o = ((Wrapper) o).unwrap();
                     }

@@ -47,15 +47,14 @@ public class RegexpTest {
                                 + "a.replace([], function (b, c) { res += c; });"
                                 + "res;",
                         "test",
-                        1,
-                        null);
+                        1);
         assertEquals("0", result2);
     }
 
     @Test
     public void unsupportedFlag() {
         try {
-            cx.evaluateString(scope, "/abc/o;", "test", 1, null);
+            cx.evaluateString(scope, "/abc/o;", "test", 1);
             fail("EvaluatorException expected");
         } catch (EvaluatorException e) {
             assertEquals("invalid flag 'o' after regular expression (test#1)", e.getMessage());
@@ -65,7 +64,7 @@ public class RegexpTest {
     @Test
     public void unsupportedFlagCtor() {
         try {
-            cx.evaluateString(scope, "new RegExp('abc', 'o');", "test", 1, null);
+            cx.evaluateString(scope, "new RegExp('abc', 'o');", "test", 1);
             fail("EcmaError expected");
         } catch (EcmaError e) {
             assertEquals(

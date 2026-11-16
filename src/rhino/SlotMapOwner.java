@@ -433,7 +433,7 @@ public abstract class SlotMapOwner<T extends PropHolder<T>> implements PropHolde
      */
     @Override
     public boolean has(String name, T start) {
-        return null != getMap().query(name, 0);
+        return null != query(getMap(), name);
     }
 
     /**
@@ -465,11 +465,22 @@ public abstract class SlotMapOwner<T extends PropHolder<T>> implements PropHolde
      */
     @Override
     public Object get(String name, T start) {
-        var slot = getMap().query(name, 0);
+        var slot = query(getMap(), name);
         if (slot == null) {
             return Scriptable.NOT_FOUND;
         }
-        return slot.getValue(start);
+        return slot.getClass() == StandardSlot.class ? slot.value : slot.getValue(start);
+    }
+
+    /**
+     * Looks up a named slot, testing for the usual map and slot classes first, so that the lookup
+     * is inlined however many other kinds of maps the call site has seen.
+     */
+    private static <T extends PropHolder<T>> Slot<T> query(SlotMap<T> map, String name) {
+        if (map.getClass() == EmbeddedSlotMap.class) {
+            return ((EmbeddedSlotMap<T>) map).query(name, 0);
+        }
+        return map.query(name, 0);
     }
 
     /**

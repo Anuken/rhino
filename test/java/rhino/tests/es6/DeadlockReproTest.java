@@ -25,7 +25,7 @@ public class DeadlockReproTest {
                             + "Object.defineProperty(o, 'test', {value: 2});"
                             + "o.test";
 
-            var result = cx.evaluateString(scope, script, "myScript", 1, null);
+            var result = cx.evaluateString(scope, script, "myScript", 1);
 
             assertEquals(2, result);
         }

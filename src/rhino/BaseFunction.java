@@ -10,7 +10,6 @@ import static rhino.ClassDescriptor.Builder.value;
 import static rhino.ClassDescriptor.Destination.PROTO;
 import static rhino.Symbol.Kind.REGULAR;
 
-import rhino.xml.XMLObject;
 
 import java.io.Serial;
 import java.util.EnumSet;
@@ -47,6 +46,7 @@ public class BaseFunction extends ScriptableObject implements Function {
     private static final ClassDescriptor ASYNC_DESCRIPTOR;
     private static final ClassDescriptor ASYNC_GENERATOR_DESCRIPTOR;
     private static final JSDescriptor<JSFunction> APPLY_DESCRIPTOR;
+    private static final JSDescriptor<JSFunction> HAS_INSTANCE_DESCRIPTOR;
     private static final JSDescriptor<JSFunction> CALL_DESCRIPTOR;
 
     private static final BuiltInSlot.Descriptor<BaseFunction> NAME_DESCRIPTOR =
@@ -84,6 +84,18 @@ public class BaseFunction extends ScriptableObject implements Function {
                     BaseFunction::prototypeAttrSetter,
                     BaseFunction::prototypeDescSetter);
 
+    // The properties of ES6 functions, as createProperties and setStandardPropertyAttributes(
+    // READONLY | DONTENUM) leave them, optionally followed by the "prototype" property.
+    private static final SlotMapDescriptor<BaseFunction> ES6_MAP =
+            SlotMapDescriptor.Builder.extending(BASIC_MAP)
+                    .withSlot(ARITY_DESCRIPTOR, READONLY | DONTENUM)
+                    .build();
+
+    private static final SlotMapDescriptor<BaseFunction> ES6_PROTOTYPE_MAP =
+            SlotMapDescriptor.Builder.extending(ES6_MAP)
+                    .withSlot(PROTOTYPE_DESCRIPTOR, PERMANENT | DONTENUM)
+                    .build();
+
     static {
         var builder =
                 new ClassDescriptor.Builder(
@@ -116,6 +128,7 @@ public class BaseFunction extends ScriptableObject implements Function {
 
         APPLY_DESCRIPTOR = DESCRIPTOR.findProtoDesc("apply");
         CALL_DESCRIPTOR = DESCRIPTOR.findProtoDesc("call");
+        HAS_INSTANCE_DESCRIPTOR = DESCRIPTOR.findProtoDesc(SymbolKey.HAS_INSTANCE);
 
         GENERATOR_DESCRIPTOR =
                 new ClassDescriptor.Builder(
@@ -254,6 +267,24 @@ public class BaseFunction extends ScriptableObject implements Function {
         declarationScope = scope;
         createProperties();
         ScriptRuntime.setBuiltinProtoAndParent(this, scope, TopLevel.Builtins.Function);
+    }
+
+    /**
+     * Creates a function with its prototype and parent scope set as by {@link
+     * ScriptRuntime#setFunctionProtoAndParent}. In the usual ES6 case, the standard properties and
+     * the "prototype" property (if requested) are created in one step, so that {@link
+     * #setupLazyDefaultPrototype} finds the latter already present.
+     */
+    BaseFunction(Context cx, VarScope scope, boolean withPrototype) {
+        declarationScope = scope;
+        if (cx != null && !cx.isStrictMode() && cx.getLanguageVersion() >= Context.VERSION_ES6) {
+            (withPrototype ? ES6_PROTOTYPE_MAP : ES6_MAP).installMap(this);
+            setParentScope(scope);
+            setPrototype(ScriptableObject.getFunctionPrototype(scope));
+        } else {
+            createProperties();
+            ScriptRuntime.setFunctionProtoAndParent(this, cx, scope, false);
+        }
     }
 
     protected void createProperties() {
@@ -451,6 +482,11 @@ public class BaseFunction extends ScriptableObject implements Function {
         // Attempt to call custom Symbol.hasInstance implementation if present
 
         Object hasInstanceMethod = ScriptRuntime.getObjectElem(this, SymbolKey.HAS_INSTANCE, cx);
+        if (hasInstanceMethod instanceof JSFunction
+                && ((JSFunction) hasInstanceMethod).getDescriptor() == HAS_INSTANCE_DESCRIPTOR) {
+            // the default Function.prototype[Symbol.hasInstance], without the call
+            return ordinaryHasInstance(this, instance);
+        }
         if (hasInstanceMethod instanceof Callable) {
             return ScriptRuntime.toBoolean(
                     ((Callable) hasInstanceMethod)
@@ -497,6 +533,10 @@ public class BaseFunction extends ScriptableObject implements Function {
 
     private static Object js_hasInstance(
             Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        return ordinaryHasInstance(thisObj, args.length > 0 ? args[0] : Undefined.instance);
+    }
+
+    private static boolean ordinaryHasInstance(Object thisObj, Object v) {
         if (!(thisObj instanceof Callable && thisObj instanceof Scriptable)) {
             return false;
         }
@@ -509,11 +549,9 @@ public class BaseFunction extends ScriptableObject implements Function {
             protoProp = ScriptableObject.getProperty((Scriptable) thisObj, PROTOTYPE_PROPERTY_NAME);
         }
 
-        if (ScriptRuntime.isObject(protoProp) || protoProp instanceof XMLObject) {
-            if (args.length > 0 && args[0] instanceof Scriptable) {
-                Scriptable obj = (Scriptable) args[0];
-
-                return ScriptRuntime.jsDelegatesTo(obj, (Scriptable) protoProp);
+        if (ScriptRuntime.isObject(protoProp)) {
+            if (v instanceof Scriptable) {
+                return ScriptRuntime.jsDelegatesTo((Scriptable) v, (Scriptable) protoProp);
             }
             return false; // NOT_FOUND, null etc.
         }
@@ -948,8 +986,7 @@ public class BaseFunction extends ScriptableObject implements Function {
         // Compile with explicit interpreter instance to force interpreter
         // mode.
         var res =
-                (JSFunction)
-                        cx.compileFunction(global, source, evaluator, reporter, sourceURI, 1, null);
+                (JSFunction) cx.compileFunction(global, source, evaluator, reporter, sourceURI, 1);
 
         if (res.getDescriptor().isAsyncGenerator()) {
             ScriptRuntime.setBuiltinProtoAndParent(
@@ -988,6 +1025,8 @@ public class BaseFunction extends ScriptableObject implements Function {
 
     private final VarScope declarationScope;
     private Object prototypeProperty;
+    // the first interface this function was converted to, see NativeJavaObject.coerceTypeImpl
+    transient volatile InterfaceProxy interfaceProxy;
     // the default prototype is created when first read while prototypeProperty is null
     private boolean lazyPrototype;
     private Object argumentsObj = NOT_FOUND;
@@ -1001,4 +1040,14 @@ public class BaseFunction extends ScriptableObject implements Function {
     //  {configurable:false, enumerable:false};
     // see ECMA 15.3.5.2
     private int prototypePropertyAttributes = PERMANENT | DONTENUM;
+
+    static final class InterfaceProxy {
+        final Class<?> type;
+        final Object proxy;
+
+        InterfaceProxy(Class<?> type, Object proxy) {
+            this.type = type;
+            this.proxy = proxy;
+        }
+    }
 }

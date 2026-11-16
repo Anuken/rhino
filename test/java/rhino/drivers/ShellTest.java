@@ -41,7 +41,7 @@ public class ShellTest {
         }
 
         try (Context cx = Context.enter()) {
-            frameworkScript = cx.compileReader(new FileReader(frameworkFile), "shell.js", 1, null);
+            frameworkScript = cx.compileReader(new FileReader(frameworkFile), "shell.js", 1);
         } catch (IOException ioe) {
             throw new AssertionError("Can't read test framework file " + frameworkFile);
         }

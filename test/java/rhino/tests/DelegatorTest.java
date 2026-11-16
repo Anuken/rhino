@@ -56,7 +56,7 @@ public class DelegatorTest {
     public static void init(Scriptable scope) {}
 
     private Object eval(String source) {
-        return cx.evaluateString(root, source, "test.js", 1, null);
+        return cx.evaluateString(root, source, "test.js", 1);
     }
 
     @Test

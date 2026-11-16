@@ -96,11 +96,7 @@ public abstract class CachingModuleScriptProviderBase
                 final URI sourceUri = moduleSource.getUri();
                 final ModuleScript moduleScript =
                         new ModuleScript(
-                                cx.compileReader(
-                                        reader,
-                                        sourceUri.toString(),
-                                        1,
-                                        moduleSource.getSecurityDomain()),
+                                cx.compileReader(reader, sourceUri.toString(), 1),
                                 sourceUri,
                                 moduleSource.getBase());
                 putLoadedModule(moduleId, moduleScript, moduleSource.getValidator());

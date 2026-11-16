@@ -51,8 +51,7 @@ public class UndefinedTest {
                         + "assertSame(this, undefined);\n"
                         + "}\n"
                         + "testFunc;";
-        Callable testFunc =
-                (Callable) cx.evaluateString(global, testFuncSource, "test.js", 1, null);
+        Callable testFunc = (Callable) cx.evaluateString(global, testFuncSource, "test.js", 1);
         // Ensure that using SCRIPTABLE_UNDEFINED means that "this" is really undefined
         // for strict mode functions.
         testFunc.call(cx, global, Undefined.SCRIPTABLE_UNDEFINED, ScriptRuntime.emptyArgs);
@@ -68,6 +67,6 @@ public class UndefinedTest {
                         + "assertTrue(x);\n"
                         + "let y = ({ __proto__ : null } instanceof Object);\n"
                         + "assertFalse(y);";
-        cx.evaluateString(global, testSource, "test.js", 1, null);
+        cx.evaluateString(global, testSource, "test.js", 1);
     }
 }

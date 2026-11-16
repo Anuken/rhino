@@ -105,7 +105,7 @@ public class RequireTest {
 
             try {
                 cx.evaluateReader(
-                        global, getReader("testCustomGlobal.js"), "testCustomGlobal.js", 1, null);
+                        global, getReader("testCustomGlobal.js"), "testCustomGlobal.js", 1);
             } catch (Exception ex) {
                 System.err.println(ex.getMessage());
                 throw ex;
@@ -124,7 +124,7 @@ public class RequireTest {
             TopLevel scope = cx.initStandardObjects();
             final Require require = getSandboxedRequire(cx, scope, false);
             require.install(scope);
-            cx.evaluateReader(scope, getReader("testRelativeId.js"), "testRelativeId.js", 1, null);
+            cx.evaluateReader(scope, getReader("testRelativeId.js"), "testRelativeId.js", 1);
         }
     }
 
@@ -150,9 +150,7 @@ public class RequireTest {
                 RhinoException e =
                         assertThrows(
                                 RhinoException.class,
-                                () ->
-                                        cx.evaluateString(
-                                                scope, "require('" + id + "')", "test", 1, null));
+                                () -> cx.evaluateString(scope, "require('" + id + "')", "test", 1));
                 assertTrue(e.getMessage().contains("is not contained in sandbox"), e.getMessage());
             }
         }
@@ -168,8 +166,7 @@ public class RequireTest {
                     scope,
                     getReader("testSetMainForAlreadyLoadedModule.js"),
                     "testSetMainForAlreadyLoadedModule.js",
-                    1,
-                    null);
+                    1);
             try {
                 require.requireMain(cx, "assert");
                 fail();

@@ -111,9 +111,9 @@ public class LookupSetterTest {
                         try {
                             TopLevel scope = cx.initStandardObjects(new TopScope());
                             ScriptableObject.defineClass(scope, Foo.class);
-                            cx.evaluateString(scope, defineSetterAndGetterX, "initX", 1, null);
+                            cx.evaluateString(scope, defineSetterAndGetterX, "initX", 1);
                             Object result =
-                                    String.valueOf(cx.evaluateString(scope, src, "test", 1, null));
+                                    String.valueOf(cx.evaluateString(scope, src, "test", 1));
                             assertEquals(expected, result);
                             return null;
                         } catch (final Exception e) {

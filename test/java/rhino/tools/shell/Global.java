@@ -432,8 +432,7 @@ public class Global extends ImporterTopLevel {
             try {
                 testCount++;
                 String finalInputString = inputString.toString();
-                Object result =
-                        cx.evaluateString(scope, finalInputString, "doctest input", 1, null);
+                Object result = cx.evaluateString(scope, finalInputString, "doctest input", 1);
                 if (result != Context.getUndefinedValue()
                         && !(result instanceof Function
                                 && finalInputString.trim().startsWith("function"))) {

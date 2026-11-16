@@ -22,8 +22,8 @@ public class AsyncFunctionTest {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
-                    cx.evaluateString(scope, "var log = [];\n" + script, "test.js", 1, null);
-                    Object log = cx.evaluateString(scope, "log.join('|')", "log.js", 1, null);
+                    cx.evaluateString(scope, "var log = [];\n" + script, "test.js", 1);
+                    Object log = cx.evaluateString(scope, "log.join('|')", "log.js", 1);
                     assertEquals(expected, Context.toString(log));
                     return null;
                 });
@@ -72,12 +72,11 @@ public class AsyncFunctionTest {
                             scope,
                             "var log = []; (async () => log.push(await javaPromise + 1))();",
                             "test.js",
-                            1,
-                            null);
+                            1);
                     // Resolved later, as an asset loaded on another frame would be
                     promise.resolve(cx, scope, 41);
                     cx.processMicrotasks();
-                    Object log = cx.evaluateString(scope, "log.join()", "log.js", 1, null);
+                    Object log = cx.evaluateString(scope, "log.join()", "log.js", 1);
                     assertEquals("42", Context.toString(log));
                     return null;
                 });

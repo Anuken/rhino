@@ -66,7 +66,7 @@ public class Utils {
         Utils.runWithMode(
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
-                    return cx.evaluateString(scope, script, "myScript.js", 1, null);
+                    return cx.evaluateString(scope, script, "myScript.js", 1);
                 },
                 interpreted ? EvaluationMethod.Interpreter : EvaluationMethod.Compiler);
     }
@@ -165,7 +165,7 @@ public class Utils {
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
 
-                    final Object res = cx.evaluateString(scope, script, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, script, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -188,7 +188,7 @@ public class Utils {
                     TopLevel scope = cx.initStandardObjects();
                     cx.setLocale(locale);
 
-                    final Object res = cx.evaluateString(scope, script, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, script, "test.js", 0);
 
                     final StringBuilder hex = new StringBuilder();
                     for (final char c : res.toString().toCharArray()) {
@@ -288,7 +288,7 @@ public class Utils {
                         cx.setLanguageVersion(languageVersion);
                     }
                     TopLevel scope = cx.initStandardObjects();
-                    final Object res = cx.evaluateString(scope, script, "test.js", 1, null);
+                    final Object res = cx.evaluateString(scope, script, "test.js", 1);
 
                     if (expected instanceof Integer && res instanceof Double) {
                         assertEquals(
@@ -325,7 +325,7 @@ public class Utils {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects(new TopLevel());
-                    final Object res = cx.evaluateString(scope, script, "test.js", 1, null);
+                    final Object res = cx.evaluateString(scope, script, "test.js", 1);
 
                     assertEquals(expected, res);
                     return null;
@@ -486,7 +486,7 @@ public class Utils {
                     T e =
                             assertThrows(
                                     expectedThrowable,
-                                    () -> cx.evaluateString(scope, script, "test", 1, null));
+                                    () -> cx.evaluateString(scope, script, "test", 1));
 
                     assertTrue(
                             e.getMessage().startsWith(expectedMessage),

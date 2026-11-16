@@ -388,7 +388,7 @@ public class NativeObjectTest {
                         TopLevel realm = cx.initStandardObjects();
                         scope.put("realm", scope, realm);
 
-                        Object result = cx.evaluateString(scope, prefix + script, "test", 1, null);
+                        Object result = cx.evaluateString(scope, prefix + script, "test", 1);
                         assertEquals(Boolean.FALSE, result);
                         return null;
                     });
@@ -428,7 +428,7 @@ public class NativeObjectTest {
                     TopLevel realm = cx.initStandardObjects();
                     scope.put("realm", scope, realm);
 
-                    Object result = cx.evaluateString(scope, script, "test", 1, null);
+                    Object result = cx.evaluateString(scope, script, "test", 1);
                     assertEquals("before: [object Object] / after: [object Object] / true", result);
                     return null;
                 });

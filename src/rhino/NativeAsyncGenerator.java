@@ -40,6 +40,15 @@ final class NativeAsyncGenerator extends ScriptableObject {
         }
     }
 
+    /** What an async generator body yields for {@code yield* value}. */
+    static final class YieldStarRequest {
+        final Object value;
+
+        YieldStarRequest(Object value) {
+            this.value = value;
+        }
+    }
+
     private static final class Request {
         final int kind;
         final Object value;
@@ -56,6 +65,8 @@ final class NativeAsyncGenerator extends ScriptableObject {
     private final transient ES6Generator generator;
     private final transient ArrayDeque<Request> queue = new ArrayDeque<>();
     private State state = State.SUSPENDED_START;
+    // The iterator of the yield* being evaluated
+    private transient AsyncIteration delegate;
 
     NativeAsyncGenerator(VarScope scope, JSFunction function, ES6Generator generator) {
         this.scope = ScriptableObject.getTopLevelScope(scope);
@@ -178,11 +189,19 @@ final class NativeAsyncGenerator extends ScriptableObject {
             await(
                     cx,
                     request.value,
-                    v -> resume(Context.getCurrentContext(), RETURN, v),
-                    r -> resume(Context.getCurrentContext(), THROW, r));
+                    v -> resumeOrDelegate(Context.getCurrentContext(), RETURN, v),
+                    r -> resumeOrDelegate(Context.getCurrentContext(), THROW, r));
             return;
         }
-        resume(cx, request.kind, request.value);
+        resumeOrDelegate(cx, request.kind, request.value);
+    }
+
+    private void resumeOrDelegate(Context cx, int op, Object value) {
+        if (delegate != null) {
+            delegate(cx, op, value);
+        } else {
+            resume(cx, op, value);
+        }
     }
 
     private void resume(Context cx, int op, Object value) {
@@ -212,12 +231,17 @@ final class NativeAsyncGenerator extends ScriptableObject {
             resultValue = Undefined.instance;
         }
         if (ScriptRuntime.isIteratorDone(cx, result)) {
-            // A return awaits its value
-            await(
-                    cx,
-                    resultValue,
-                    v -> complete(Context.getCurrentContext(), true, v, true),
-                    r -> complete(Context.getCurrentContext(), false, r, true));
+            // The body awaited what it returned
+            complete(cx, true, resultValue, true);
+        } else if (resultValue instanceof YieldStarRequest) {
+            try {
+                delegate =
+                        AsyncIteration.create(cx, scope, ((YieldStarRequest) resultValue).value);
+            } catch (RhinoException e) {
+                resume(cx, THROW, NativePromise.getErrorObject(cx, scope, e));
+                return;
+            }
+            delegate(cx, NEXT, Undefined.instance);
         } else if (resultValue instanceof AwaitRequest) {
             await(
                     cx,
@@ -232,6 +256,120 @@ final class NativeAsyncGenerator extends ScriptableObject {
                     v -> yielded(Context.getCurrentContext(), v),
                     r -> resume(Context.getCurrentContext(), THROW, r));
         }
+    }
+
+    /** Passes a request on to the yield* delegate, as in the async case of yield* evaluation. */
+    private void delegate(Context cx, int op, Object value) {
+        state = State.EXECUTING;
+        AsyncIteration iteration = delegate;
+        Object result;
+        try {
+            if (op == NEXT) {
+                result = iteration.callNext(cx, scope, new Object[] {value});
+            } else if (op == THROW) {
+                result = iteration.callThrow(cx, scope, value);
+                if (result == AsyncIteration.NO_THROW) {
+                    // Close the delegate, then throw for the missing method
+                    delegate = null;
+                    Object closed = iteration.callReturn(cx, scope, null);
+                    if (closed == AsyncIteration.NO_RETURN) {
+                        resume(cx, THROW, delegateError("msg.yield.star.no.throw", null));
+                        return;
+                    }
+                    await(
+                            cx,
+                            closed,
+                            r ->
+                                    resume(
+                                            Context.getCurrentContext(),
+                                            THROW,
+                                            isObject(r)
+                                                    ? delegateError("msg.yield.star.no.throw", null)
+                                                    : delegateError(
+                                                            "msg.iterator.result.primitive", r)),
+                            r -> resume(Context.getCurrentContext(), THROW, r));
+                    return;
+                }
+            } else {
+                result = iteration.callReturn(cx, scope, new Object[] {value});
+                if (result == AsyncIteration.NO_RETURN) {
+                    delegate = null;
+                    await(
+                            cx,
+                            value,
+                            v -> resume(Context.getCurrentContext(), RETURN, v),
+                            r -> resume(Context.getCurrentContext(), THROW, r));
+                    return;
+                }
+            }
+        } catch (RhinoException e) {
+            delegate = null;
+            resume(cx, THROW, NativePromise.getErrorObject(cx, scope, e));
+            return;
+        }
+        await(
+                cx,
+                result,
+                r -> delegated(Context.getCurrentContext(), op, r),
+                r -> {
+                    delegate = null;
+                    resume(Context.getCurrentContext(), THROW, r);
+                });
+    }
+
+    /** Takes the awaited result of the delegate, yielding its value unless it is done. */
+    private void delegated(Context cx, int op, Object result) {
+        boolean done;
+        Object value;
+        try {
+            if (!isObject(result)) {
+                throw ScriptRuntime.typeErrorById(
+                        "msg.iterator.result.primitive", ScriptRuntime.toString(result));
+            }
+            done = ScriptRuntime.isIteratorDone(cx, result);
+            if (!done) {
+                value =
+                        ScriptRuntime.getObjectPropNoWarn(
+                                result, ES6Iterator.VALUE_PROPERTY, cx, scope);
+                // Unlike yield, yield* does not await the values it yields
+                yielded(cx, value);
+                return;
+            }
+            value =
+                    ScriptRuntime.getObjectPropNoWarn(
+                            result, ES6Iterator.VALUE_PROPERTY, cx, scope);
+        } catch (RhinoException e) {
+            delegate = null;
+            resume(cx, THROW, NativePromise.getErrorObject(cx, scope, e));
+            return;
+        }
+        delegate = null;
+        if (op == RETURN) {
+            await(
+                    cx,
+                    value,
+                    v -> resume(Context.getCurrentContext(), RETURN, v),
+                    r -> resume(Context.getCurrentContext(), THROW, r));
+        } else {
+            resume(cx, NEXT, value);
+        }
+    }
+
+    /** Creates a TypeError, with the value that caused it or null. */
+    private Object delegateError(String messageId, Object value) {
+        String message =
+                value == null
+                        ? ScriptRuntime.getMessageById(messageId)
+                        : ScriptRuntime.getMessageById(messageId, ScriptRuntime.toString(value));
+        return ScriptRuntime.newNativeError(
+                Context.getCurrentContext(),
+                scope,
+                TopLevel.NativeErrors.TypeError,
+                new Object[] {message});
+    }
+
+    private static boolean isObject(Object value) {
+        return value instanceof Scriptable && !Undefined.isUndefined(value);
     }
 
     private void yielded(Context cx, Object value) {

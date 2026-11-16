@@ -24,7 +24,7 @@ public class LambdaPropertyTest {
             cx.setLanguageVersion(Context.VERSION_ES6);
             cx.setGeneratingDebug(true);
             global = cx.initStandardObjects();
-            cx.evaluateReader(global, rdr, "assert.js", 1, null);
+            cx.evaluateReader(global, rdr, "assert.js", 1);
         }
     }
 
@@ -46,8 +46,8 @@ public class LambdaPropertyTest {
                 0);
 
         // Get and set should work as normal
-        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1, null);
-        cx.evaluateString(global, "o.val = 11; assertEquals(11, o.val)", "test.js", 1, null);
+        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1);
+        cx.evaluateString(global, "o.val = 11; assertEquals(11, o.val)", "test.js", 1);
         assertEquals(11, state.val);
 
         // Check the descriptor
@@ -59,8 +59,7 @@ public class LambdaPropertyTest {
                         + "assertTrue(desc.configurable);"
                         + "assertEquals(11, desc.value);",
                 "test.js",
-                1,
-                null);
+                1);
     }
 
     @Test
@@ -73,8 +72,7 @@ public class LambdaPropertyTest {
                 "Object.defineProperty(o, 'val', { value: 1, configurable: true });"
                         + "assertEquals(1, o.val);",
                 "test.js",
-                1,
-                null);
+                1);
 
         SomeState state = new SomeState();
         testObj.defineProperty(
@@ -84,8 +82,8 @@ public class LambdaPropertyTest {
                 0);
 
         // Get and set should work as normal
-        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1, null);
-        cx.evaluateString(global, "o.val = 2; assertEquals(2, o.val)", "test.js", 1, null);
+        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1);
+        cx.evaluateString(global, "o.val = 2; assertEquals(2, o.val)", "test.js", 1);
         assertEquals(2, state.val);
 
         // Define again
@@ -93,8 +91,7 @@ public class LambdaPropertyTest {
                 global,
                 "Object.defineProperty(o, 'val', { value: 3 });" + "assertEquals(3, o.val);",
                 "test.js",
-                1,
-                null);
+                1);
         assertEquals(2, state.val);
     }
 
@@ -108,8 +105,7 @@ public class LambdaPropertyTest {
                 "Object.defineProperty(o, 'val', { value: 1, configurable: true });"
                         + "assertEquals(1, o.val);",
                 "test.js",
-                1,
-                null);
+                1);
 
         SomeState state = new SomeState();
         testObj.defineProperty(
@@ -119,16 +115,15 @@ public class LambdaPropertyTest {
                 ScriptableObject.PERMANENT);
 
         // Get and set should work as normal
-        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1, null);
-        cx.evaluateString(global, "o.val = 2; assertEquals(2, o.val)", "test.js", 1, null);
+        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1);
+        cx.evaluateString(global, "o.val = 2; assertEquals(2, o.val)", "test.js", 1);
 
         // Define again -- should fail
         cx.evaluateString(
                 global,
                 "assertThrows(() => { Object.defineProperty(o, 'val', { value: 2 }); });",
                 "test.js",
-                1,
-                null);
+                1);
     }
 
     @Test
@@ -140,8 +135,8 @@ public class LambdaPropertyTest {
         testObj.defineProperty("val", () -> state.val, null, 0);
 
         // Set should do nothing
-        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1, null);
-        cx.evaluateString(global, "o.val = 11; assertEquals(0, o.val)", "test.js", 1, null);
+        cx.evaluateString(global, "assertEquals(0, o.val)", "test.js", 1);
+        cx.evaluateString(global, "o.val = 11; assertEquals(0, o.val)", "test.js", 1);
         assertEquals(0, state.val);
     }
 
@@ -155,8 +150,8 @@ public class LambdaPropertyTest {
                 "val", null, (Object newVal) -> state.val = ScriptRuntime.toInt32(newVal), 0);
 
         // Get should return the old value, which is unfortunately null
-        cx.evaluateString(global, "assertEquals(null, o.val)", "test.js", 1, null);
-        cx.evaluateString(global, "o.val = 11; assertEquals(null, o.val)", "test.js", 1, null);
+        cx.evaluateString(global, "assertEquals(null, o.val)", "test.js", 1);
+        cx.evaluateString(global, "o.val = 11; assertEquals(null, o.val)", "test.js", 1);
     }
 
     private static class SomeState {

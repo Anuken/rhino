@@ -25,7 +25,6 @@ public class DynamicScopeTest {
         protected boolean hasFeature(Context cx, int featureIndex) {
             if (featureIndex == Context.FEATURE_DYNAMIC_SCOPE
                     || featureIndex == Context.FEATURE_STRICT_VARS
-                    || featureIndex == Context.FEATURE_E4X
                     || featureIndex == Context.FEATURE_STRICT_EVAL
                     || featureIndex == Context.FEATURE_LOCATION_INFORMATION_IN_ERROR
                     || featureIndex == Context.FEATURE_STRICT_MODE) {
@@ -68,7 +67,7 @@ public class DynamicScopeTest {
             // of a sealed object: iterator.
             TopLevel scope = cx.initStandardObjects(new TopLevel(), true);
 
-            Object result = cx.evaluateString(scope, "42", "source", 1, null);
+            Object result = cx.evaluateString(scope, "42", "source", 1);
             assertEquals(42, result);
         } finally {
             // cx.exit();
@@ -83,7 +82,7 @@ public class DynamicScopeTest {
             // of a sealed object: iterator.
             TopLevel scope = cx.initStandardObjects(new TopLevel(), true);
 
-            Object result = cx.evaluateString(scope, "23", "source", 1, null);
+            Object result = cx.evaluateString(scope, "23", "source", 1);
             assertEquals(23, result);
         } finally {
             // cx.exit
@@ -102,17 +101,12 @@ public class DynamicScopeTest {
             TopLevel someScope = cx.initStandardObjects();
 
             Scriptable someObj =
-                    (Scriptable)
-                            cx.evaluateString(someScope, "var obj = {}; obj;", "source1", 1, null);
+                    (Scriptable) cx.evaluateString(someScope, "var obj = {}; obj;", "source1", 1);
 
             Scriptable subScope =
                     (Scriptable)
                             cx.evaluateString(
-                                    someScope,
-                                    "Object.create((0,eval)('this'));",
-                                    "source2",
-                                    1,
-                                    null);
+                                    someScope, "Object.create((0,eval)('this'));", "source2", 1);
             var newTopLevel = TopLevel.createIsolate(someScope, (ScriptableObject) subScope);
 
             Scriptable subObj =
@@ -121,8 +115,7 @@ public class DynamicScopeTest {
                                     newTopLevel,
                                     "var subObj = Object.create(obj); subObj;",
                                     "source3",
-                                    1,
-                                    null);
+                                    1);
 
             assertSame(subObj.getPrototype(), someObj);
         }

@@ -83,8 +83,7 @@ public class ImportClassTest {
                     // sharedScope.sealObject(); // code below will try to modify sealed object
 
                     Script script =
-                            cx.compileString(
-                                    "importClass(java.util.UUID);true", "TestScript", 1, null);
+                            cx.compileString("importClass(java.util.UUID);true", "TestScript", 1);
 
                     for (int i = 0; i < 3; i++) {
                         var scope = ImporterTopLevel.createIsolate(cx, sharedScope);
@@ -100,7 +99,7 @@ public class ImportClassTest {
 
         return contextFactory.call(
                 context -> {
-                    Script script = context.compileString(scriptSourceText, "", 1, null);
+                    Script script = context.compileString(scriptSourceText, "", 1);
                     Object exec = script.exec(context, global, global.getGlobalThis());
                     return exec;
                 });

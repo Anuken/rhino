@@ -139,14 +139,13 @@ public final class OptRuntime extends ScriptRuntime {
         return getSuperProp(superObj, name, cx, scope, thisObj, noWarn);
     }
 
-    public static LookupResult propGetWithThis(
-            Object obj, Context cx, VarScope scope, String name) {
-        return getPropAndThis(obj, name, cx, scope);
+    public static Object propGetWithThis(Object obj, Context cx, VarScope scope, String name) {
+        return getPropCallTarget(obj, name, cx, scope, false);
     }
 
-    public static LookupResult propGetWithThisOptional(
+    public static Object propGetWithThisOptional(
             Object obj, Context cx, VarScope scope, String name) {
-        return getPropAndThisOptional(obj, name, cx, scope);
+        return getPropCallTarget(obj, name, cx, scope, true);
     }
 
     public static Object propSet(
@@ -172,12 +171,12 @@ public final class OptRuntime extends ScriptRuntime {
         return name(cx, scope, name);
     }
 
-    public static LookupResult nameGetWithThis(VarScope scope, Context cx, String name) {
-        return getNameAndThis(name, cx, scope);
+    public static Object nameGetWithThis(VarScope scope, Context cx, String name) {
+        return getNameCallTarget(name, cx, scope, false);
     }
 
-    public static LookupResult nameGetWithThisOptional(VarScope scope, Context cx, String name) {
-        return getNameAndThisOptional(name, cx, scope);
+    public static Object nameGetWithThisOptional(VarScope scope, Context cx, String name) {
+        return getNameCallTarget(name, cx, scope, true);
     }
 
     public static Object add(Object val1, double val2, Context cx) {

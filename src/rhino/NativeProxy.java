@@ -946,7 +946,7 @@ class NativeProxy extends ScriptableObject {
                             : target.getOwnPropertyDescriptor(cx, ScriptRuntime.toString(id));
 
             if (Undefined.isUndefined(trapResultObj)) {
-                if (Undefined.isUndefined(targetDesc)) {
+                if (targetDesc == null) {
                     return null;
                 }
 

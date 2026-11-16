@@ -105,8 +105,7 @@ public class CovariantReturnTypeTest {
                                     scope,
                                     "obj.value1 = 1; obj.value2 = 2; obj.value3 = 3; obj.value4 = 4; obj.value5 = 5",
                                     "myScript.js",
-                                    1,
-                                    null);
+                                    1);
                     return null;
                 });
     }

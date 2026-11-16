@@ -43,7 +43,7 @@ public class HashCollisionTest {
             try (Context cx = Context.enter()) {
                 Global glob = new Global(cx);
                 glob.put("collisions", glob, collisions);
-                cx.evaluateReader(glob, scriptIn, "hash-collisons.js", 1, null);
+                cx.evaluateReader(glob, scriptIn, "hash-collisons.js", 1);
             }
         }
     }

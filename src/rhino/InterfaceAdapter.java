@@ -273,12 +273,18 @@ public class InterfaceAdapter {
         }
         // A method of an object implementing the interface sees that object as this, so that
         // objects such as class instances can use their own state
-        Scriptable thisObj =
-                !(target instanceof Callable)
-                        ? (Scriptable) target
-                        : handler != null
-                                ? handler.wrapProxy(cx, thisObject)
-                                : wf.wrapAsJavaObject(cx, topScope, thisObject, TypeInfo.NONE);
+        Scriptable thisObj;
+        if (!(target instanceof Callable)) {
+            thisObj = (Scriptable) target;
+        } else if (target instanceof JSFunction
+                && ((JSFunction) target).getDescriptor().hasLexicalThis()) {
+            // arrow functions ignore it, so the proxy needn't be wrapped
+            thisObj = Undefined.SCRIPTABLE_UNDEFINED;
+        } else if (handler != null) {
+            thisObj = handler.wrapProxy(cx, thisObject);
+        } else {
+            thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, TypeInfo.NONE);
+        }
 
         Object result = function.call(cx, topScope, thisObj, args);
         Class<?> javaResultType = method.getReturnType();

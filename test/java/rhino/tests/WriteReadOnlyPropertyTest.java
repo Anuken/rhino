@@ -71,7 +71,7 @@ public class WriteReadOnlyPropertyTest {
                             top, "myProp", null, readMethod, null, ScriptableObject.EMPTY);
                     ScriptableObject.putProperty(top, "foo", foo);
 
-                    cx.evaluateString(top, script, "script", 0, null);
+                    cx.evaluateString(top, script, "script", 0);
                     return null;
                 });
     }

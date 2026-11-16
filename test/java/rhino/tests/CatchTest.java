@@ -67,8 +67,7 @@ public class CatchTest {
                                         scope,
                                         "var res; try { res = foo.bar(); } catch(e) { res = e; }",
                                         "test script",
-                                        1,
-                                        null));
+                                        1));
                     } catch (Exception ex) {
                         throw new RuntimeException(ex);
                     }

@@ -119,8 +119,6 @@ public class CodeGenUtils {
         builder.isEvalFunction = compilerEnv.isInEval();
         builder.isStrict = scriptOrFn.isInStrictMode();
         builder.hasLexicalThis = false;
-        builder.securityController = compilerEnv.securityController();
-        builder.securityDomain = compilerEnv.securityDomain();
     }
 
     private static void fillInCommon(JSDescriptor.Builder builder, ScriptNode scriptOrFn) {

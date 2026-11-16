@@ -16,7 +16,7 @@ public class InitializationTest {
     public void standard() {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initStandardObjects();
-            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1, null);
+            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1);
             assertEquals("Hello, World!", result);
         }
     }
@@ -26,7 +26,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             cx.setLanguageVersion(Context.VERSION_ES6);
             TopLevel root = cx.initStandardObjects();
-            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1, null);
+            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1);
             assertEquals("Hello, World!", result);
         }
     }
@@ -35,7 +35,7 @@ public class InitializationTest {
     public void safeStandard() {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
-            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1, null);
+            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1);
             assertEquals("Hello, World!", result);
         }
     }
@@ -53,7 +53,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
             root.put("str", root, "Rhino");
-            Object result = cx.evaluateString(root, code, "test", 1, null);
+            Object result = cx.evaluateString(root, code, "test", 1);
             assertEquals("R5 Rhino", result);
         }
     }
@@ -73,7 +73,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
             root.put("arr", root, new String[] {"a", "b", "d"});
-            Object result = cx.evaluateString(root, code, "test", 1, null);
+            Object result = cx.evaluateString(root, code, "test", 1);
             assertEquals("a3 abd abd", result);
         }
     }
@@ -93,7 +93,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
             root.put("lst", root, List.of("a", "b", "c"));
-            Object result = cx.evaluateString(root, code, "test", 1, null);
+            Object result = cx.evaluateString(root, code, "test", 1);
             assertEquals("a3 abc abc", result);
         }
     }
@@ -105,7 +105,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
             root.put("mp", root, Map.of("k0", "v0"));
-            Object result = cx.evaluateString(root, code, "test", 1, null);
+            Object result = cx.evaluateString(root, code, "test", 1);
             assertEquals("k0,v0", result);
         }
     }
@@ -117,7 +117,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initSafeStandardObjects();
             root.put("mp", root, Set.of("v0"));
-            Object result = cx.evaluateString(root, code, "test", 1, null);
+            Object result = cx.evaluateString(root, code, "test", 1);
             assertEquals("v0", result);
         }
     }
@@ -126,7 +126,7 @@ public class InitializationTest {
     public void standardSealed() {
         try (Context cx = Context.enter()) {
             TopLevel root = cx.initStandardObjects(null, true);
-            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1, null);
+            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1);
             assertEquals("Hello, World!", result);
         }
     }
@@ -136,7 +136,7 @@ public class InitializationTest {
         try (Context cx = Context.enter()) {
             cx.setLanguageVersion(Context.VERSION_ES6);
             TopLevel root = cx.initStandardObjects(null, true);
-            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1, null);
+            Object result = cx.evaluateString(root, BASIC_SCRIPT, "basic", 1);
             assertEquals("Hello, World!", result);
         }
     }

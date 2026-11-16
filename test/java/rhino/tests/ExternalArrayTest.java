@@ -130,7 +130,7 @@ public class ExternalArrayTest {
             cx.setEvaluationMethod(
                     interpretedMode ? EvaluationMethod.Interpreter : EvaluationMethod.Compiler);
             try (FileReader rdr = new FileReader(TestSource.resolve(script))) {
-                cx.evaluateReader(root, rdr, script, 1, null);
+                cx.evaluateReader(root, rdr, script, 1);
             }
         } catch (IOException ioe) {
             assertFalse(true, "I/O Error: " + ioe);

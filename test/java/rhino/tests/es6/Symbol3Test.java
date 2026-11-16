@@ -113,8 +113,7 @@ public class Symbol3Test {
                     } catch (Exception e) {
                     }
 
-                    final String result =
-                            (String) cx.evaluateString(scope, script, "myScript", 1, null);
+                    final String result = (String) cx.evaluateString(scope, script, "myScript", 1);
 
                     assertEquals("Symbol(Symbol.toStringTag) 1 symbol foo", result);
 

@@ -8,6 +8,7 @@ package rhino;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -77,14 +78,6 @@ import rhino.ast.VariableDeclaration;
 import rhino.ast.VariableInitializer;
 import rhino.ast.WhileLoop;
 import rhino.ast.WithStatement;
-import rhino.ast.XmlElemRef;
-import rhino.ast.XmlExpression;
-import rhino.ast.XmlFragment;
-import rhino.ast.XmlLiteral;
-import rhino.ast.XmlMemberGet;
-import rhino.ast.XmlPropRef;
-import rhino.ast.XmlRef;
-import rhino.ast.XmlString;
 import rhino.ast.Yield;
 
 /**
@@ -119,6 +112,11 @@ public final class IRFactory {
     private boolean inDerivedConstructorBody;
     // private names of the enclosing class bodies, innermost last
     private final ArrayList<Set<String>> privateNameScopes = new ArrayList<>();
+    // Finds the references that check for the temporal dead zone, null before ES6
+    private TdzAnalysis tdz;
+    // While a parameter default is transformed, the parameters not yet initialized
+    private Set<String> uninitializedParams;
+    private FunctionNode uninitializedParamsFn;
 
     public IRFactory(CompilerEnvirons env, String sourceString) {
         this(env, null, sourceString, env.getErrorReporter());
@@ -152,8 +150,15 @@ public final class IRFactory {
         }
 
         astNodePos.push(root);
+        if (parser.compilerEnv.getLanguageVersion() >= Context.VERSION_ES6) {
+            tdz = new TdzAnalysis();
+        }
         try {
-            return (ScriptNode) transform(root);
+            ScriptNode result = (ScriptNode) transform(root);
+            if (tdz != null) {
+                tdz.finish();
+            }
+            return result;
         } catch (Parser.ParserException e) {
             parser.reportErrorsIfExists(root.getLineno());
             return null;
@@ -274,9 +279,6 @@ public final class IRFactory {
                 if (node instanceof UpdateExpression) {
                     return transformUpdate((UpdateExpression) node);
                 }
-                if (node instanceof XmlMemberGet) {
-                    return transformXmlMemberGet((XmlMemberGet) node);
-                }
                 if (node instanceof InfixExpression) {
                     return transformInfix((InfixExpression) node);
                 }
@@ -294,12 +296,6 @@ public final class IRFactory {
                 }
                 if (node instanceof LetNode) {
                     return transformLetNode((LetNode) node);
-                }
-                if (node instanceof XmlRef) {
-                    return transformXmlRef((XmlRef) node);
-                }
-                if (node instanceof XmlLiteral) {
-                    return transformXmlLiteral((XmlLiteral) node);
                 }
                 if (node instanceof GeneratorMethodDefinition) {
                     return transformGeneratorMethodDefinition((GeneratorMethodDefinition) node);
@@ -408,8 +404,7 @@ public final class IRFactory {
         Node call =
                 createCallOrNew(
                         Token.CALL,
-                        createPropertyGet(
-                                parser.createName(arrayName), null, "push", 0, node.type));
+                        createPropertyGet(parser.createName(arrayName), "push", node.type));
 
         Node body = new Node(Token.EXPR_VOID, call);
         body.setLineColumnNumber(lineno, column);
@@ -676,21 +671,40 @@ public final class IRFactory {
      * <pre>
      *   try {
      *     loop
-     *     if (open) checkReturn(await return());  // after break
      *   } catch (e) {
-     *     caught(e);
+     *     if (open) await returnQuietly();
+     *     throw e;
      *   } finally {
-     *     if (open) returnWithoutAwaiting();  // after return, or a jump out of enclosing loops
+     *     if (open) checkReturn(await return());  // after break, continue, return or return()
      *   }
-     *   if (threw) { if (open) await returnQuietly(); throw exception; }
      * </pre>
-     *
-     * The handlers do not await, as generators cannot resume inside them.
      */
     private Node closeAsyncIteration(Node loop, String iteration, ForInLoop ast) {
         int lineno = ast.getLineno(), column = ast.getColumn();
         Node tryBlock = new Node(Token.BLOCK, loop);
-        tryBlock.addChildToBack(
+
+        String exception = "%forAwaitException" + forAwaitCount++;
+        Node catchBody = new Node(Token.BLOCK);
+        catchBody.addChildToBack(
+                createIf(
+                        intrinsic(Intrinsics.ASYNC_OPEN, parser.createName(iteration)),
+                        new Node(
+                                Token.EXPR_VOID,
+                                awaitNode(
+                                        intrinsic(
+                                                Intrinsics.ASYNC_RETURN_QUIETLY,
+                                                parser.createName(iteration)))),
+                        null,
+                        lineno,
+                        column));
+        catchBody.addChildToBack(
+                new Node(Token.THROW, parser.createName(exception), lineno, column));
+        Node catchBlocks = new Node(Token.BLOCK);
+        catchBlocks.addChildToBack(
+                createCatch(parser.createName(exception), null, catchBody, lineno, column));
+
+        Node finallyBlock = new Node(Token.BLOCK);
+        finallyBlock.addChildToBack(
                 createIf(
                         intrinsic(Intrinsics.ASYNC_OPEN, parser.createName(iteration)),
                         new Node(
@@ -704,65 +718,8 @@ public final class IRFactory {
                         null,
                         lineno,
                         column));
-
-        String exception = "%forAwaitException" + forAwaitCount++;
-        Node catchBody = new Node(Token.BLOCK);
-        catchBody.addChildToBack(
-                new Node(
-                        Token.EXPR_VOID,
-                        intrinsic(
-                                Intrinsics.ASYNC_CAUGHT,
-                                parser.createName(iteration),
-                                parser.createName(exception))));
-        Node catchBlocks = new Node(Token.BLOCK);
-        catchBlocks.addChildToBack(
-                createCatch(parser.createName(exception), null, catchBody, lineno, column));
-
-        Node finallyBlock = new Node(Token.BLOCK);
-        finallyBlock.addChildToBack(
-                createIf(
-                        intrinsic(Intrinsics.ASYNC_OPEN, parser.createName(iteration)),
-                        new Node(
-                                Token.EXPR_VOID,
-                                intrinsic(
-                                        Intrinsics.ASYNC_RETURN_NO_AWAIT,
-                                        parser.createName(iteration))),
-                        null,
-                        lineno,
-                        column));
         parser.setRequiresActivation();
-
-        Node rethrow = new Node(Token.BLOCK);
-        rethrow.addChildToBack(
-                createIf(
-                        intrinsic(Intrinsics.ASYNC_OPEN, parser.createName(iteration)),
-                        new Node(
-                                Token.EXPR_VOID,
-                                awaitNode(
-                                        intrinsic(
-                                                Intrinsics.ASYNC_RETURN_QUIETLY,
-                                                parser.createName(iteration)))),
-                        null,
-                        lineno,
-                        column));
-        rethrow.addChildToBack(
-                new Node(
-                        Token.THROW,
-                        intrinsic(Intrinsics.ASYNC_EXCEPTION, parser.createName(iteration)),
-                        lineno,
-                        column));
-
-        Node result = new Node(Token.BLOCK);
-        result.addChildToBack(
-                createTryCatchFinally(tryBlock, catchBlocks, finallyBlock, lineno, column));
-        result.addChildToBack(
-                createIf(
-                        intrinsic(Intrinsics.ASYNC_THREW, parser.createName(iteration)),
-                        rethrow,
-                        null,
-                        lineno,
-                        column));
-        return result;
+        return createTryCatchFinally(tryBlock, catchBlocks, finallyBlock, lineno, column);
     }
 
     /** Awaits a value in the async function or generator being transformed. */
@@ -864,11 +821,30 @@ public final class IRFactory {
 
             List<Node> paramInits = new ArrayList<>();
             int patternIndex = 0;
-            for (AstNode param : fn.getParams()) {
+            List<AstNode> params = fn.getParams();
+            for (int p = 0; p < params.size(); p++) {
+                AstNode param = params.get(p);
                 if (param instanceof Name) {
                     AstNode rhs = defaults.remove(((Name) param).getIdentifier());
                     if (rhs != null) {
-                        paramInits.add(defaultParamInit(((Name) param).getIdentifier(), rhs, body));
+                        if (tdz != null) {
+                            // A default reading this or a later parameter always throws
+                            uninitializedParams = new HashSet<>();
+                            uninitializedParamsFn = fn;
+                            for (int q = p; q < params.size(); q++) {
+                                if (params.get(q) instanceof Name) {
+                                    uninitializedParams.add(
+                                            ((Name) params.get(q)).getIdentifier());
+                                }
+                            }
+                        }
+                        try {
+                            paramInits.add(
+                                    defaultParamInit(
+                                            ((Name) param).getIdentifier(), rhs, body));
+                        } finally {
+                            uninitializedParams = null;
+                        }
                     }
                 } else if (patternIndex < patterns.size()) {
                     paramInits.add(
@@ -963,6 +939,19 @@ public final class IRFactory {
         // ARRAYCOMP is the scoped expression: a block of statements followed by the value
         cls.setType(Token.ARRAYCOMP);
         astNodePos.push(cls);
+        int classEnd = cls.getAbsolutePosition() + cls.getLength();
+        if (tdz != null) {
+            tdz.classBody(cls.getConstructor(), cls);
+            for (ClassNode.Element e : cls.getElements()) {
+                tdz.classBody(e.getFunction(), cls);
+            }
+            if (className != null) {
+                tdz.declare(cls, name, classEnd, -1);
+            }
+        }
+        // References within the class resolve to its inner name binding
+        Scope savedScope = parser.currentScope;
+        parser.currentScope = cls;
         try {
             Node block = new Node(Token.BLOCK);
             block.setLineColumnNumber(lineno, column);
@@ -1020,6 +1009,7 @@ public final class IRFactory {
             cls.addChildToBack(block);
             cls.addChildToBack(intrinsic(Intrinsics.FINISH_CLASS, parser.createName(classVar)));
         } finally {
+            parser.currentScope = savedScope;
             astNodePos.pop();
             privateNameScopes.remove(privateNames);
             currentClassVar = savedClassVar;
@@ -1030,11 +1020,26 @@ public final class IRFactory {
         if (!cls.isStatement()) {
             return cls;
         }
+        if (tdz != null) {
+            tdz.declare(parser.currentScope, name, classEnd, caseEnd(cls));
+        }
         Node binding = parser.createName(name);
         binding.addChildToBack(cls);
         Node decl = new Node(Token.LET, binding);
         decl.setLineColumnNumber(lineno, column);
         return decl;
+    }
+
+    /** Returns the end of the case clause a declaration is directly in, or -1. */
+    private int caseEnd(AstNode declaration) {
+        if (parser.currentScope instanceof SwitchStatement) {
+            for (AstNode n = declaration.getParent(); n != null; n = n.getParent()) {
+                if (n instanceof SwitchCase) {
+                    return n.getAbsolutePosition() + n.getLength();
+                }
+            }
+        }
+        return -1;
     }
 
     private static Node classStatement(Node expr, ClassNode cls) {
@@ -1506,6 +1511,22 @@ public final class IRFactory {
     }
 
     private Node transformName(Name node) {
+        if (uninitializedParams != null
+                && uninitializedParams.contains(node.getIdentifier())
+                && parser.currentScriptOrFn == uninitializedParamsFn
+                && parser.currentScope.getDefiningScope(node.getIdentifier())
+                        == uninitializedParamsFn
+                && !(node.getParent() instanceof Assignment
+                        && ((Assignment) node.getParent()).getLeft() == node)
+                && !(node.getParent() instanceof UpdateExpression)) {
+            return intrinsic(
+                    Intrinsics.CHECK_INIT,
+                    intrinsic(Intrinsics.UNINITIALIZED),
+                    Node.newString(node.getIdentifier()));
+        }
+        if (tdz != null) {
+            tdz.reference(node, parser.currentScope, parser.currentScriptOrFn);
+        }
         return node;
     }
 
@@ -1627,7 +1648,7 @@ public final class IRFactory {
         if (derivedThisVar != null && target.getType() == Token.SUPER) {
             return intrinsic(Intrinsics.SUPER_GET, derivedThis(), target, Node.newString(name));
         }
-        return createPropertyGet(target, null, name, 0, node.type);
+        return createPropertyGet(target, name, node.type);
     }
 
     private Node transformTemplateLiteral(TemplateLiteral node) {
@@ -1676,6 +1697,12 @@ public final class IRFactory {
     private Node transformReturn(ReturnStatement node) {
         AstNode rv = node.getReturnValue();
         Node value = rv == null ? null : transform(rv);
+        if (value != null
+                && parser.currentScriptOrFn instanceof FunctionNode
+                && ((FunctionNode) parser.currentScriptOrFn).isAsyncGenerator()) {
+            // An async generator awaits what it returns
+            value = awaitNode(value);
+        }
         if (inDerivedConstructorBody) {
             value =
                     value == null
@@ -1909,9 +1936,6 @@ public final class IRFactory {
 
     private Node transformUnary(UnaryExpression node) {
         int type = node.getType();
-        if (type == Token.DEFAULTNAMESPACE) {
-            return transformDefaultXmlNamespace(node);
-        }
 
         Node child = transform(node.getOperand());
         if (type == Token.DELPROP
@@ -1935,9 +1959,28 @@ public final class IRFactory {
 
     private Node transformVariableInitializers(VariableDeclaration node) {
         List<VariableInitializer> vars = node.getVariables();
+        boolean lexical =
+                tdz != null && (node.getType() == Token.LET || node.getType() == Token.CONST);
+        // The bindings of a for-in/of head are initialized as the body starts
+        AstNode parent = node.getParent();
+        int loopBody =
+                lexical
+                                && parent instanceof ForInLoop
+                                && ((ForInLoop) parent).getIterator() == node
+                        ? ((ForInLoop) parent).getBody().getAbsolutePosition()
+                        : -1;
+        int caseEnd = lexical ? caseEnd(node) : -1;
         for (VariableInitializer var : vars) {
             AstNode target = var.getTarget();
             AstNode init = var.getInitializer();
+            int initPosition = -1;
+            if (lexical) {
+                initPosition =
+                        loopBody >= 0 ? loopBody : var.getAbsolutePosition() + var.getLength();
+                if (init != null && loopBody < 0) {
+                    tdz.initializer(init, initPosition);
+                }
+            }
 
             Node left = null;
             if (var.isDestructuring()) {
@@ -1952,6 +1995,13 @@ public final class IRFactory {
                     inferClassName(((Name) target).getIdentifier(), init);
                 }
                 right = transform(init);
+            }
+
+            if (lexical) {
+                tdz.declarePattern(parser.currentScope, target, initPosition, caseEnd);
+                if (init == null && loopBody < 0 && !var.isDestructuring()) {
+                    tdz.declareWithoutInitializer(parser.currentScope, left);
+                }
             }
 
             if (var.isDestructuring()) {
@@ -2003,6 +2053,14 @@ public final class IRFactory {
                 && ((FunctionNode) parser.currentScriptOrFn).isAsyncGenerator()) {
             // An async generator yields both, so it marks what it awaits
             kid = intrinsic(Intrinsics.AWAIT_REQUEST, kid);
+        } else if (node.getType() == Token.YIELD_STAR
+                && ((FunctionNode) parser.currentScriptOrFn).isAsyncGenerator()) {
+            // The async generator steps the delegate, and resumes the body with its result
+            return new Node(
+                    Token.YIELD,
+                    intrinsic(Intrinsics.YIELD_STAR_REQUEST, kid),
+                    node.getLineno(),
+                    node.getColumn());
         }
         if (kid != null) return new Node(node.getType(), kid, node.getLineno(), node.getColumn());
         return new Node(node.getType(), node.getLineno(), node.getColumn());
@@ -2011,83 +2069,6 @@ public final class IRFactory {
     private Node transformSpread(Spread node) {
         Node kid = transform(node.getExpression());
         return new Node(node.getType(), kid, node.getLineno(), node.getColumn());
-    }
-
-    private Node transformXmlLiteral(XmlLiteral node) {
-        // a literal like <foo>{bar}</foo> is rewritten as
-        //   new XML("<foo>" + bar + "</foo>");
-
-        Node pnXML = new Node(Token.NEW, node.getLineno(), node.getColumn());
-        List<XmlFragment> frags = node.getFragments();
-
-        XmlString first = (XmlString) frags.get(0);
-        boolean anon = first.getXml().trim().startsWith("<>");
-        pnXML.addChildToBack(parser.createName(anon ? "XMLList" : "XML"));
-
-        Node pn = null;
-        for (XmlFragment frag : frags) {
-            if (frag instanceof XmlString) {
-                String xml = ((XmlString) frag).getXml();
-                if (pn == null) {
-                    pn = createString(xml);
-                } else {
-                    pn = createBinary(Token.ADD, pn, createString(xml));
-                }
-            } else {
-                XmlExpression xexpr = (XmlExpression) frag;
-                boolean isXmlAttr = xexpr.isXmlAttribute();
-                Node expr;
-                if (xexpr.getExpression() instanceof EmptyExpression) {
-                    expr = createString("");
-                } else {
-                    expr = transform(xexpr.getExpression());
-                }
-                if (isXmlAttr) {
-                    // Need to put the result in double quotes
-                    expr = createUnary(Token.ESCXMLATTR, expr);
-                    Node prepend = createBinary(Token.ADD, createString("\""), expr);
-                    expr = createBinary(Token.ADD, prepend, createString("\""));
-                } else {
-                    expr = createUnary(Token.ESCXMLTEXT, expr);
-                }
-                pn = createBinary(Token.ADD, pn, expr);
-            }
-        }
-
-        pnXML.addChildToBack(pn);
-        return pnXML;
-    }
-
-    private Node transformXmlMemberGet(XmlMemberGet node) {
-        XmlRef ref = node.getMemberRef();
-        Node pn = transform(node.getLeft());
-        int flags = ref.isAttributeAccess() ? Node.ATTRIBUTE_FLAG : 0;
-        if (node.getType() == Token.DOTDOT) {
-            flags |= Node.DESCENDANTS_FLAG;
-        }
-        return transformXmlRef(pn, ref, flags);
-    }
-
-    // We get here if we weren't a child of a . or .. infix node
-    private Node transformXmlRef(XmlRef node) {
-        int memberTypeFlags = node.isAttributeAccess() ? Node.ATTRIBUTE_FLAG : 0;
-        return transformXmlRef(null, node, memberTypeFlags);
-    }
-
-    private Node transformXmlRef(Node pn, XmlRef node, int memberTypeFlags) {
-        Name namespace = node.getNamespace();
-        String ns = namespace != null ? namespace.getIdentifier() : null;
-        if (node instanceof XmlPropRef) {
-            String name = ((XmlPropRef) node).getPropName().getIdentifier();
-            return createPropertyGet(pn, ns, name, memberTypeFlags, node.type);
-        }
-        Node expr = transform(((XmlElemRef) node).getExpression());
-        return createElementGet(pn, ns, expr, memberTypeFlags);
-    }
-
-    private Node transformDefaultXmlNamespace(UnaryExpression node) {
-        Node child = transform(node.getOperand());
-        return createUnary(Token.DEFAULTNAMESPACE, child);
     }
 
     private Node transformGeneratorMethodDefinition(GeneratorMethodDefinition node) {
@@ -2884,86 +2865,29 @@ public final class IRFactory {
         throw Kit.codeBug();
     }
 
-    private Node createPropertyGet(
-            Node target, String namespace, String name, int memberTypeFlags, int type) {
-        if (namespace == null && memberTypeFlags == 0) {
-            if (target == null) {
-                return parser.createName(name);
-            }
-            parser.checkActivationName(name, Token.GETPROP);
+    private Node createPropertyGet(Node target, String name, int type) {
+        parser.checkActivationName(name, Token.GETPROP);
 
-            if (parser.compilerEnv.getLanguageVersion() < Context.VERSION_ES6
-                    && ScriptRuntime.isSpecialProperty(name)) {
-                Node ref = new Node(Token.REF_SPECIAL, target);
-                ref.putProp(Node.NAME_PROP, name);
-                Node getRef = new Node(Token.GET_REF, ref);
-                if (type == Token.QUESTION_DOT) {
-                    ref.putIntProp(Node.OPTIONAL_CHAINING, 1);
-                    getRef.putIntProp(Node.OPTIONAL_CHAINING, 1);
-                }
-                return getRef;
-            }
-
-            Node node = new Node(Token.GETPROP, target, Node.newString(name));
+        if (parser.compilerEnv.getLanguageVersion() < Context.VERSION_ES6
+                && ScriptRuntime.isSpecialProperty(name)) {
+            Node ref = new Node(Token.REF_SPECIAL, target);
+            ref.putProp(Node.NAME_PROP, name);
+            Node getRef = new Node(Token.GET_REF, ref);
             if (type == Token.QUESTION_DOT) {
-                node.putIntProp(Node.OPTIONAL_CHAINING, 1);
+                ref.putIntProp(Node.OPTIONAL_CHAINING, 1);
+                getRef.putIntProp(Node.OPTIONAL_CHAINING, 1);
             }
-            if (target.getType() == Token.SUPER) {
-                node.putIntProp(Node.SUPER_PROPERTY_ACCESS, 1);
-            }
-            return node;
+            return getRef;
         }
-        Node elem = Node.newString(name);
-        memberTypeFlags |= Node.PROPERTY_FLAG;
-        return createMemberRefGet(target, namespace, elem, memberTypeFlags);
-    }
 
-    /**
-     * @param target the node before the LB
-     * @param namespace optional namespace
-     * @param elem the node in the brackets
-     * @param memberTypeFlags E4X flags
-     */
-    private Node createElementGet(Node target, String namespace, Node elem, int memberTypeFlags) {
-        // OPT: could optimize to createPropertyGet
-        // iff elem is string that can not be number
-        if (namespace == null && memberTypeFlags == 0) {
-            // stand-alone [aaa] as primary expression is array literal
-            // declaration and should not come here!
-            if (target == null) throw Kit.codeBug();
-            return new Node(Token.GETELEM, target, elem);
+        Node node = new Node(Token.GETPROP, target, Node.newString(name));
+        if (type == Token.QUESTION_DOT) {
+            node.putIntProp(Node.OPTIONAL_CHAINING, 1);
         }
-        return createMemberRefGet(target, namespace, elem, memberTypeFlags);
-    }
-
-    private Node createMemberRefGet(Node target, String namespace, Node elem, int memberTypeFlags) {
-        Node nsNode = null;
-        if (namespace != null) {
-            // See 11.1.2 in ECMA 357
-            if ("*".equals(namespace)) {
-                nsNode = new Node(Token.NULL);
-            } else {
-                nsNode = parser.createName(namespace);
-            }
+        if (target.getType() == Token.SUPER) {
+            node.putIntProp(Node.SUPER_PROPERTY_ACCESS, 1);
         }
-        Node ref;
-        if (target == null) {
-            if (namespace == null) {
-                ref = new Node(Token.REF_NAME, elem);
-            } else {
-                ref = new Node(Token.REF_NS_NAME, nsNode, elem);
-            }
-        } else {
-            if (namespace == null) {
-                ref = new Node(Token.REF_MEMBER, target, elem);
-            } else {
-                ref = new Node(Token.REF_NS_MEMBER, target, nsNode, elem);
-            }
-        }
-        if (memberTypeFlags != 0) {
-            ref.putIntProp(Node.MEMBER_TYPE_PROP, memberTypeFlags);
-        }
-        return new Node(Token.GET_REF, ref);
+        return node;
     }
 
     private static Node createBinary(int nodeType, Node left, Node right) {
@@ -3195,7 +3119,6 @@ public final class IRFactory {
             case Token.GET_REF:
                 {
                     ref = left.getFirstChild();
-                    parser.checkMutableReference(ref);
                     Node opLeft = new Node(Token.USE_STACK);
                     Node op = new Node(assignOp, opLeft, right);
                     return propagateSuperFromLhs(new Node(Token.SET_REF_OP, ref, op), left);

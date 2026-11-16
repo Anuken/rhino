@@ -132,7 +132,7 @@ public class NativeArrayTest {
             cx.setLanguageVersion(Context.VERSION_ES6);
 
             TopLevel scope = cx.initStandardObjects();
-            String result = cx.evaluateString(scope, source, "source", 1, null).toString();
+            String result = cx.evaluateString(scope, source, "source", 1).toString();
             Assertions.assertEquals("0,1,0,1", result);
         }
     }
@@ -158,7 +158,7 @@ public class NativeArrayTest {
             cx.setLanguageVersion(Context.VERSION_ECMASCRIPT);
             TopLevel scope = cx.initSafeStandardObjects(new TopLevel());
 
-            assertNotNull(cx.evaluateString(scope, script, "test", 1, null));
+            assertNotNull(cx.evaluateString(scope, script, "test", 1));
         }
     }
 }

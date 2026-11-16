@@ -68,11 +68,11 @@ public class PrimitiveTypeScopeResolutionTest {
                     final TopLevel scope2 = new TopLevel(new MySimpleScriptableObject("scope2"));
                     cx.initStandardObjects(scope2);
 
-                    cx.evaluateString(scope2, scriptScope2, "source2", 1, null);
+                    cx.evaluateString(scope2, scriptScope2, "source2", 1);
 
                     scope1.put("scope2", scope1, scope2.getGlobalThis());
 
-                    return cx.evaluateString(scope1, scriptScope1, "source1", 1, null);
+                    return cx.evaluateString(scope1, scriptScope1, "source1", 1);
                 });
     }
 
@@ -138,11 +138,11 @@ public class PrimitiveTypeScopeResolutionTest {
                     myObject.defineFunctionProperties(
                             scope2, functionNames, MyObject.class, ScriptableObject.EMPTY);
                     scope2.put("myObject", scope2, myObject);
-                    cx.evaluateString(scope2, scriptScope2, "source2", 1, null);
+                    cx.evaluateString(scope2, scriptScope2, "source2", 1);
 
                     scope1.put("scope2", scope1, scope2.getGlobalThis());
 
-                    return cx.evaluateString(scope1, scriptScope1, "source1", 1, null);
+                    return cx.evaluateString(scope1, scriptScope1, "source1", 1);
                 });
     }
 }

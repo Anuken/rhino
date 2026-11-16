@@ -42,7 +42,7 @@ public class NativeStringTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setLocale(new Locale("en"));
 
-                    final Object rep = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object rep = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals("\u0069\u0307", rep);
                     return null;
                 });
@@ -53,7 +53,7 @@ public class NativeStringTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setLocale(new Locale("tr"));
 
-                    final Object rep = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object rep = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals("\u0069", rep);
                     return null;
                 });
@@ -69,7 +69,7 @@ public class NativeStringTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setLocale(new Locale("en"));
 
-                    final Object rep = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object rep = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals("\u0069\u0307", rep);
                     return null;
                 });
@@ -80,7 +80,7 @@ public class NativeStringTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setLocale(new Locale("tr"));
 
-                    final Object rep = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object rep = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals("\u0069", rep);
                     return null;
                 });

@@ -117,7 +117,6 @@ public class Test262SuiteTest {
                     Arrays.asList(
                             "Atomics",
                             "IsHTMLDDA",
-                            "async-iteration",
                             "tail-call-optimization",
                             "Temporal",
                             "upsert",
@@ -309,7 +308,7 @@ public class Test262SuiteTest {
                 throw ScriptRuntime.throwError(cx, scope, "not enough args");
             }
             String source = Context.toString(args[0]);
-            return cx.evaluateString(scope, source, "<evalScript>", 1, null);
+            return cx.evaluateString(scope, source, "<evalScript>", 1);
         }
 
         public static Object getGlobal(Scriptable scriptable) {
@@ -353,7 +352,7 @@ public class Test262SuiteTest {
                                 try (Reader reader = new FileReader(harnessPath)) {
                                     String script = Kit.readReader(reader);
 
-                                    return cx.compileString(script, harnessPath, 1, null);
+                                    return cx.compileString(script, harnessPath, 1);
                                 } catch (IOException ioe) {
                                     throw new RuntimeException(
                                             "Error reading test file " + harnessPath, ioe);
@@ -446,7 +445,7 @@ public class Test262SuiteTest {
                 }
 
                 failedEarly = true;
-                Script caseScript = cx.compileString(str, testFilePath, line, null);
+                Script caseScript = cx.compileString(str, testFilePath, line);
 
                 failedEarly = false; // not after this line
                 caseScript.exec(cx, scope, scope.getGlobalThis());

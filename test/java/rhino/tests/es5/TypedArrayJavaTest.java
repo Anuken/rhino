@@ -37,7 +37,7 @@ public class TypedArrayJavaTest {
                                 + type
                                 + "([1, 2]);\n"
                                 + "try { ta.subarray(); } catch(e) { '' + e }";
-                Object obj = cx.evaluateString(global, script, "", 1, null);
+                Object obj = cx.evaluateString(global, script, "", 1);
                 assertEquals("Error: invalid arguments", obj);
             }
         }

@@ -230,7 +230,7 @@ public class NativeJavaMapTest {
                             VarScope scope = context.newVarEnv(global);
                             scope.put("value", scope, Context.javaToJS(value, scope));
                             return convert.apply(
-                                    context.evaluateString(scope, scriptSourceText, "", 1, null));
+                                    context.evaluateString(scope, scriptSourceText, "", 1));
                         });
     }
 
@@ -241,7 +241,7 @@ public class NativeJavaMapTest {
                             VarScope scope = context.newVarEnv(global);
                             context.setLanguageVersion(Context.VERSION_ES6);
                             scope.put("value", scope, Context.javaToJS(value, scope));
-                            return context.evaluateString(scope, scriptSourceText, "", 1, null);
+                            return context.evaluateString(scope, scriptSourceText, "", 1);
                         });
     }
 

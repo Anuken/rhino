@@ -42,8 +42,7 @@ public class NativePromiseTest {
                 scope,
                 "if (!(p instanceof Promise)) { throw 'Should be a promise'; }",
                 "test.js",
-                1,
-                null);
+                1);
         p.resolve(cx, scope, "foo");
         assertEquals(NativePromise.State.FULFILLED, p.getState());
         assertEquals("foo", p.getResult());
@@ -72,8 +71,7 @@ public class NativePromiseTest {
                         "p.then((r) => { resolved = true; result = r; },",
                         "() => { rejected = true; });"),
                 "test.js",
-                1,
-                null);
+                1);
         p.resolve(cx, scope, "foo");
         cx.processMicrotasks();
         assertEquals(Boolean.FALSE, ScriptableObject.getProperty(scope, "rejected"));
@@ -94,8 +92,7 @@ public class NativePromiseTest {
                         "p.then(() => { resolved = true; },",
                         "(r) => { rejected = true; result = r; });"),
                 "test.js",
-                1,
-                null);
+                1);
         p.reject(cx, scope, "foo");
         cx.processMicrotasks();
         assertEquals(Boolean.TRUE, ScriptableObject.getProperty(scope, "rejected"));
@@ -288,7 +285,7 @@ public class NativePromiseTest {
     @Test
     public void testJavaCallbackReceivesJavaScriptObject() {
         var p = NativePromise.create(scope);
-        Object obj = cx.evaluateString(scope, "({a: 1})", "test.js", 1, null);
+        Object obj = cx.evaluateString(scope, "({a: 1})", "test.js", 1);
         var received = new AtomicReference<Object>();
         p.onFulfill(cx, received::set);
         p.resolve(cx, scope, obj);
@@ -300,7 +297,7 @@ public class NativePromiseTest {
     @Test
     public void testJsCreatedFulfilledPromiseJavaOnFulfill() {
         cx.evaluateString(
-                scope, "var p = new Promise(function(res) { res('foo'); });", "test.js", 1, null);
+                scope, "var p = new Promise(function(res) { res('foo'); });", "test.js", 1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         assertEquals(NativePromise.State.FULFILLED, p.getState());
         var count = new AtomicInteger();
@@ -320,11 +317,7 @@ public class NativePromiseTest {
     @Test
     public void testJsCreatedRejectedPromiseJavaOnReject() {
         cx.evaluateString(
-                scope,
-                "var p = new Promise(function(res, rej) { rej('bar'); });",
-                "test.js",
-                1,
-                null);
+                scope, "var p = new Promise(function(res, rej) { rej('bar'); });", "test.js", 1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         assertEquals(NativePromise.State.REJECTED, p.getState());
         var count = new AtomicInteger();
@@ -349,8 +342,7 @@ public class NativePromiseTest {
                         "var result = undefined;",
                         "p.then(function(v) { result = v; });"),
                 "test.js",
-                1,
-                null);
+                1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         assertEquals(NativePromise.State.PENDING, p.getState());
         var fulfillValue = new AtomicReference<Object>();
@@ -377,8 +369,7 @@ public class NativePromiseTest {
                         "var caught = undefined;",
                         "p.catch(function(r) { caught = r; });"),
                 "test.js",
-                1,
-                null);
+                1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         assertEquals(NativePromise.State.PENDING, p.getState());
         var rejectValue = new AtomicReference<Object>();
@@ -402,14 +393,13 @@ public class NativePromiseTest {
                         "var resolveFn;",
                         "var p = new Promise(function(res) { resolveFn = res; });"),
                 "test.js",
-                1,
-                null);
+                1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         assertEquals(NativePromise.State.PENDING, p.getState());
         var value = new AtomicReference<Object>();
         p.onFulfill(cx, value::set);
         assertNull(value.get());
-        cx.evaluateString(scope, "resolveFn('qux');", "test.js", 1, null);
+        cx.evaluateString(scope, "resolveFn('qux');", "test.js", 1);
         assertEquals(NativePromise.State.FULFILLED, p.getState());
         assertEquals("qux", value.get());
     }
@@ -441,11 +431,7 @@ public class NativePromiseTest {
     public void testResolveWithThenable() {
         Object thenable =
                 cx.evaluateString(
-                        scope,
-                        "({then: function(res, rej) { res('adopted'); }})",
-                        "test.js",
-                        1,
-                        null);
+                        scope, "({then: function(res, rej) { res('adopted'); }})", "test.js", 1);
         var p = NativePromise.create(scope);
         var received = new AtomicReference<Object>();
         p.onFulfill(cx, received::set);
@@ -457,7 +443,7 @@ public class NativePromiseTest {
 
         Object rejectingThenable =
                 cx.evaluateString(
-                        scope, "({then: function(res, rej) { rej('nope'); }})", "test.js", 1, null);
+                        scope, "({then: function(res, rej) { rej('nope'); }})", "test.js", 1);
         var q = NativePromise.create(scope);
         var reason = new AtomicReference<Object>();
         q.onReject(cx, reason::set);
@@ -490,17 +476,12 @@ public class NativePromiseTest {
                         "var fns;",
                         "var p = new Promise(function(res, rej) { fns = {res: res, rej: rej}; });"),
                 "test.js",
-                1,
-                null);
+                1);
         var p = (NativePromise) ScriptableObject.getProperty(scope, "p");
         p.resolve(cx, scope, "java");
-        cx.evaluateString(scope, "fns.res('js');", "test.js", 1, null);
+        cx.evaluateString(scope, "fns.res('js');", "test.js", 1);
         cx.evaluateString(
-                scope,
-                "fns.rej({then: function(r, j) { r('js-thenable'); }});",
-                "test.js",
-                1,
-                null);
+                scope, "fns.rej({then: function(r, j) { r('js-thenable'); }});", "test.js", 1);
         cx.processMicrotasks();
         assertEquals(NativePromise.State.FULFILLED, p.getState());
         assertEquals("java", p.getResult());

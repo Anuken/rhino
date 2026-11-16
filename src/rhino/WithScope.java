@@ -3,8 +3,7 @@ package rhino;
 import static rhino.Scriptable.NOT_FOUND;
 
 public class WithScope implements VarScope {
-    // This cannot be final because XML dot queries mutate it!
-    private Scriptable obj;
+    private final Scriptable obj;
     private final VarScope parent;
 
     public WithScope(VarScope parentScope, Scriptable obj) {
@@ -15,10 +14,6 @@ public class WithScope implements VarScope {
     @Override
     public VarScope getParentScope() {
         return parent;
-    }
-
-    public void setObject(Scriptable obj) {
-        this.obj = obj;
     }
 
     @Override
@@ -95,12 +90,6 @@ public class WithScope implements VarScope {
 
     public Scriptable getObject() {
         return obj;
-    }
-
-    /** Must return null to continue looping or the final collection result. */
-    protected Object updateDotQuery(boolean value) {
-        // WithScope itself does not support it
-        throw new IllegalStateException();
     }
 
     @Override

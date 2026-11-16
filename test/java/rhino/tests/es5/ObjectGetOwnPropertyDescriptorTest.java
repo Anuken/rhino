@@ -60,7 +60,7 @@ public class ObjectGetOwnPropertyDescriptorTest {
                             + "valueProperty.set.call(hostObj, consString);\n"
                             + "var result = '' + valueProperty.get.call(hostObj);\n"
                             + "result;\n";
-            String result = (String) cx.evaluateString(scope, script, "<testsrc>", 0, null);
+            String result = (String) cx.evaluateString(scope, script, "<testsrc>", 0);
             assertEquals("abc", result);
         }
     }

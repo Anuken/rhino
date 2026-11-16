@@ -16,7 +16,6 @@ import rhino.ErrorReporter;
 import rhino.EvaluatorException;
 import rhino.JavaScriptException;
 import rhino.RhinoException;
-import rhino.SecurityUtilities;
 import rhino.WrappedException;
 
 /**
@@ -138,7 +137,7 @@ public class ToolErrorReporter implements ErrorReporter {
             WrappedException we = (WrappedException) ex;
             we.printStackTrace(err);
         } else {
-            String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+            String lineSeparator = System.lineSeparator();
             String msg = getExceptionMessage(ex) + lineSeparator + ex.getScriptStackTrace();
             reportErrorMessage(
                     msg,

@@ -12,7 +12,7 @@ import rhino.testutils.Utils;
 public class JavaBeaningTest {
 
     private static final String SCRIPT_INIT =
-            String.format("let obj = new %s();\n", BeaningTestObject.class.getName());
+            String.format("let obj = new Packages.%s();\n", BeaningTestObject.class.getName());
 
     @Test
     public void testMasked() {
@@ -80,7 +80,7 @@ public class JavaBeaningTest {
             var testObject = new BeaningTestObject<>();
             scope.put("obj", scope, testObject);
 
-            var result = cx.evaluateString(scope, script, "test.js", 1, null);
+            var result = cx.evaluateString(scope, script, "test.js", 1);
             while (result instanceof Wrapper) {
                 result = ((Wrapper) result).unwrap();
             }

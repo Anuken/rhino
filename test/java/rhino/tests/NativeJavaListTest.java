@@ -233,7 +233,7 @@ public class NativeJavaListTest {
                             VarScope scope = context.newVarEnv(global);
                             scope.put("value", scope, Context.javaToJS(value, scope));
                             return convert.apply(
-                                    context.evaluateString(scope, scriptSourceText, "", 1, null));
+                                    context.evaluateString(scope, scriptSourceText, "", 1));
                         });
     }
 }

@@ -51,7 +51,7 @@ public class ContinuationComparisonTest {
                     new InputStreamReader(
                             getClass().getResourceAsStream("ContinuationComparisonTest.js"))) {
                 cx.executeScriptWithContinuations(
-                        cx.compileReader(r, "ContinuationComparisonTest.js", 1, null), global);
+                        cx.compileReader(r, "ContinuationComparisonTest.js", 1), global);
             }
             // Make the global standard again
             global.delete("capture");

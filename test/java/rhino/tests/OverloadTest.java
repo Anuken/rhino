@@ -52,7 +52,7 @@ public class OverloadTest {
         Utils.runWithAllModes(
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
-                    final Object rep = cx.evaluateString(scope, source, "test.js", 0, null);
+                    final Object rep = cx.evaluateString(scope, source, "test.js", 0);
                     assertEquals(expected, rep);
                     return null;
                 });
@@ -64,7 +64,7 @@ public class OverloadTest {
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
                     try {
-                        cx.evaluateString(scope, source, "test.js", 0, null);
+                        cx.evaluateString(scope, source, "test.js", 0);
                         fail("Did not throw exception");
                     } catch (Exception e) {
                         assertTrue(exceptionClass.isInstance(e));

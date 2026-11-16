@@ -102,7 +102,7 @@ public class GeneratedMethodNameTest {
         try (Context cx = ContextFactory.getGlobal().enterContext()) {
             TopLevel topScope = cx.initStandardObjects();
             topScope.put("javaNameGetter", topScope, new JavaNameGetter());
-            Script script = cx.compileString(scriptCode, "myScript", 1, null);
+            Script script = cx.compileString(scriptCode, "myScript", 1);
             script.exec(cx, topScope, topScope.getGlobalThis());
         }
     }

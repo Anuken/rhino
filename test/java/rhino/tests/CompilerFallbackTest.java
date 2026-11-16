@@ -96,17 +96,13 @@ public class CompilerFallbackTest {
 
         @Override
         public Function createFunctionObject(
-                Context cx,
-                VarScope scope,
-                CompilationResult<JSFunction> compiled,
-                Object staticSecurityDomain) {
+                Context cx, VarScope scope, CompilationResult<JSFunction> compiled) {
             throw new AssertionError(
                     "createFunctionObject must not be called on the failing compiler after fallback");
         }
 
         @Override
-        public Script createScriptObject(
-                CompilationResult<JSScript> compiled, Object staticSecurityDomain) {
+        public Script createScriptObject(CompilationResult<JSScript> compiled) {
             throw new AssertionError(
                     "createScriptObject must not be called on the failing compiler after fallback");
         }

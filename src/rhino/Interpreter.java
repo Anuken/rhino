@@ -93,21 +93,16 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
     }
 
     @Override
-    public Script createScriptObject(
-            CompilationResult<JSScript> compiled, Object staticSecurityDomain) {
+    public Script createScriptObject(CompilationResult<JSScript> compiled) {
         var result = (InterpreterCompilationResult<JSScript>) compiled;
-        return JSFunction.createScript(result.descriptor, result.homeObject, staticSecurityDomain);
+        return JSFunction.createScript(result.descriptor, result.homeObject);
     }
 
     @Override
     public Function createFunctionObject(
-            Context cx,
-            VarScope scope,
-            CompilationResult<JSFunction> compiled,
-            Object staticSecurityDomain) {
+            Context cx, VarScope scope, CompilationResult<JSFunction> compiled) {
         var result = (InterpreterCompilationResult<JSFunction>) compiled;
-        return JSFunction.createFunction(
-                cx, scope, result.descriptor, result.homeObject, staticSecurityDomain);
+        return JSFunction.createFunction(cx, scope, result.descriptor, result.homeObject);
     }
 
     private static int getShort(byte[] iCode, int pc) {
@@ -239,7 +234,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             case Icode.IFEQ_POP:
             case Icode.IF_NULL_UNDEF:
             case Icode.IF_NOT_NULL_UNDEF:
-            case Icode.LEAVEDQ:
                 // target pc offset
                 return 1 + 2;
 
@@ -421,38 +415,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             Object newTarget) {
         if (!ScriptRuntime.hasTopCall(cx)) Kit.codeBug();
 
-        var desc = ifun.getDescriptor();
-
-        if (cx.interpreterSecurityDomain != desc.getSecurityDomain()) {
-            Object savedDomain = cx.interpreterSecurityDomain;
-            cx.interpreterSecurityDomain = desc.getSecurityDomain();
-            try {
-                if (ifun instanceof JSScript) {
-                    return desc.getSecurityController()
-                            .callWithDomain(
-                                    desc.getSecurityDomain(),
-                                    cx,
-                                    (JSScript) ifun,
-                                    scope,
-                                    thisObj,
-                                    args);
-                } else if (ifun instanceof JSFunction) {
-                    return desc.getSecurityController()
-                            .callWithDomain(
-                                    desc.getSecurityDomain(),
-                                    cx,
-                                    (JSFunction) ifun,
-                                    scope,
-                                    thisObj,
-                                    args);
-                } else {
-                    Kit.codeBug("Unknown compiled code type.");
-                }
-            } finally {
-                cx.interpreterSecurityDomain = savedDomain;
-            }
-        }
-
         CallFrame frame =
                 initFrame(
                         cx,
@@ -493,7 +455,12 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             GeneratorState generatorState = new GeneratorState(operation, value);
             if (operation == NativeGenerator.GENERATOR_CLOSE) {
                 try {
-                    return interpretLoop(cx, activeFrame, generatorState);
+                    Object result = interpretLoop(cx, activeFrame, generatorState);
+                    // A finally block may return, overriding the close
+                    if (generatorState.returnedException != null) {
+                        throw generatorState.returnedException;
+                    }
+                    return result;
                 } catch (NativeGenerator.GeneratorClosedException e) {
                     // Re-throw GeneratorClosedException so ES6Generator can catch and complete
                     throw e;
@@ -753,6 +720,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
         instructionObjs[base + Icode.SETCONSTVAR] = new DoSetConstVar();
         instructionObjs[base + Icode.INITCONSTVAR] = new DoInitConstVar();
         instructionObjs[base + Icode.RESETVAR] = new InlinedInstruction();
+        instructionObjs[base + Icode.RESETVAR_UNINITIALIZED] = new DoResetVarUninitialized();
         instructionObjs[base + Icode.SETVAR1] = new DoSetVar1();
         instructionObjs[base + Token.SETVAR] = new DoSetVar();
         instructionObjs[base + Icode.GETVAR1] = new DoGetVar1();
@@ -784,10 +752,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
         instructionObjs[base + Token.ENUM_NEXT] = new DoEnumOp();
         instructionObjs[base + Token.ENUM_ID] = new DoEnumOp();
         instructionObjs[base + Token.REF_SPECIAL] = new DoRefSpecial();
-        instructionObjs[base + Token.REF_MEMBER] = new DoRefMember();
-        instructionObjs[base + Token.REF_NS_MEMBER] = new DoRefNsMember();
-        instructionObjs[base + Token.REF_NAME] = new DoRefName();
-        instructionObjs[base + Token.REF_NS_NAME] = new DoRefNsName();
         instructionObjs[base + Icode.SCOPE_LOAD] = new DoScopeLoad();
         instructionObjs[base + Icode.SCOPE_SAVE] = new DoScopeSave();
         instructionObjs[base + Icode.SPREAD] = new DoSpread();
@@ -806,11 +770,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
         instructionObjs[base + Token.OBJECTLIT] = new DoObjectLit();
         instructionObjs[base + Token.ARRAYLIT] = new DoArrayLiteral();
         instructionObjs[base + Icode.SPARE_ARRAYLIT] = new DoArrayLiteral();
-        instructionObjs[base + Icode.ENTERDQ] = new DoEnterDotQuery();
-        instructionObjs[base + Icode.LEAVEDQ] = new DoLeaveDotQuery();
-        instructionObjs[base + Token.DEFAULTNAMESPACE] = new DoDefaultNamespace();
-        instructionObjs[base + Token.ESCXMLATTR] = new DoEscXMLAttr();
-        instructionObjs[base + Token.ESCXMLTEXT] = new DoEscXMLText();
         instructionObjs[base + Icode.DEBUGGER] = new DoDebug();
         instructionObjs[base + Icode.LINE] = new DoLineChange();
         instructionObjs[base + Icode.REG_IND_C0] = new DoIndexCn();
@@ -937,9 +896,10 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                 int exState;
                 ContinuationJump cjump = null;
 
-                if (generatorState != null
-                        && generatorState.operation == NativeGenerator.GENERATOR_CLOSE
-                        && throwable == generatorState.value) {
+                if (throwable instanceof NativeGenerator.GeneratorClosedException
+                        || (generatorState != null
+                                && generatorState.operation == NativeGenerator.GENERATOR_CLOSE
+                                && throwable == generatorState.value)) {
                     exState = EX_FINALLY_STATE;
                 } else if (throwable instanceof JavaScriptException) {
                     exState = EX_CATCH_STATE;
@@ -1676,8 +1636,9 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             InterpreterState state,
             GeneratorState generatorState,
             boolean yieldStar) {
-        if (generatorState.operation == NativeGenerator.GENERATOR_CLOSE) {
-            // Error: no yields when generator is closing
+        if (generatorState.operation == NativeGenerator.GENERATOR_CLOSE
+                && !frame.fnOrScript.getDescriptor().isES6Generator()) {
+            // Error: no yields when a legacy generator is closing
             throw ScriptRuntime.typeErrorById("msg.yield.closing");
         }
         // return to our caller (which should be a method of NativeGenerator)
@@ -2261,10 +2222,12 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
     private static class DoNameAndThis extends InstructionClass {
         @Override
         NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            final Object[] stack = frame.stack;
             // stringReg: name
-            stack[++frame.stackTop] =
-                    ScriptRuntime.getNameAndThis(state.stringReg, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop + 1,
+                    ScriptRuntime.getNameCallTarget(state.stringReg, cx, frame.scope, false));
             return null;
         }
     }
@@ -2277,8 +2240,11 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             Object obj = stack[frame.stackTop];
             if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
             // stringReg: property
-            stack[frame.stackTop] =
-                    ScriptRuntime.getPropAndThis(obj, state.stringReg, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop,
+                    ScriptRuntime.getPropCallTarget(obj, state.stringReg, cx, frame.scope, false));
             return null;
         }
     }
@@ -2874,9 +2840,11 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
     private static class DoNameAndThisOptional extends InstructionClass {
         @Override
         NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            final Object[] stack = frame.stack;
-            stack[++frame.stackTop] =
-                    ScriptRuntime.getNameAndThisOptional(state.stringReg, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop + 1,
+                    ScriptRuntime.getNameCallTarget(state.stringReg, cx, frame.scope, true));
             return null;
         }
     }
@@ -2889,8 +2857,11 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             Object obj = stack[frame.stackTop];
             if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
             // stringReg: property
-            stack[frame.stackTop] =
-                    ScriptRuntime.getPropAndThisOptional(obj, state.stringReg, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop,
+                    ScriptRuntime.getPropCallTarget(obj, state.stringReg, cx, frame.scope, true));
             return null;
         }
     }
@@ -2904,7 +2875,11 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[frame.stackTop - 1]);
             Object id = stack[frame.stackTop];
             if (id == DOUBLE_MARK) id = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
-            stack[--frame.stackTop] = ScriptRuntime.getElemAndThis(obj, id, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop - 1,
+                    ScriptRuntime.getElemCallTarget(obj, id, cx, frame.scope, false));
             return null;
         }
     }
@@ -2918,8 +2893,11 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[frame.stackTop - 1]);
             Object id = stack[frame.stackTop];
             if (id == DOUBLE_MARK) id = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
-            stack[--frame.stackTop] =
-                    ScriptRuntime.getElemAndThisOptional(obj, id, cx, frame.scope);
+            pushCallTarget(
+                    cx,
+                    frame,
+                    frame.stackTop - 1,
+                    ScriptRuntime.getElemCallTarget(obj, id, cx, frame.scope, true));
             return null;
         }
     }
@@ -2931,7 +2909,8 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             final double[] sDbl = frame.doubleStack;
             Object value = stack[frame.stackTop];
             if (value == DOUBLE_MARK) value = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
-            stack[frame.stackTop] = ScriptRuntime.getValueAndThis(value, cx);
+            pushCallTarget(
+                    cx, frame, frame.stackTop, ScriptRuntime.getValueCallTarget(value, cx, false));
             return null;
         }
     }
@@ -2943,8 +2922,26 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             double[] sDbl = frame.doubleStack;
             Object value = stack[frame.stackTop];
             if (value == DOUBLE_MARK) value = ScriptRuntime.wrapNumber(sDbl[frame.stackTop]);
-            stack[frame.stackTop] = ScriptRuntime.getValueAndThisOptional(value, cx);
+            pushCallTarget(
+                    cx, frame, frame.stackTop, ScriptRuntime.getValueCallTarget(value, cx, true));
             return null;
+        }
+    }
+
+    /**
+     * Places a call target from one of the ScriptRuntime.get*CallTarget methods at the given stack
+     * index as two values, the this object and then the function, or as a single null when an
+     * optional call is skipped.
+     */
+    private static void pushCallTarget(Context cx, CallFrame frame, int index, Object target) {
+        Object thisObj = ScriptRuntime.takeLookupThis(cx);
+        if (target == null) {
+            frame.stack[index] = null;
+            frame.stackTop = index;
+        } else {
+            frame.stack[index] = thisObj;
+            frame.stack[index + 1] = target;
+            frame.stackTop = index + 1;
         }
     }
 
@@ -2975,20 +2972,15 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                 stack[frame.stackTop] =
                         ScriptRuntime.newSpecial(cx, function, outArgs, frame.scope, callType);
             } else {
-                // stack change: function thisObj arg0 .. argN -> result
-                frame.stackTop -= state.indexReg;
-
-                // Call code generation ensure that stack here
-                // is ... Callable Scriptable
-                ScriptRuntime.LookupResult result =
-                        (ScriptRuntime.LookupResult) stack[frame.stackTop];
-                Object[] outArgs = getArgsArray(stack, sDbl, frame.stackTop + 1, state.indexReg);
-                Callable function = result.getCallable();
+                // stack change: thisObj function arg0 .. argN -> result
+                frame.stackTop -= state.indexReg + 1;
+                Object[] outArgs = getArgsArray(stack, sDbl, frame.stackTop + 2, state.indexReg);
+                Callable function = ScriptRuntime.toCallable(stack[frame.stackTop + 1]);
                 stack[frame.stackTop] =
                         ScriptRuntime.callSpecial(
                                 cx,
                                 function,
-                                result.getThis(),
+                                stack[frame.stackTop],
                                 outArgs,
                                 frame.scope,
                                 frame.thisObj,
@@ -3023,14 +3015,14 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             if (state.instructionCounting) {
                 cx.instructionCount += INVOCATION_COST;
             }
-            // stack change: lookup_result arg0 .. argN -> result
             // indexReg: number of arguments
-            frame.stackTop -= state.indexReg;
-            ScriptRuntime.LookupResult result = (ScriptRuntime.LookupResult) stack[frame.stackTop];
+            // stack: ... thisObj function arg0 .. argN -> ... result
+            frame.stackTop -= state.indexReg + 1;
+            final int argStart = frame.stackTop + 2;
             // Check if the lookup result is a function and throw if it's not
             // must not be done sooner according to the spec
-            Callable fun = result.getCallable();
-            Object funThisObj = result.getThis();
+            Callable fun = ScriptRuntime.toCallable(stack[frame.stackTop + 1]);
+            Object funThisObj = stack[frame.stackTop];
             Scriptable funHomeObj =
                     (fun instanceof BaseFunction) ? ((BaseFunction) fun).getHomeObject() : null;
             if (op == Icode.CALL_ON_SUPER) {
@@ -3042,7 +3034,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             }
 
             if (op == Token.REF_CALL) {
-                Object[] outArgs = getArgsArray(stack, sDbl, frame.stackTop + 1, state.indexReg);
+                Object[] outArgs = getArgsArray(stack, sDbl, argStart, state.indexReg);
                 stack[frame.stackTop] =
                         ScriptRuntime.callRef(
                                 fun, funThisObj,
@@ -3068,7 +3060,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                                     stack,
                                     sDbl,
                                     boundArgs,
-                                    frame.stackTop + 1,
+                                    argStart,
                                     state.indexReg,
                                     (Function) target,
                                     frame);
@@ -3084,7 +3076,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                         } else {
                             callArgs =
                                     ScriptRuntime.getApplyArguments(
-                                            cx, stack[frame.stackTop - blen + 2]);
+                                            cx, stack[argStart - blen + 1]);
                         }
 
                         int alen = callArgs.length;
@@ -3100,15 +3092,15 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                             if (state.indexReg > 1 && blen == 0) {
                                 System.arraycopy(
                                         stack,
-                                        frame.stackTop + 2,
+                                        argStart + 1,
                                         stack,
-                                        frame.stackTop + 1,
+                                        argStart,
                                         state.indexReg - 1);
                                 System.arraycopy(
                                         sDbl,
-                                        frame.stackTop + 2,
+                                        argStart + 1,
                                         sDbl,
-                                        frame.stackTop + 1,
+                                        argStart,
                                         state.indexReg - 1);
                             } else if (state.indexReg > 1) {
                                 Object[] newBArgs = new Object[boundArgs.length - 1];
@@ -3148,7 +3140,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                                     sDbl,
                                     boundArgs,
                                     blen,
-                                    frame.stackTop + 1,
+                                    argStart,
                                     state.indexReg);
                     fun = nsmfun.noSuchMethodMethod;
                     boundArgs = new Object[2];
@@ -3171,54 +3163,52 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
 
                 JSDescriptor<JSFunction> desc = ifun.getDescriptor();
                 var compilerData = (InterpreterData<JSFunction>) desc.getCode();
-                if (frame.descriptor.getSecurityDomain() == desc.getSecurityDomain()) {
-                    CallFrame callParentFrame = frame;
-                    if (op == Icode.TAIL_CALL) {
-                        // In principle tail call can re-use the current
-                        // frame and its stack arrays but it is hard to
-                        // do properly. Any exceptions that can legally
-                        // happen during frame re-initialization including
-                        // StackOverflowException during innocent looking
-                        // System.arraycopy may leave the current frame
-                        // data corrupted leading to undefined behaviour
-                        // in the catch code bellow that unwinds JS stack
-                        // on exceptions. Then there is issue about frame
-                        // release
-                        // end exceptions there.
-                        // To avoid frame allocation a released frame
-                        // can be cached for re-use which would also benefit
-                        // non-tail calls but it is not clear that this
-                        // caching
-                        // would gain in performance due to potentially
-                        // bad interaction with GC.
-                        callParentFrame = frame.parentFrame;
-                        // Release the current frame. See Bug #344501 to see
-                        // why
-                        // it is being done here.
-                        exitFrame(cx, frame, null);
-                    }
-
-                    CallFrame calleeFrame =
-                            initFrame(
-                                    cx,
-                                    ifun.getDeclarationScope(),
-                                    ifun.getThisObj(funThisObj),
-                                    funHomeObj,
-                                    stack,
-                                    sDbl,
-                                    boundArgs,
-                                    frame.stackTop + 1,
-                                    state.indexReg,
-                                    ifun,
-                                    compilerData,
-                                    callParentFrame,
-                                    ifun.getLexicalNewTarget());
-                    if (op != Icode.TAIL_CALL) {
-                        frame.savedCallOp = op;
-                    }
-                    state.calleeFrame = calleeFrame;
-                    return ENTER_FRAME;
+                CallFrame callParentFrame = frame;
+                if (op == Icode.TAIL_CALL) {
+                    // In principle tail call can re-use the current
+                    // frame and its stack arrays but it is hard to
+                    // do properly. Any exceptions that can legally
+                    // happen during frame re-initialization including
+                    // StackOverflowException during innocent looking
+                    // System.arraycopy may leave the current frame
+                    // data corrupted leading to undefined behaviour
+                    // in the catch code bellow that unwinds JS stack
+                    // on exceptions. Then there is issue about frame
+                    // release
+                    // end exceptions there.
+                    // To avoid frame allocation a released frame
+                    // can be cached for re-use which would also benefit
+                    // non-tail calls but it is not clear that this
+                    // caching
+                    // would gain in performance due to potentially
+                    // bad interaction with GC.
+                    callParentFrame = frame.parentFrame;
+                    // Release the current frame. See Bug #344501 to see
+                    // why
+                    // it is being done here.
+                    exitFrame(cx, frame, null);
                 }
+
+                CallFrame calleeFrame =
+                        initFrame(
+                                cx,
+                                ifun.getDeclarationScope(),
+                                ifun.getThisObj(funThisObj),
+                                funHomeObj,
+                                stack,
+                                sDbl,
+                                boundArgs,
+                                argStart,
+                                state.indexReg,
+                                ifun,
+                                compilerData,
+                                callParentFrame,
+                                ifun.getLexicalNewTarget());
+                if (op != Icode.TAIL_CALL) {
+                    frame.savedCallOp = op;
+                }
+                state.calleeFrame = calleeFrame;
+                return ENTER_FRAME;
             }
 
             if (fun instanceof NativeContinuation) {
@@ -3230,8 +3220,8 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                 if (state.indexReg == 0) {
                     cjump.result = undefined;
                 } else {
-                    cjump.result = stack[frame.stackTop + 1];
-                    cjump.resultDbl = sDbl[frame.stackTop + 1];
+                    cjump.result = stack[argStart];
+                    cjump.resultDbl = sDbl[argStart];
                 }
 
                 // Start the real unwind job
@@ -3259,7 +3249,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                                     sDbl,
                                     boundArgs,
                                     blen,
-                                    frame.stackTop + 1,
+                                    argStart,
                                     state.indexReg));
 
             return null;
@@ -3289,37 +3279,34 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
 
                 JSDescriptor<JSFunction> desc = f.getDescriptor();
                 var compilerData = (InterpreterData<JSFunction>) desc.getConstructor();
-                if (frame.descriptor.getSecurityDomain() == desc.getSecurityDomain()) {
-                    if (cx.getLanguageVersion() >= Context.VERSION_ES6
-                            && f.getHomeObject() != null) {
-                        // Only methods have home objects associated with
-                        // them
-                        throw ScriptRuntime.typeErrorById("msg.not.ctor", f.getFunctionName());
-                    }
-
-                    Scriptable newInstance =
-                            f.getHomeObject() == null ? f.createObject(cx, frame.scope) : null;
-                    CallFrame calleeFrame =
-                            initFrame(
-                                    cx,
-                                    frame.scope,
-                                    newInstance,
-                                    newInstance,
-                                    frame.stack,
-                                    frame.doubleStack,
-                                    null,
-                                    frame.stackTop + 1,
-                                    state.indexReg,
-                                    f,
-                                    compilerData,
-                                    frame,
-                                    lhs);
-
-                    frame.stack[frame.stackTop] = newInstance;
-                    frame.savedCallOp = op;
-                    state.calleeFrame = calleeFrame;
-                    return ENTER_FRAME;
+                if (cx.getLanguageVersion() >= Context.VERSION_ES6 && f.getHomeObject() != null) {
+                    // Only methods have home objects associated with
+                    // them
+                    throw ScriptRuntime.typeErrorById("msg.not.ctor", f.getFunctionName());
                 }
+
+                Scriptable newInstance =
+                        f.getHomeObject() == null ? f.createObject(cx, frame.scope) : null;
+                CallFrame calleeFrame =
+                        initFrame(
+                                cx,
+                                frame.scope,
+                                newInstance,
+                                newInstance,
+                                frame.stack,
+                                frame.doubleStack,
+                                null,
+                                frame.stackTop + 1,
+                                state.indexReg,
+                                f,
+                                compilerData,
+                                frame,
+                                lhs);
+
+                frame.stack[frame.stackTop] = newInstance;
+                frame.savedCallOp = op;
+                state.calleeFrame = calleeFrame;
+                return ENTER_FRAME;
             }
             if (lhs instanceof JSFunction) {
                 var f = (JSFunction) lhs;
@@ -3476,6 +3463,17 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                 throw Context.reportRuntimeErrorById(
                         "msg.var.redecl",
                         frame.fnOrScript.getDescriptor().getParamOrVarName(state.indexReg));
+            }
+            return null;
+        }
+    }
+
+    private static class DoResetVarUninitialized extends InstructionClass {
+        @Override
+        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
+            frame.varSource.stack[state.indexReg] = UniqueTag.UNINITIALIZED;
+            if (frame.descriptor.getParamOrVarConst(state.indexReg)) {
+                frame.varSource.stackAttributes[state.indexReg] = ScriptableObject.CONST;
             }
             return null;
         }
@@ -3846,68 +3844,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
         }
     }
 
-    private static class DoRefMember extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object elem = frame.stack[frame.stackTop];
-            if (elem == DOUBLE_MARK)
-                elem = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            --frame.stackTop;
-            Object obj = frame.stack[frame.stackTop];
-            if (obj == DOUBLE_MARK)
-                obj = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.stack[frame.stackTop] = ScriptRuntime.memberRef(obj, elem, cx, state.indexReg);
-            return null;
-        }
-    }
-
-    private static class DoRefNsMember extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object elem = frame.stack[frame.stackTop];
-            if (elem == DOUBLE_MARK)
-                elem = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            --frame.stackTop;
-            Object ns = frame.stack[frame.stackTop];
-            if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            --frame.stackTop;
-            Object obj = frame.stack[frame.stackTop];
-            if (obj == DOUBLE_MARK)
-                obj = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.stack[frame.stackTop] =
-                    ScriptRuntime.memberRef(obj, ns, elem, cx, state.indexReg);
-            return null;
-        }
-    }
-
-    private static class DoRefName extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            // indexReg: flags
-            Object name = frame.stack[frame.stackTop];
-            if (name == DOUBLE_MARK)
-                name = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.stack[frame.stackTop] =
-                    ScriptRuntime.nameRef(name, cx, frame.scope, state.indexReg);
-            return null;
-        }
-    }
-
-    private static class DoRefNsName extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object name = frame.stack[frame.stackTop];
-            if (name == DOUBLE_MARK)
-                name = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            --frame.stackTop;
-            Object ns = frame.stack[frame.stackTop];
-            if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.stack[frame.stackTop] =
-                    ScriptRuntime.nameRef(ns, name, cx, frame.scope, state.indexReg);
-            return null;
-        }
-    }
-
     private static class DoScopeLoad extends InstructionClass {
         @Override
         NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
@@ -4157,7 +4093,7 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
                 if (computedKey == DOUBLE_MARK) {
                     computedKey = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
                 }
-                excludeKeys[staticKeyCount + i] = ScriptRuntime.toString(computedKey);
+                excludeKeys[staticKeyCount + i] = computedKey;
                 frame.stackTop--;
             }
 
@@ -4240,73 +4176,6 @@ public final class Interpreter extends AInterpreter<CallFrame, InterpreterData<?
             } else {
                 ctx.out.println(tname);
             }
-        }
-    }
-
-    private static class DoEnterDotQuery extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object lhs = frame.stack[frame.stackTop];
-            if (lhs == DOUBLE_MARK)
-                lhs = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.scope = ScriptRuntime.enterDotQuery(lhs, frame.scope);
-            frame.stackTop--;
-            return null;
-        }
-    }
-
-    private static class DoLeaveDotQuery extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            boolean valBln = stack_boolean(cx, frame, frame.stackTop);
-            Object x = ScriptRuntime.updateDotQuery(valBln, frame.scope);
-            if (x != null) {
-                frame.stack[frame.stackTop] = x;
-                frame.scope = ScriptRuntime.leaveDotQuery(frame.scope);
-                frame.pc += 2;
-                return null;
-            }
-            // reset stack and PC to code after ENTERDQ
-            --frame.stackTop;
-            return BREAK_JUMPLESSRUN;
-        }
-
-        @Override
-        void dumpICode(int op, String tname, ICodeDumpContext ctx) {
-            dumpJumpTarget(tname, ctx);
-        }
-    }
-
-    private static class DoDefaultNamespace extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object value = frame.stack[frame.stackTop];
-            if (value == DOUBLE_MARK)
-                value = ScriptRuntime.wrapNumber(frame.doubleStack[frame.stackTop]);
-            frame.stack[frame.stackTop] = ScriptRuntime.setDefaultNamespace(value, cx);
-            return null;
-        }
-    }
-
-    private static class DoEscXMLAttr extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object value = frame.stack[frame.stackTop];
-            if (value != DOUBLE_MARK) {
-                frame.stack[frame.stackTop] = ScriptRuntime.escapeAttributeValue(value, cx);
-            }
-            return null;
-        }
-    }
-
-    private static class DoEscXMLText extends InstructionClass {
-        @Override
-        NewState execute(Context cx, CallFrame frame, InterpreterState state, int op) {
-            Object value = frame.stack[frame.stackTop];
-            if (value != DOUBLE_MARK) {
-                frame.stack[frame.stackTop] = ScriptRuntime.escapeTextValue(value, cx);
-            }
-            return null;
         }
     }
 

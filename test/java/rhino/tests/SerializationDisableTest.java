@@ -42,8 +42,7 @@ public class SerializationDisableTest {
     private static final ContextFactory DISABLED = new PolicyFactory(false);
 
     private static Object makeObject(Context cx, VarScope s) {
-        return cx.evaluateString(
-                s, "var o = {s: \"Hello\", o: {who: \"World\"}}; o", "make.js", 1, null);
+        return cx.evaluateString(s, "var o = {s: \"Hello\", o: {who: \"World\"}}; o", "make.js", 1);
     }
 
     @Test

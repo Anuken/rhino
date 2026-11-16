@@ -44,7 +44,7 @@ public class StackTraceExtensionMozillaLfTest {
                     new FileReader(
                             TestSource.resolve(
                                     "testsrc/jstests/extensions/stack-traces-mozilla-lf.js"))) {
-                cx.evaluateReader(root, rdr, "stack-traces-mozilla-lf.js", 1, null);
+                cx.evaluateReader(root, rdr, "stack-traces-mozilla-lf.js", 1);
             }
         } catch (IOException ioe) {
             assertFalse(true, "I/O Error: " + ioe);

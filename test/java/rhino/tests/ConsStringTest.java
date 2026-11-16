@@ -71,7 +71,7 @@ public class ConsStringTest {
             final String script =
                     "var a = 'Rhino';\n" + "MyHostObject.foo = '#' + a;\n" + "MyHostObject.foo;";
 
-            final String result = (String) cx.evaluateString(topScope, script, "myScript", 1, null);
+            final String result = (String) cx.evaluateString(topScope, script, "myScript", 1);
 
             assertEquals("java.lang.String", result);
         }
@@ -84,7 +84,7 @@ public class ConsStringTest {
             ScriptableObject.defineClass(topScope, MyHostObject.class);
 
             final String script = "var a = 'Rhino'; new MyHostObject().test('#' + a);";
-            final String result = (String) cx.evaluateString(topScope, script, "myScript", 1, null);
+            final String result = (String) cx.evaluateString(topScope, script, "myScript", 1);
 
             Assertions.assertEquals("java.lang.String", result);
         }

@@ -47,7 +47,7 @@ public class SealedSharedScopeTest {
     }
 
     private Object evaluateString(VarScope scope, String source) {
-        Object o = ctx.evaluateString(scope, source, "test", 1, null);
+        Object o = ctx.evaluateString(scope, source, "test", 1);
         if (o instanceof Wrapper) {
             o = ((Wrapper) o).unwrap();
         }

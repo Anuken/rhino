@@ -148,7 +148,7 @@ public class JavaIterableTest {
                             TopLevel global = context.initStandardObjects();
                             VarScope scope = context.newVarEnv(global);
                             scope.put("value", scope, Context.javaToJS(value, scope));
-                            return context.evaluateString(scope, scriptSourceText, "", 1, null);
+                            return context.evaluateString(scope, scriptSourceText, "", 1);
                         });
     }
 }

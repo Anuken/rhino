@@ -51,7 +51,7 @@ public class NativeJavaMethodTest {
                     final var scope = initContext(cx, methodDummy);
 
                     cx.evaluateString(
-                            scope, String.join("\n", lines), "NativeJavaMethodTest.js", 0, null);
+                            scope, String.join("\n", lines), "NativeJavaMethodTest.js", 0);
 
                     Assertions.assertEquals(expected, methodDummy.captured);
                     return null;
@@ -80,8 +80,7 @@ public class NativeJavaMethodTest {
                                                     scope,
                                                     String.join("\n", lines),
                                                     "NativeJavaMethodTest.js",
-                                                    0,
-                                                    null));
+                                                    0));
 
                     Assertions.assertTrue(
                             ex.getMessage().startsWith(msgPrefix),

@@ -1,11 +1,6 @@
 package rhino.tests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static rhino.Context.FEATURE_E4X;
-
 import org.junit.jupiter.api.Test;
-import rhino.Context;
-import rhino.TopLevel;
 import rhino.Undefined;
 import rhino.testutils.Utils;
 
@@ -213,15 +208,5 @@ public class OptionalChainingOperatorTest {
     @Test
     public void optionalChainingOperatorFollowedByDigitsIsAHook() {
         Utils.assertWithAllModes_ES6(0.5, "true ?.5 : false");
-    }
-
-    @Test
-    public void canParseOptionalChainingEvenWithoutXml() {
-        try (Context cx = Utils.contextFactoryWithFeatureDisabled(FEATURE_E4X).enterContext()) {
-            TopLevel scope = cx.initStandardObjects(new TopLevel());
-            String source = "o = {a: true}; o?.['a']\n";
-            Object result = cx.evaluateString(scope, source, "test", 1, null);
-            assertEquals(Boolean.TRUE, result);
-        }
     }
 }

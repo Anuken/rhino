@@ -42,8 +42,7 @@ public class Bug448816Test {
                                     scope,
                                     "({ a: 'a', b: true, c: new java.util.HashMap(), 1: 42});",
                                     "testsrc",
-                                    1,
-                                    null);
+                                    1);
         }
     }
 

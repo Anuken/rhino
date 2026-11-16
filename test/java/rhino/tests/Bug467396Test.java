@@ -31,8 +31,7 @@ public class Bug467396Test {
                                     scope,
                                     "java.lang.reflect.Array.newInstance(java.lang.Object, 1)",
                                     "source",
-                                    1,
-                                    null));
+                                    1));
             assertTrue(result instanceof Object[]);
             assertEquals(1, ((Object[]) result).length);
             result =
@@ -41,8 +40,7 @@ public class Bug467396Test {
                                     scope,
                                     "java.lang.reflect.Array.newInstance(java.lang.Object, [1])",
                                     "source",
-                                    1,
-                                    null));
+                                    1));
             assertTrue(result instanceof Object[]);
             assertEquals(1, ((Object[]) result).length);
             result =
@@ -51,8 +49,7 @@ public class Bug467396Test {
                                     scope,
                                     "java.lang.reflect.Array.newInstance(java.lang.Object, [1, 1])",
                                     "source",
-                                    1,
-                                    null));
+                                    1));
             assertTrue(result instanceof Object[][]);
             assertEquals(1, ((Object[][]) result).length);
             assertEquals(1, ((Object[][]) result)[0].length);
@@ -62,8 +59,7 @@ public class Bug467396Test {
                                     scope,
                                     "java.lang.reflect.Array.newInstance(java.lang.Object, 1, 1)",
                                     "source",
-                                    1,
-                                    null));
+                                    1));
             assertTrue(result instanceof Object[][]);
             assertEquals(1, ((Object[][]) result).length);
             assertEquals(1, ((Object[][]) result)[0].length);

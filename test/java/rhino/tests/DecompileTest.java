@@ -28,7 +28,7 @@ public class DecompileTest {
         final String source = "var x = new Date().getTime();";
         Utils.runWithAllModes(
                 cx -> {
-                    final Script script = cx.compileString(source, "my script", 0, null);
+                    final Script script = cx.compileString(source, "my script", 0);
                     Assertions.assertEquals(source, cx.decompileScript(script, 4).trim());
                     return null;
                 });
@@ -40,7 +40,7 @@ public class DecompileTest {
         Utils.runWithAllModes(
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
-                    final Script script = cx.compileString(source, "my script", 0, null);
+                    final Script script = cx.compileString(source, "my script", 0);
                     Assertions.assertEquals(source, cx.decompileScript(script, 4).trim());
                     return null;
                 });
@@ -52,7 +52,7 @@ public class DecompileTest {
         Utils.runWithAllModes(
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
-                    final Script script = cx.compileString(source, "my script", 0, null);
+                    final Script script = cx.compileString(source, "my script", 0);
                     Assertions.assertEquals(source, cx.decompileScript(script, 4).trim());
                     return null;
                 });
@@ -64,7 +64,7 @@ public class DecompileTest {
         Utils.runWithAllModes(
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
-                    final Script script = cx.compileString(source, "my script", 0, null);
+                    final Script script = cx.compileString(source, "my script", 0);
                     Assertions.assertEquals(
                             source,
                             cx.decompileScript(script, 4)

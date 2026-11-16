@@ -19,7 +19,7 @@ public class InterpreterFunctionPeelingTest {
     public static void executeScript(String script) {
         try (var cx = Context.enter()) {
             cx.setInterpretedMode(true);
-            Script s = cx.compileString(script, "unknown source", 0, null);
+            Script s = cx.compileString(script, "unknown source", 0);
             TopLevel scope = cx.initStandardObjects();
             scope.put("c", scope, Context.javaToJS(CAPTURER, scope));
             Assertions.assertThrows(

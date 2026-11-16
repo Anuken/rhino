@@ -75,7 +75,7 @@ public abstract class ScriptTestsBase {
 
             var scope = TopLevel.createIsolate(global);
 
-            return cx.evaluateReader(scope, script, suiteName, 1, null);
+            return cx.evaluateReader(scope, script, suiteName, 1);
         } catch (JavaScriptException ex) {
             fail(String.format("%s%n%s", ex.getMessage(), ex.getScriptStackTrace()));
             return null;

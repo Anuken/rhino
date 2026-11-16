@@ -45,7 +45,7 @@ public class BackwardUseStrict {
                     cx.setLanguageVersion(Context.VERSION_1_8);
                     try {
                         Global root = new Global(cx);
-                        cx.evaluateString(root, source, "[test]", 1, null);
+                        cx.evaluateString(root, source, "[test]", 1);
                     } catch (RhinoException re) {
                         System.err.println(re.getScriptStackTrace());
                         fail("Unexpected code error: " + re);
@@ -62,7 +62,7 @@ public class BackwardUseStrict {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     try {
                         Global root = new Global(cx);
-                        cx.evaluateString(root, source, "[test]", 1, null);
+                        cx.evaluateString(root, source, "[test]", 1);
                         assertTrue(false, "Expected a runtime exception");
                     } catch (RhinoException re) {
                         // We expect an error here.

@@ -58,32 +58,20 @@ public class AvoidObjectDetectionTest {
             Boolean toBoolean =
                     (Boolean)
                             cx.evaluateString(
-                                    topScope,
-                                    "if (new Foo()) true; else false;",
-                                    "myScript",
-                                    1,
-                                    null);
+                                    topScope, "if (new Foo()) true; else false;", "myScript", 1);
             assertTrue(toBoolean);
 
             toBoolean =
                     (Boolean)
                             cx.evaluateString(
-                                    topScope,
-                                    "if (new Avoid()) true; else false;",
-                                    "myScript",
-                                    1,
-                                    null);
+                                    topScope, "if (new Avoid()) true; else false;", "myScript", 1);
             assertFalse(toBoolean);
 
             Boolean ctor =
-                    (Boolean)
-                            cx.evaluateString(topScope, "Boolean(new Foo())", "myScript", 1, null);
+                    (Boolean) cx.evaluateString(topScope, "Boolean(new Foo())", "myScript", 1);
             assertTrue(ctor);
 
-            ctor =
-                    (Boolean)
-                            cx.evaluateString(
-                                    topScope, "Boolean(new Avoid())", "myScript", 1, null);
+            ctor = (Boolean) cx.evaluateString(topScope, "Boolean(new Avoid())", "myScript", 1);
             assertFalse(ctor);
         }
     }

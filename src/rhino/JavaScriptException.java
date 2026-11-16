@@ -8,6 +8,8 @@
 
 package rhino;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.io.Serial;
 
 /**
@@ -34,6 +36,17 @@ public class JavaScriptException extends RhinoException {
      * @param value the JavaScript value thrown.
      */
     public JavaScriptException(Object value, String sourceName, int lineNumber) {
+        this(value, sourceName, lineNumber, stackSourceOf(value));
+    }
+
+    private JavaScriptException(
+            Object value, String sourceName, int lineNumber, RhinoException stackSource) {
+        if (stackSource != null) {
+            // the stack of the error's creation stands for the throw's, see stackSourceOf
+            this.stackSource = stackSource;
+            interpreterStackInfo = stackSource.interpreterStackInfo;
+            interpreterLineData = stackSource.interpreterLineData;
+        }
         recordErrorOrigin(sourceName, lineNumber, null, 0);
         this.value = value;
         // try to extract the cause. Value can be either a (wrapped) java.lang.Throwable
@@ -71,7 +84,58 @@ public class JavaScriptException extends RhinoException {
 
     @Override
     public Throwable fillInStackTrace() {
+        Context cx = Context.getCurrentContext();
+        if (cx != null && cx.reuseErrorStack) {
+            cx.reuseErrorStack = false;
+            return this;
+        }
         return canSkipJavaStack() ? this : super.fillInStackTrace();
+    }
+
+    /**
+     * Returns the exception holding the stack captured when the thrown error was created, if there
+     * is one, so that this exception reports that stack instead of filling in its own. Filling in a
+     * stack trace is the main cost of a throw, and for the usual {@code throw new Error()} both are
+     * the same place.
+     */
+    private static RhinoException stackSourceOf(Object value) {
+        if (!(value instanceof NativeError)) {
+            return null;
+        }
+        RhinoException source = ((NativeError) value).getStackProvider();
+        Context cx = Context.getCurrentContext();
+        if (source == null || cx == null) {
+            return null;
+        }
+        // read by fillInStackTrace while this exception is constructed
+        cx.reuseErrorStack = true;
+        return source;
+    }
+
+    private void adoptStack() {
+        RhinoException source = stackSource;
+        if (source != null) {
+            stackSource = null;
+            setStackTrace(source.getStackTrace());
+        }
+    }
+
+    @Override
+    public StackTraceElement[] getStackTrace() {
+        adoptStack();
+        return super.getStackTrace();
+    }
+
+    @Override
+    public void printStackTrace(PrintStream s) {
+        adoptStack();
+        super.printStackTrace(s);
+    }
+
+    @Override
+    public void printStackTrace(PrintWriter s) {
+        adoptStack();
+        super.printStackTrace(s);
     }
 
     @Override
@@ -122,4 +186,6 @@ public class JavaScriptException extends RhinoException {
 
     private Object value;
     private String details;
+    // the exception whose Java stack trace this one takes when first asked for it
+    private transient volatile RhinoException stackSource;
 }

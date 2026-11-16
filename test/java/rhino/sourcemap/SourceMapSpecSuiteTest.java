@@ -6,6 +6,7 @@ package rhino.sourcemap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,12 +28,12 @@ import rhino.testutils.TestSource;
 
 /**
  * Runs the <a href="https://github.com/tc39/source-map-tests">tc39/source-map-tests</a> suite
- * against {@link SourceMapV3}. The suite lives in the {@code tests/source-map-tests} git submodule
- * and must be initialised before these tests can run ({@code git submodule update --init}).
+ * against {@link SourceMapV3}. The suite is checked out into {@code test/source-map-tests} by
+ * {@code ./gradlew fetchSourceMapTests}; without it these tests are skipped.
  *
  * <h2>Excludelist</h2>
  *
- * Cases that are known to fail are listed in {@code tests/testsrc/source-map-tests-excludelist.txt}
+ * Cases that are known to fail are listed in {@code test/testsrc/source-map-tests-excludelist.txt}
  * (one {@code name} value per line; blank lines and {@code #} comments are ignored). A listed case
  * is silently skipped. Two failure modes keep the list honest:
  *
@@ -46,10 +47,10 @@ import rhino.testutils.TestSource;
  * <h2>Regenerating the excludelist</h2>
  *
  * To rewrite the excludelist to exactly the set of currently failing cases (e.g. after fixing bugs
- * or after the submodule is updated to a newer suite version), run:
+ * or after {@code test/source-map-tests.revision} is updated to a newer suite version), run:
  *
  * <pre>
- * ./gradlew :tests:test --tests SourceMapSpecSuiteTest -DupdateSourceMapTestsExcludelist=true
+ * ./gradlew test --tests SourceMapSpecSuiteTest -DupdateSourceMapTestsExcludelist=true
  * </pre>
  *
  * When {@code updateSourceMapTestsExcludelist} is set, all failures are suppressed and the file is
@@ -85,15 +86,9 @@ class SourceMapSpecSuiteTest {
 
     @TestFactory
     Collection<DynamicTest> specCases() throws IOException {
-        if (!Files.exists(TESTS_JSON)) {
-            return List.of(
-                    DynamicTest.dynamicTest(
-                            "missing-suite",
-                            () ->
-                                    fail(
-                                            "tc39/source-map-tests submodule not initialized; run "
-                                                    + "`git submodule update --init`")));
-        }
+        assumeTrue(
+                Files.exists(TESTS_JSON),
+                "tc39/source-map-tests not present; run `./gradlew fetchSourceMapTests`");
         String json = Files.readString(TESTS_JSON, StandardCharsets.UTF_8);
         Object root = SourceMapJsonParser.parse(json);
         if (!(root instanceof Map)) fail("source-map-spec-tests.json must be a JSON object");
@@ -243,7 +238,7 @@ class SourceMapSpecSuiteTest {
 
     @AfterAll
     static void writeExcludelistIfRequested() throws IOException {
-        if (!UPDATE_MODE) return;
+        if (!UPDATE_MODE || !Files.exists(TESTS_JSON)) return;
         Set<String> sorted = new TreeSet<>(currentlyFailing);
         StringBuilder sb = new StringBuilder();
         sb.append("# Auto-generated; review diff before committing.\n");

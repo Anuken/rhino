@@ -137,8 +137,7 @@ public class ObjectLiteralSpreadBytecodeTest {
                             + "var b = {...a};\n" // line 2 (Icode.SPREAD here)
                             + "undefinedVar;\n", // line 3 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(
@@ -163,8 +162,7 @@ public class ObjectLiteralSpreadBytecodeTest {
                             + "var c = {...a,...b};\n" // line 3 (two Icode.SPREADs)
                             + "undefinedVar;\n", // line 4 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(
@@ -187,8 +185,7 @@ public class ObjectLiteralSpreadBytecodeTest {
                             + "var a2 = [...arr, 3];\n" // line 4 (array Icode.SPREAD)
                             + "undefinedVar;\n", // line 5 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(

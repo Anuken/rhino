@@ -75,7 +75,6 @@ public class ScriptCompileSpecTest {
         assertEquals("1", spec.getSource());
         assertNull(spec.getSourceName());
         assertEquals(0, spec.getLineno());
-        assertNull(spec.getSecurityDomain());
         assertNull(spec.getCompiler());
         assertNull(spec.getCompilationErrorReporter());
         assertNull(spec.getCompilerEnvironsProcessor());
@@ -179,20 +178,8 @@ public class ScriptCompileSpecTest {
     }
 
     @Test
-    public void testSecurityDomainWithoutControllerThrows() {
-        Object securityDomain = new Object();
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                        cx.compileScript(
-                                ScriptCompileSpec.fromSource("1")
-                                        .securityDomain(securityDomain)
-                                        .build()));
-    }
-
-    @Test
     public void testLegacyCompileStringMatchesSpec() {
-        Script oldWay = cx.compileString("var a = 1; a + 2;", "old.js", 1, null);
+        Script oldWay = cx.compileString("var a = 1; a + 2;", "old.js", 1);
         Script newWay =
                 cx.compileScript(
                         ScriptCompileSpec.fromSource("var a = 1; a + 2;")
@@ -222,7 +209,7 @@ public class ScriptCompileSpecTest {
     @Test
     public void testEvaluateLegacyMatchesSpec() {
         String src = "var a = 5; a * a;";
-        Object oldWay = cx.evaluateString(scope, src, "old.js", 1, null);
+        Object oldWay = cx.evaluateString(scope, src, "old.js", 1);
         Object newWay =
                 cx.evaluateScript(
                         ScriptCompileSpec.fromSource(src).sourceName("new.js").lineno(1).build(),

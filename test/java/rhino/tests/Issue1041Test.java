@@ -15,10 +15,10 @@ public class Issue1041Test {
         try (Context cx = Context.enter()) {
             TopLevel scope = cx.initStandardObjects();
             Boolean result =
-                    (Boolean) cx.evaluateString(scope, "/ab{0}c/.test('abc')", "<eval>", 1, null);
+                    (Boolean) cx.evaluateString(scope, "/ab{0}c/.test('abc')", "<eval>", 1);
             Assertions.assertFalse(result);
 
-            result = (Boolean) cx.evaluateString(scope, "/ab{0}c/.test('ac')", "<eval>", 1, null);
+            result = (Boolean) cx.evaluateString(scope, "/ab{0}c/.test('ac')", "<eval>", 1);
             Assertions.assertTrue(result);
         }
     }

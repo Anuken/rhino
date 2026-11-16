@@ -287,4 +287,16 @@ public class NativeString2Test {
                 "TypeError: replaceAll must be called with a global RegExp",
                 "try { 'hello'.replaceAll(/he/i, 'x'); } catch (e) { '' + e }");
     }
+
+    @Test
+    public void methodCallOnPrimitiveThis() {
+        String js =
+                "String.prototype.strictThis = function() { 'use strict'; return typeof this; };"
+                        + "String.prototype.sloppyThis = function() { return typeof this; };"
+                        + "String.prototype.toString = function() { return 'X'; };"
+                        + "var s = 'abc';"
+                        + "[s.strictThis(), s.sloppyThis(), s.indexOf('b'),"
+                        + " s.valueOf(), new String('abc').indexOf('X')].join()";
+        Utils.assertWithAllModes_ES6("string,object,1,abc,0", js);
+    }
 }

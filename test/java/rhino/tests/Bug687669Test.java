@@ -39,7 +39,7 @@ public class Bug687669Test {
     }
 
     private Object eval(CharSequence cs) {
-        return cx.evaluateString(scope, cs.toString(), "<eval>", 1, null);
+        return cx.evaluateString(scope, cs.toString(), "<eval>", 1);
     }
 
     private AstRoot parse(CharSequence cs) {

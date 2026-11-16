@@ -60,7 +60,7 @@ public class InitStandardObjectsTest {
     }
 
     private Object exec(String source) {
-        Script script = context.compileString(source, "", 1, null);
+        Script script = context.compileString(source, "", 1);
         return script.exec(context, global, global.getGlobalThis());
     }
 }

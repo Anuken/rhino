@@ -111,7 +111,7 @@ public class ToNumberLegacyConversionsTest {
 
     @SuppressWarnings("ConstantConditions")
     private boolean execute(Context cx, VarScope scope, String script) {
-        return (Boolean) cx.evaluateString(scope, script, "inline", 1, null);
+        return (Boolean) cx.evaluateString(scope, script, "inline", 1);
     }
 
     public Context cx;

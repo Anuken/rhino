@@ -63,7 +63,7 @@ public class Bench{
     }
 
     static void eval(Context cx, VarScope scope, File file) throws IOException{
-        cx.evaluateString(scope, read(file), file.getName(), 1, null);
+        cx.evaluateString(scope, read(file), file.getName(), 1);
     }
 
     static boolean skip(String name){
@@ -92,13 +92,16 @@ public class Bench{
                 ScriptableObject.putProperty(scope, "results", Context.javaToJS(results, scope));
                 for(int r = 0; r < rounds; r++){
                     results.clear();
-                    cx.evaluateString(scope,
-                    //raw scores; older builds format numbers incorrectly
-                    "BenchmarkSuite.FormatScore = function(value){ return value; };" +
-                    "BenchmarkSuite.RunSuites({" +
-                    "  NotifyResult: function(name, result){ results.put(name, new java.lang.Double(result)); }," +
-                    "  NotifyError: function(name, error){ throw new Error(name + ': ' + error); }" +
-                    "});", "run.js", 1, null);
+                    cx.evaluateString(
+                            scope,
+                            // raw scores; older builds format numbers incorrectly
+                            "BenchmarkSuite.FormatScore = function(value){ return value; };"
+                                    + "BenchmarkSuite.RunSuites({"
+                                    + "  NotifyResult: function(name, result){ results.put(name, new java.lang.Double(result)); },"
+                                    + "  NotifyError: function(name, error){ throw new Error(name + ': ' + error); }"
+                                    + "});",
+                            "run.js",
+                            1);
                 }
                 for(Map.Entry<String, Double> e : results.entrySet()){
                     report("v8", e.getKey(), mode, e.getValue(), "score");
@@ -123,7 +126,7 @@ public class Bench{
             String source = read(new File(dir, name + ".js"));
             Context cx = enter(level);
             try{
-                Script script = cx.compileString(source, name + ".js", 1, null);
+                Script script = cx.compileString(source, name + ".js", 1);
                 //warm up for a bit, then time fresh-scope runs
                 double best = Double.MAX_VALUE;
                 long end = System.currentTimeMillis() + minTime;
@@ -159,7 +162,11 @@ public class Bench{
             cx.getWrapFactory().setJavaPrimitiveWrap(false);
             ImporterTopLevel scope = new ImporterTopLevel(cx);
             scope.put("BenchTarget", scope, new NativeJavaClass(scope, BenchTarget.class));
-            cx.evaluateString(scope, "var benchmarks = []; function bench(name, fn){ benchmarks.push({name: name, fn: fn}); }", "bench.js", 1, null);
+            cx.evaluateString(
+                    scope,
+                    "var benchmarks = []; function bench(name, fn){ benchmarks.push({name: name, fn: fn}); }",
+                    "bench.js",
+                    1);
             for(File file : files){
                 try{
                     eval(cx, scope, file);

@@ -119,13 +119,45 @@ public class StackTraceTest {
         }
     }
 
+    /** A thrown error reports the stack of its creation, which it captured when created. */
+    @Test
+    public void thrownErrorReportsCreationStack() {
+        final StackStyle stackStyle = RhinoException.getStackStyle();
+        try {
+            RhinoException.setStackStyle(StackStyle.RHINO);
+            final String source =
+                    "function make() {\n"
+                            + "  return new Error('x');\n"
+                            + "}\n"
+                            + "function thrower(e) {\n"
+                            + "  throw e;\n"
+                            + "}\n"
+                            + "thrower(make());\n";
+            Utils.runWithAllModes(
+                    cx -> {
+                        TopLevel scope = cx.initStandardObjects();
+                        try {
+                            cx.evaluateString(scope, source, "test.js", 1);
+                        } catch (final JavaScriptException e) {
+                            assertEquals(
+                                    "\tat test.js:2 (make)" + LS + "\tat test.js:7" + LS,
+                                    e.getScriptStackTrace());
+                            return null;
+                        }
+                        throw new RuntimeException("Exception expected!");
+                    });
+        } finally {
+            RhinoException.setStackStyle(stackStyle);
+        }
+    }
+
     private static void runWithExpectedStackTrace(
             final String _source, final String _expectedStackTrace) {
         Utils.runWithMode(
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
                     try {
-                        cx.evaluateString(scope, _source, "test.js", 0, null);
+                        cx.evaluateString(scope, _source, "test.js", 0);
                     } catch (final JavaScriptException e) {
                         assertEquals(_expectedStackTrace, e.getScriptStackTrace());
                         return null;

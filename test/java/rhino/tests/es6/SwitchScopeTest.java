@@ -53,11 +53,11 @@ class SwitchScopeTest {
     @Test
     void caseExpressionSeesCaseLet() {
         Utils.assertWithAllModes_ES6(
-                "inner",
+                "ReferenceError",
                 "let x = 1;\n"
                         + "var r;\n"
-                        + "switch (undefined) { case x: r = 'inner'; break;"
-                        + " default: r = 'outer'; let x = 2; }\n"
+                        + "try { switch (undefined) { case x: r = 'inner'; break;"
+                        + " default: r = 'outer'; let x = 2; } } catch (e) { r = e.name }\n"
                         + "r");
     }
 

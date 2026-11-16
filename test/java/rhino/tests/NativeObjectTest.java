@@ -76,8 +76,7 @@ public class NativeObjectTest {
                             scope,
                             "Object.prototype.hasOwnProperty.call(javaObj, \"name\");",
                             "",
-                            1,
-                            null);
+                            1);
             assertTrue((Boolean) result);
         }
     }

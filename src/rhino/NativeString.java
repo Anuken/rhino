@@ -434,8 +434,12 @@ final class NativeString extends ScriptableObject {
         return cx.newArray(s, substrings.toArray());
     }
 
-    private static NativeString realThis(Object thisObj) {
-        return LambdaConstructor.convertThisObject(thisObj, NativeString.class);
+    /** The thisStringValue of the spec: a primitive string, or the value of a String object. */
+    private static CharSequence thisStringValue(Object thisObj) {
+        if (thisObj instanceof CharSequence) {
+            return (CharSequence) thisObj;
+        }
+        return LambdaConstructor.convertThisObject(thisObj, NativeString.class).string;
     }
 
     private static Object js_iterator(
@@ -448,13 +452,13 @@ final class NativeString extends ScriptableObject {
     private static Object js_toString(
             Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
         // ECMA 15.5.4.2: the toString function is not generic.
-        CharSequence cs = realThis(thisObj).string;
+        CharSequence cs = thisStringValue(thisObj);
         return cs instanceof String ? cs : cs.toString();
     }
 
     private static Object js_toSource(
             Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
-        CharSequence str = realThis(thisObj).string;
+        CharSequence str = thisStringValue(thisObj);
         return "(new String(\"" + ScriptRuntime.escapeString(str.toString()) + "\"))";
     }
 

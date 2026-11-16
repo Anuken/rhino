@@ -39,8 +39,7 @@ public class PropertyTest {
                     } catch (Exception e) {
                     }
 
-                    final String result =
-                            (String) cx.evaluateString(scope, script, "myScript", 1, null);
+                    final String result = (String) cx.evaluateString(scope, script, "myScript", 1);
 
                     assertEquals(expected, result);
 
@@ -76,8 +75,7 @@ public class PropertyTest {
                     } catch (Exception e) {
                     }
 
-                    final String result =
-                            (String) cx.evaluateString(scope, script, "myScript", 1, null);
+                    final String result = (String) cx.evaluateString(scope, script, "myScript", 1);
 
                     assertEquals(expected, result);
 
@@ -113,8 +111,7 @@ public class PropertyTest {
                     } catch (Exception e) {
                     }
 
-                    final String result =
-                            (String) cx.evaluateString(scope, script, "myScript", 1, null);
+                    final String result = (String) cx.evaluateString(scope, script, "myScript", 1);
 
                     assertEquals(expected, result);
 
@@ -153,7 +150,7 @@ public class PropertyTest {
             } catch (Exception e) {
             }
 
-            final String result = (String) cx.evaluateString(scope, script, "myScript", 1, null);
+            final String result = (String) cx.evaluateString(scope, script, "myScript", 1);
 
             assertEquals(expected, result);
         }

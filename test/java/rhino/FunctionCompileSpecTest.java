@@ -76,7 +76,6 @@ public class FunctionCompileSpecTest {
         assertSame(scope, spec.getScope());
         assertNull(spec.getSourceName());
         assertEquals(0, spec.getLineno());
-        assertNull(spec.getSecurityDomain());
         assertNull(spec.getCompiler());
         assertNull(spec.getCompilationErrorReporter());
         assertNull(spec.getCompilerEnvironsProcessor());
@@ -122,8 +121,7 @@ public class FunctionCompileSpecTest {
     @Test
     public void testLegacyCompileFunctionMatchesSpec() {
         Function oldWay =
-                cx.compileFunction(
-                        scope, "function add(a, b) { return a + b; }", "old.js", 1, null);
+                cx.compileFunction(scope, "function add(a, b) { return a + b; }", "old.js", 1);
         Function newWay =
                 cx.compileFunction(
                         FunctionCompileSpec.fromSource(

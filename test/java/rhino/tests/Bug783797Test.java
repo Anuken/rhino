@@ -38,7 +38,7 @@ public class Bug783797Test {
     }
 
     private static Object eval(Context cx, VarScope scope, String source) {
-        return cx.evaluateString(scope, source, "<eval>", 1, null);
+        return cx.evaluateString(scope, source, "<eval>", 1);
     }
 
     private static void assertTRUE(Object actual) {

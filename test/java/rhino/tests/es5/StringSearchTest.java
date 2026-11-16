@@ -30,8 +30,7 @@ public class StringSearchTest {
 
     @Test
     public void search() {
-        Object result =
-                cx.evaluateString(scope, "String.prototype.search(1, 1)", "test.js", 1, null);
+        Object result = cx.evaluateString(scope, "String.prototype.search(1, 1)", "test.js", 1);
         assertEquals(-1, result);
     }
 }

@@ -59,7 +59,7 @@ public class Bug685403Test {
                 scope, functions, Bug685403Test.class, ScriptableObject.DONTENUM);
 
         Object state = null;
-        Script script = cx.compileString(source, "", 1, null);
+        Script script = cx.compileString(source, "", 1);
         try {
             cx.executeScriptWithContinuations(script, scope);
             fail("expected ContinuationPending exception");

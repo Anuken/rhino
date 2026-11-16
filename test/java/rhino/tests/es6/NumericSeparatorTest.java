@@ -28,7 +28,7 @@ public class NumericSeparatorTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
 
-                    Object result = cx.evaluateString(scope, "1234", "test", 1, null);
+                    Object result = cx.evaluateString(scope, "1234", "test", 1);
                     assertEquals(1234.0, result);
 
                     return null;
@@ -41,7 +41,7 @@ public class NumericSeparatorTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
 
-                    Object result = cx.evaluateString(scope, "1234", "test", 1, null);
+                    Object result = cx.evaluateString(scope, "1234", "test", 1);
                     assertEquals(1234, result);
 
                     return null;

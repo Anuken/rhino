@@ -41,7 +41,7 @@ public class RhinoPropertiesTest {
             RhinoProperties properties = new RhinoProperties();
             properties.loadDefaults();
             assertEquals("value3", properties.get("test.config.foo"));
-            assertEquals("value4-mod", properties.get("test.config.bar"));
+            assertEquals("value4", properties.get("test.config.bar"));
             assertEquals("value5", properties.get("test.config.baz"));
             assertEquals("value6", properties.get("some.system.value"));
         } finally {

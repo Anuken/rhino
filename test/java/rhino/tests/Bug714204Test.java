@@ -44,7 +44,7 @@ public class Bug714204Test {
         sb.append("}\n");
         sb.append("var f = new F('a');\n");
         sb.append("(f.x == 'a')\n");
-        Script script = cx.compileString(sb.toString(), "<eval>", 1, null);
+        Script script = cx.compileString(sb.toString(), "<eval>", 1);
         Object result = script.exec(cx, scope, scope.getGlobalThis());
         assertEquals(Boolean.TRUE, result);
     }
@@ -58,7 +58,7 @@ public class Bug714204Test {
                     sb.append("function F() {\n");
                     sb.append("  var [this.x] = arguments;\n");
                     sb.append("}\n");
-                    cx.compileString(sb.toString(), "<eval>", 1, null);
+                    cx.compileString(sb.toString(), "<eval>", 1);
                 });
     }
 
@@ -71,7 +71,7 @@ public class Bug714204Test {
                     sb.append("function F() {\n");
                     sb.append("  let [this.x] = arguments;\n");
                     sb.append("}\n");
-                    cx.compileString(sb.toString(), "<eval>", 1, null);
+                    cx.compileString(sb.toString(), "<eval>", 1);
                 });
     }
 
@@ -84,7 +84,7 @@ public class Bug714204Test {
                     sb.append("function F() {\n");
                     sb.append("  const [this.x] = arguments;\n");
                     sb.append("}\n");
-                    cx.compileString(sb.toString(), "<eval>", 1, null);
+                    cx.compileString(sb.toString(), "<eval>", 1);
                 });
     }
 
@@ -96,7 +96,7 @@ public class Bug714204Test {
                     StringBuilder sb = new StringBuilder();
                     sb.append("function F([this.x]) {\n");
                     sb.append("}\n");
-                    cx.compileString(sb.toString(), "<eval>", 1, null);
+                    cx.compileString(sb.toString(), "<eval>", 1);
                 });
     }
 }

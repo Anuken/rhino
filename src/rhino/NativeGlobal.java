@@ -20,7 +20,6 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
-import rhino.xml.XMLLib;
 
 /**
  * This class implements the global native object (function and value properties only).
@@ -48,7 +47,6 @@ public class NativeGlobal implements Serializable {
                         .withMethod(CTOR, "escape", 1, NativeGlobal::js_escape)
                         .withMethod(CTOR, "isFinite", 1, NativeGlobal::js_isFinite)
                         .withMethod(CTOR, "isNaN", 1, NativeGlobal::js_isNaN)
-                        .withMethod(CTOR, "isXMLName", 1, NativeGlobal::js_isXMLName)
                         .withMethod(CTOR, "parseFloat", 1, NativeGlobal::js_parseFloat)
                         .withMethod(CTOR, "parseInt", 2, NativeGlobal::js_parseInt)
                         .withMethod(CTOR, "unescape", 1, NativeGlobal::js_unescape)
@@ -135,13 +133,6 @@ public class NativeGlobal implements Serializable {
             Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
         Object value = (args.length != 0) ? args[0] : Undefined.instance;
         return ScriptRuntime.uneval(cx, s, value);
-    }
-
-    private static Boolean js_isXMLName(
-            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
-        Object name = (args.length == 0) ? Undefined.instance : args[0];
-        XMLLib xmlLib = XMLLib.extractFromScope(s);
-        return xmlLib.isXMLName(cx, name);
     }
 
     private static Boolean js_isNaN(

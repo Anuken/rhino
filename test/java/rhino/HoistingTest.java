@@ -222,7 +222,7 @@ public class HoistingTest {
                                         + "}\n"
                                         + "\n"
                                         + "arr_obj";
-                        Object result = cx.evaluateString(scope, script, "hoistedRef", 1, null);
+                        Object result = cx.evaluateString(scope, script, "hoistedRef", 1);
                         Assertions.assertTrue(result instanceof NativeArray);
                         Assertions.assertEquals(3, ((NativeArray) result).size());
                     } catch (Exception e) {

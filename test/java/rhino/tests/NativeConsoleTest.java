@@ -18,7 +18,6 @@ import rhino.NativeConsole;
 import rhino.NativeConsole.Level;
 import rhino.ScriptStackElement;
 import rhino.Scriptable;
-import rhino.SecurityUtilities;
 import rhino.SymbolKey;
 import rhino.TopLevel;
 import rhino.Undefined;
@@ -533,7 +532,7 @@ public class NativeConsoleTest {
 
     @Test
     public void printError() {
-        String lf = SecurityUtilities.getSystemProperty("line.separator");
+        String lf = System.lineSeparator();
         String js =
                 "try {\n"
                         + "  JSON.parse('{\"abc');\n"
@@ -576,7 +575,7 @@ public class NativeConsoleTest {
         try (Context cx = Context.enter()) {
             TopLevel scope = cx.initStandardObjects();
             NativeConsole.init(scope, false, printer);
-            cx.evaluateString(scope, source, "source", 1, null);
+            cx.evaluateString(scope, source, "source", 1);
             printer.assertCalls(expectedCalls);
         }
     }
@@ -588,7 +587,7 @@ public class NativeConsoleTest {
             cx.setLanguageVersion(Context.VERSION_DEFAULT);
             TopLevel scope = cx.initStandardObjects();
             NativeConsole.init(scope, false, printer);
-            cx.evaluateString(scope, source, "source", 1, null);
+            cx.evaluateString(scope, source, "source", 1);
             printer.assertMsf(expectedMsg);
         }
     }
@@ -600,7 +599,7 @@ public class NativeConsoleTest {
             cx.setLanguageVersion(Context.VERSION_DEFAULT);
             TopLevel scope = cx.initStandardObjects();
             NativeConsole.init(scope, false, printer);
-            return cx.evaluateString(scope, js, "source", 1, null);
+            return cx.evaluateString(scope, js, "source", 1);
         }
     }
 }

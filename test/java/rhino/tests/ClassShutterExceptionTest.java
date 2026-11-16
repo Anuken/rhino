@@ -39,7 +39,7 @@ public class ClassShutterExceptionTest {
                     classShutterSetter = setter;
                 }
                 setter.setClassShutter(new OpaqueShutter());
-                cx.evaluateString(globalScope, source, "test source", 1, null);
+                cx.evaluateString(globalScope, source, "test source", 1);
             } finally {
                 setter.setClassShutter(null);
             }

@@ -156,8 +156,7 @@ public class ClassTest {
                                             "java.util.Collections.sort(list, new Desc(true));",
                                             "Test.describe(new Box('box')) + '|' + list"),
                                     "test.js",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("box:3|[3.0, 2.0, 1.0]", Context.toString(result));
                     return null;
                 });
@@ -179,12 +178,13 @@ public class ClassTest {
                                     "}",
                                     "var counter = new Counter();"),
                             "test.js",
-                            1,
-                            null);
+                            1);
                     ScriptableObject counter = (ScriptableObject) scope.get("counter", scope);
                     ScriptableObject.callMethod(counter, "inc", new Object[0]);
                     ScriptableObject.callMethod(counter, "inc", new Object[0]);
-                    assertEquals(2, ((Number) ScriptableObject.getProperty(counter, "value")).intValue());
+                    assertEquals(
+                            2,
+                            ((Number) ScriptableObject.getProperty(counter, "value")).intValue());
                     return null;
                 });
     }

@@ -35,7 +35,7 @@ public abstract class JsTestsBase {
         TopLevel scope = TopLevel.createIsolate(shared);
         Object result;
         try {
-            result = cx.evaluateString(scope, source, "jstest input: " + name, 1, null);
+            result = cx.evaluateString(scope, source, "jstest input: " + name, 1);
         } catch (RuntimeException e) {
             e.printStackTrace(System.err);
             System.out.println("FAILED");

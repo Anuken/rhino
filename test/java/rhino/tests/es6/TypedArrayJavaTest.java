@@ -133,7 +133,7 @@ public class TypedArrayJavaTest {
 
                     for (String type : allNativeTypes) {
                         String scr = script.replace("§§type§§", type);
-                        Object obj = cx.evaluateString(scope, scr, "", 1, null);
+                        Object obj = cx.evaluateString(scope, scr, "", 1);
                         assertEquals(expected, obj);
                     }
 

@@ -65,8 +65,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
     private final int paramAndVarCount;
     private final int paramCount;
     private final int arity; // number of params before first default for reporting as length
-    private final SecurityController securityController;
-    private final Object securityDomain;
     private final int functionType;
 
     public JSDescriptor(
@@ -98,8 +96,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
             boolean requiresArgumentObject,
             boolean declaredAsFunctionExpression,
             int kindFlags,
-            SecurityController securityController,
-            Object securityDomain,
             int functionType) {
         boolean isClassConstructor = (kindFlags & CLASS_CONSTRUCTOR) != 0;
         // A class constructor throws when called, and runs its body only when constructed.
@@ -159,8 +155,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
         this.paramAndVarCount = paramAndVarCount;
         this.paramCount = paramCount;
         this.arity = arity;
-        this.securityController = securityController;
-        this.securityDomain = securityDomain;
         this.functionType = functionType;
     }
 
@@ -349,14 +343,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
         return (flags & DECLARED_AS_FUNCTION_EXPRESSION_FLAG) != 0;
     }
 
-    public SecurityController getSecurityController() {
-        return securityController;
-    }
-
-    public Object getSecurityDomain() {
-        return securityDomain;
-    }
-
     public int getFunctionType() {
         return functionType;
     }
@@ -405,8 +391,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
         public boolean defaultConstructor;
         public boolean isAsync;
         public boolean isAsyncGenerator;
-        public SecurityController securityController;
-        public Object securityDomain;
         public int functionType;
 
         public Builder() {}
@@ -417,8 +401,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
             this.sourceCodeProvider = parent.sourceCodeProvider;
             this.sourceFile = parent.sourceFile;
             this.isStrict = parent.isStrict;
-            this.securityController = parent.securityController;
-            this.securityDomain = parent.securityDomain;
         }
 
         /**
@@ -481,8 +463,6 @@ public final class JSDescriptor<T extends ScriptOrFn<T>> implements Serializable
                             requiresArgumentObject,
                             declaredAsFunctionExpression,
                             kindFlags(),
-                            securityController,
-                            securityDomain,
                             functionType);
             consumer.accept(result);
             var nested = new ArrayList<JSDescriptor<JSFunction>>(nestedFunctions.size());

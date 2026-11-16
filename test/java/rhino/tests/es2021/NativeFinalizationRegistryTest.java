@@ -32,7 +32,7 @@ public class NativeFinalizationRegistryTest {
                 var global = new Global(cx);
                 global.setFileLoadPrefix(TestSource.getPrefix());
                 var scope = TopLevel.createIsolate(global);
-                cx.evaluateReader(scope, script, "finalization-registry.js", 1, null);
+                cx.evaluateReader(scope, script, "finalization-registry.js", 1);
                 // ScriptTestsBase does not necessarily do this so call it here
                 cx.processMicrotasks();
             }
@@ -52,7 +52,7 @@ public class NativeFinalizationRegistryTest {
                 var global = new Global(cx);
                 global.setFileLoadPrefix(TestSource.getPrefix());
                 var scope = TopLevel.createIsolate(global);
-                cx.evaluateReader(scope, script, "finalization-registry.js", 1, null);
+                cx.evaluateReader(scope, script, "finalization-registry.js", 1);
                 // ScriptTestsBase does not necessarily do this so call it here
                 cx.processMicrotasks();
             }
@@ -76,8 +76,7 @@ public class NativeFinalizationRegistryTest {
                             + "var target = {};\n"
                             + "reg.register(target, 'test-hold-value');\n",
                     "test",
-                    1,
-                    null);
+                    1);
 
             // Force GC to enqueue the PhantomReference.
             System.gc();
@@ -109,8 +108,7 @@ public class NativeFinalizationRegistryTest {
                             + "reg.register(target, 'held');\n"
                             + "target = null;\n",
                     "test",
-                    1,
-                    null);
+                    1);
 
             Object recorded = "not-called";
             for (int i = 0; i < 20; i++) {
@@ -118,7 +116,7 @@ public class NativeFinalizationRegistryTest {
                 // the reference queue at the microtask checkpoint.
                 System.gc();
                 cx.processMicrotasks();
-                recorded = cx.evaluateString(scope, "globalThis._finalizerThis;", "test", 1, null);
+                recorded = cx.evaluateString(scope, "globalThis._finalizerThis;", "test", 1);
                 if (!"not-called".equals(recorded)) {
                     break;
                 }

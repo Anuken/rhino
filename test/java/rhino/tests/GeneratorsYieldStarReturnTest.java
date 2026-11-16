@@ -56,7 +56,7 @@ public class GeneratorsYieldStarReturnTest {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
 
                     Object result = scope.get("result", scope);
                     assertTrue(result instanceof Scriptable, "result should be a Scriptable");
@@ -114,7 +114,7 @@ public class GeneratorsYieldStarReturnTest {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
 
                     Object result = scope.get("result", scope);
                     assertTrue(result instanceof Scriptable, "result should be a Scriptable");
@@ -164,7 +164,7 @@ public class GeneratorsYieldStarReturnTest {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
 
                     Object result = scope.get("result", scope);
                     assertTrue(result instanceof Scriptable, "result should be a Scriptable");
@@ -218,7 +218,7 @@ public class GeneratorsYieldStarReturnTest {
                 cx -> {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     TopLevel scope = cx.initStandardObjects();
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
 
                     Object result = scope.get("result", scope);
                     assertTrue(result instanceof Scriptable, "result should be a Scriptable");

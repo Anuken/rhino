@@ -122,6 +122,24 @@ final class DestructuringIterator {
         }
     }
 
+    /**
+     * Closes the iterator of a pattern that completed abruptly with {@code exception}, which its
+     * caller rethrows, as in IteratorClose. Errors from closing propagate only when a generator's
+     * return left the pattern; otherwise the exception wins.
+     */
+    void closeAbruptly(Object exception) {
+        if (exception instanceof NativeGenerator.GeneratorClosedException) {
+            close();
+        } else if (exception instanceof RuntimeException
+                && !(exception instanceof ContinuationPending)) {
+            try {
+                close();
+            } catch (RuntimeException ignored) {
+                // The original exception wins
+            }
+        }
+    }
+
     /** Closes the iterator unless it is done, once the pattern completes normally. */
     void close() {
         if (done) {

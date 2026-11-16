@@ -38,10 +38,10 @@ final class MindustryScripts {
                 cx -> {
                     ImporterTopLevel scope = new ImporterTopLevel(cx);
                     scope.put("F", scope, new NativeJavaClass(scope, Fixtures.class));
-                    cx.evaluateString(scope, EXTEND, "extend.js", 1, null);
+                    cx.evaluateString(scope, EXTEND, "extend.js", 1);
                     Object r = null;
                     for (String part : parts) {
-                        r = cx.evaluateString(scope, part, "test.js", 1, null);
+                        r = cx.evaluateString(scope, part, "test.js", 1);
                     }
                     if (r instanceof Wrapper) r = ((Wrapper) r).unwrap();
                     result[0] =

@@ -24,13 +24,13 @@ public class StrictPropagationTest {
 
                     Callable includeDynamic =
                             (cx2, scope2, thisObj, args) ->
-                                    cx2.evaluateString(scope2, nested, "nested", 1, null);
+                                    cx2.evaluateString(scope2, nested, "nested", 1);
                     scope.put(
                             "includeDynamic",
                             scope,
                             new LambdaFunction(scope, "includeDynamic", 0, includeDynamic));
 
-                    Object res = cx.evaluateString(scope, outer, "outer", 1, null);
+                    Object res = cx.evaluateString(scope, outer, "outer", 1);
                     assertEquals("x", res);
 
                     return null;

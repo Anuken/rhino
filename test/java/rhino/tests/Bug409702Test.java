@@ -32,7 +32,7 @@ public class Bug409702Test {
     @Test
     public void adapter() {
         String script =
-                "var instance = new JavaAdapter("
+                "var instance = new JavaAdapter(Packages."
                         + Foo.Subclass.class.getName()
                         + ","
                         + "{ b: function () { return 12; } });"

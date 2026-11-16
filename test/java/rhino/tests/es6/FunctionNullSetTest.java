@@ -55,7 +55,7 @@ public class FunctionNullSetTest {
                             var jsScope = new WithScope(scope, jsObj);
 
                             final Function realFunction_ =
-                                    cx.compileFunction(jsScope, script, "myevent", 0, null);
+                                    cx.compileFunction(jsScope, script, "myevent", 0);
 
                             realFunction_.call(cx, jsScope, jsObj, new Object[0]);
 

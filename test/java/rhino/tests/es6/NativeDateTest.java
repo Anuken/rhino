@@ -422,7 +422,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -439,7 +439,7 @@ public class NativeDateTest {
                     T e =
                             assertThrows(
                                     expectedThrowable,
-                                    () -> cx.evaluateString(scope, js, "test", 1, null));
+                                    () -> cx.evaluateString(scope, js, "test", 1));
 
                     assertTrue(
                             e.getMessage().startsWith(expectedMessage),
@@ -482,7 +482,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone("Europe/Berlin"));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals("2021-07-18T20:23:00.000Z", res);
                     return null;
                 });
@@ -511,7 +511,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -560,7 +560,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -716,7 +716,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -788,7 +788,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -842,7 +842,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -891,7 +891,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Object res = cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Object res = cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res);
                     return null;
                 });
@@ -940,7 +940,7 @@ public class NativeDateTest {
                     cx.setLanguageVersion(Context.VERSION_ES6);
                     cx.setTimeZone(TimeZone.getTimeZone(tz));
 
-                    final Double res = (Double) cx.evaluateString(scope, js, "test.js", 0, null);
+                    final Double res = (Double) cx.evaluateString(scope, js, "test.js", 0);
                     assertEquals(expected, res.doubleValue(), 0.0001);
                     return null;
                 });

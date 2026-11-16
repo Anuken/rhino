@@ -49,7 +49,7 @@ public class Bug708801Test {
 
         @SuppressWarnings("unused")
         protected Object evaluate(String s) {
-            return cx.evaluateString(scope, s, "<eval>", 1, null);
+            return cx.evaluateString(scope, s, "<eval>", 1);
         }
 
         /** Compiles {@code source} and returns the transformed and optimized {@link ScriptNode} */

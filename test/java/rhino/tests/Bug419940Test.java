@@ -26,7 +26,8 @@ public class Bug419940Test {
 
     @Test
     public void adapter() {
-        String script = "(new JavaAdapter(" + Foo.class.getName() + ", {})).doSomething();";
+        String script =
+                "(new JavaAdapter(Packages." + Foo.class.getName() + ", {})).doSomething();";
 
         Utils.assertWithAllModes(12, script);
     }

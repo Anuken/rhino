@@ -35,7 +35,6 @@ import rhino.RhinoException;
 import rhino.Script;
 import rhino.ScriptOrFn;
 import rhino.ScriptRuntime;
-import rhino.SecurityController;
 import rhino.Token;
 import rhino.VarScope;
 import rhino.ast.FunctionNode;
@@ -161,31 +160,25 @@ public class Codegen implements Evaluator {
     }
 
     @Override
-    public Script createScriptObject(
-            CompilationResult<JSScript> compiled, Object staticSecurityDomain) {
-        JSDescriptor<JSScript> desc =
-                defineClass((CodegenCompilationResult<JSScript>) compiled, staticSecurityDomain);
-        return JSFunction.createScript(desc, null, staticSecurityDomain);
+    public Script createScriptObject(CompilationResult<JSScript> compiled) {
+        JSDescriptor<JSScript> desc = defineClass((CodegenCompilationResult<JSScript>) compiled);
+        return JSFunction.createScript(desc, null);
     }
 
     @Override
     public Function createFunctionObject(
-            Context cx,
-            VarScope scope,
-            CompilationResult<JSFunction> compiled,
-            Object staticSecurityDomain) {
+            Context cx, VarScope scope, CompilationResult<JSFunction> compiled) {
         JSDescriptor<JSFunction> desc =
-                defineClass((CodegenCompilationResult<JSFunction>) compiled, staticSecurityDomain);
-        return JSFunction.createFunction(cx, scope, desc, null, staticSecurityDomain);
+                defineClass((CodegenCompilationResult<JSFunction>) compiled);
+        return JSFunction.createFunction(cx, scope, desc, null);
     }
 
     private <T extends ScriptOrFn<T>> JSDescriptor<T> defineClass(
-            CodegenCompilationResult<T> compiled, Object staticSecurityDomain) {
+            CodegenCompilationResult<T> compiled) {
         // The generated classes in this case refer only to Rhino classes
         // which must be accessible through this class loader
         ClassLoader rhinoLoader = getClass().getClassLoader();
-        GeneratedClassLoader loader;
-        loader = SecurityController.createLoader(rhinoLoader, staticSecurityDomain);
+        GeneratedClassLoader loader = Context.getCurrentContext().createClassLoader(rhinoLoader);
         Exception e;
         try {
             // The main class (units.get(0)) must be defined first: any auxiliary chunk classes
@@ -721,32 +714,85 @@ public class Codegen implements Evaluator {
 
     /**
      * Emits the {@code execute} (or {@code resume}) method of {@link OptJSCode}, calling the body
-     * (or generator resume) method of whichever of this class's bodies the instance is for.
+     * (or generator resume) method of whichever of this class's bodies the instance is for. Large
+     * classes dispatch through several methods, as the JIT doesn't compile huge methods.
      */
     private void emitCodeDispatch(ClassFileWriter cfw, OptJSCode.BuilderEnv env, boolean resume) {
         int low = Integer.MAX_VALUE;
         int high = -1;
         for (int i = 0; i != builders.length; ++i) {
-            OptJSCode.Builder<?> code = (OptJSCode.Builder<?>) builders[i].code;
-            if (code.env == env && (!resume || code.resumeName != null)) {
+            if (isDispatched(builders[i], env, resume)) {
                 low = Math.min(low, i);
                 high = i;
             }
         }
+        String name = resume ? "resume" : "execute";
+        String signature = resume ? CODE_RESUME_SIGNATURE : CODE_EXECUTE_SIGNATURE;
+        if (high < 0 || high - low < DISPATCH_CHUNK) {
+            emitDispatchMethod(cfw, env, resume, name, ACC_PUBLIC | ACC_FINAL, low, high);
+            return;
+        }
 
+        int chunks = (high - low) / DISPATCH_CHUNK + 1;
+        for (int c = 0; c != chunks; ++c) {
+            int chunkLow = low + c * DISPATCH_CHUNK;
+            int chunkHigh = Math.min(high, chunkLow + DISPATCH_CHUNK - 1);
+            emitDispatchMethod(
+                    cfw, env, resume, name + "$" + c, ACC_PRIVATE | ACC_FINAL, chunkLow, chunkHigh);
+        }
+        cfw.startMethod(name, signature, (short) (ACC_PUBLIC | ACC_FINAL));
+        cfw.addALoad(0);
+        cfw.add(ByteCode.GETFIELD, "rhino/optimizer/OptJSCode", "index", "I");
+        cfw.addPush(low);
+        cfw.add(ByteCode.ISUB);
+        cfw.addPush(DISPATCH_CHUNK);
+        cfw.add(ByteCode.IDIV);
+        int switchStart = cfw.addTableSwitch(0, chunks - 1);
+        for (int c = 0; c != chunks; ++c) {
+            cfw.markTableSwitchCase(switchStart, c, 0);
+            for (int arg = 0; arg <= 6; ++arg) {
+                if (resume && arg == 5) {
+                    cfw.addILoad(arg);
+                } else {
+                    cfw.addALoad(arg);
+                }
+            }
+            cfw.addInvoke(ByteCode.INVOKESPECIAL, cfw.getClassName(), name + "$" + c, signature);
+            cfw.add(ByteCode.ARETURN);
+        }
+        cfw.markTableSwitchDefault(switchStart);
+        cfw.addInvoke(
+                ByteCode.INVOKESTATIC, "rhino/Kit", "codeBug", "()Ljava/lang/RuntimeException;");
+        cfw.add(ByteCode.ATHROW);
+        cfw.stopMethod(7);
+    }
+
+    private static boolean isDispatched(
+            JSDescriptor.Builder<?> builder, OptJSCode.BuilderEnv env, boolean resume) {
+        OptJSCode.Builder<?> code = (OptJSCode.Builder<?>) builder.code;
+        return code.env == env && (!resume || code.resumeName != null);
+    }
+
+    /** Emits a method calling the bodies with indexes from low to high, if they are dispatched. */
+    private void emitDispatchMethod(
+            ClassFileWriter cfw,
+            OptJSCode.BuilderEnv env,
+            boolean resume,
+            String name,
+            int flags,
+            int low,
+            int high) {
         cfw.startMethod(
-                resume ? "resume" : "execute",
-                resume ? CODE_RESUME_SIGNATURE : CODE_EXECUTE_SIGNATURE,
-                (short) (ACC_PUBLIC | ACC_FINAL));
+                name, resume ? CODE_RESUME_SIGNATURE : CODE_EXECUTE_SIGNATURE, (short) flags);
         if (high >= 0) {
             cfw.addALoad(0);
             cfw.add(ByteCode.GETFIELD, "rhino/optimizer/OptJSCode", "index", "I");
             int switchStart = cfw.addTableSwitch(low, high);
             for (int i = low; i <= high; ++i) {
-                OptJSCode.Builder<?> code = (OptJSCode.Builder<?>) builders[i].code;
-                if (code.env != env || (resume && code.resumeName == null)) {
+                if (!isDispatched(builders[i], env, resume)) {
                     continue;
                 }
+                OptJSCode.Builder<?> code = (OptJSCode.Builder<?>) builders[i].code;
                 cfw.markTableSwitchCase(switchStart, i - low, 0);
                 cfw.addALoad(1);
                 cfw.addALoad(2);
@@ -780,8 +826,7 @@ public class Codegen implements Evaluator {
             }
             cfw.markTableSwitchDefault(switchStart);
             for (int i = low; i <= high; ++i) {
-                OptJSCode.Builder<?> code = (OptJSCode.Builder<?>) builders[i].code;
-                if (code.env != env || (resume && code.resumeName == null)) {
+                if (!isDispatched(builders[i], env, resume)) {
                     cfw.setTableSwitchJump(switchStart, i - low, cfw.getCurrentCodeOffset());
                 }
             }
@@ -1187,6 +1232,9 @@ public class Codegen implements Evaluator {
     static final String DEFAULT_MAIN_METHOD_CLASS = "rhino.optimizer.OptRuntime";
 
     private static final String SUPER_CLASS_NAME = "rhino.optimizer.OptJSCode";
+
+    // Bodies per dispatch method, keeping each well below the JIT's 8000 byte limit
+    private static final int DISPATCH_CHUNK = 200;
 
     private static final String CODE_EXECUTE_SIGNATURE =
             "(Lrhino/Context;"

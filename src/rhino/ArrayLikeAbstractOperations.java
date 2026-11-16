@@ -333,7 +333,7 @@ public class ArrayLikeAbstractOperations {
             Context cx, VarScope scope, Object[] args) {
         var compareFunc = ScriptRuntime.getValueAndThis(args[0], cx);
         Callable compare = compareFunc.getCallable();
-        Scriptable compareThis = compareFunc.getThis();
+        Object compareThis = compareFunc.getThis();
         final Object[] cmpBuf = new Object[2]; // Buffer for cmp arguments
         return new ElementComparator(
                 (x, y) -> {

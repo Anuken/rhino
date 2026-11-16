@@ -26,7 +26,6 @@ import java.util.NoSuchElementException;
 import rhino.ArrayLikeAbstractOperations.IterativeOperation;
 import rhino.ArrayLikeAbstractOperations.ReduceOperation;
 import rhino.ClassDescriptor.BuiltInJSCodeExec;
-import rhino.xml.XMLObject;
 
 /**
  * This class implements the Array native object.
@@ -837,12 +836,6 @@ public class NativeArray extends ScriptableObject implements List {
         }
         if (obj instanceof NativeArray) {
             return ((NativeArray) obj).getLength();
-        }
-        if (obj instanceof XMLObject) {
-            Callable lengthFunc = (Callable) obj.get("length", obj);
-            return ((Number)
-                            lengthFunc.call(cx, obj.getParentScope(), obj, ScriptRuntime.emptyArgs))
-                    .longValue();
         }
 
         Object len = ScriptableObject.getProperty(obj, "length");

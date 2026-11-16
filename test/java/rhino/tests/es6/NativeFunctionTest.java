@@ -160,8 +160,7 @@ public class NativeFunctionTest {
                                             + "res += ' enumerable: ' + desc.enumerable;\n"
                                             + "res += ' writable: ' + desc.writable;",
                                     "test",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("configurable: true enumerable: false writable: false", result);
 
                     return null;

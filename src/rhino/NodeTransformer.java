@@ -140,6 +140,17 @@ public class NodeTransformer {
                 }
             }
 
+            Node checked = checkInitialized(node);
+            if (checked != node) {
+                Node original = node;
+                node = replaceCurrent(parent, previous, node, checked);
+                type = node.getType();
+                if (type == Token.COMMA) {
+                    // The check precedes the original update
+                    node.addChildToBack(original);
+                }
+            }
+
             switch (type) {
                 case Token.LABEL:
                 case Token.SWITCH:
@@ -527,7 +538,11 @@ public class NodeTransformer {
                         Object[] propertyIds = (Object[]) node.getProp(Node.OBJECT_IDS_PROP);
                         if (propertyIds != null) {
                             for (Object propertyId : propertyIds) {
-                                if (!(propertyId instanceof Node)) continue;
+                                // A spread is also a child, which is transformed below
+                                if (!(propertyId instanceof Node)
+                                        || ((Node) propertyId).getType() == Token.DOTDOTDOT) {
+                                    continue;
+                                }
                                 transformCompilationUnit_r(
                                         tree,
                                         (Node) propertyId,
@@ -548,6 +563,68 @@ public class NodeTransformer {
                     inStrictMode,
                     inLoop || node.getType() == Token.LOOP);
         }
+    }
+
+    /**
+     * Makes a reference that TdzAnalysis found may run before its binding is initialized check for
+     * that, returning what replaces it, or the node itself.
+     */
+    private static Node checkInitialized(Node node) {
+        switch (node.getType()) {
+            case Token.NAME:
+                if (isTdzChecked(node)) {
+                    return checkedRead(node.getString());
+                }
+                break;
+            case Token.TYPEOFNAME:
+                if (isTdzChecked(node)) {
+                    return new Node(Token.TYPEOF, checkedRead(node.getString()));
+                }
+                break;
+            case Token.SETNAME:
+                {
+                    Node binding = node.getFirstChild();
+                    if (isTdzChecked(binding)) {
+                        binding.removeProp(Node.TDZ_CHECK_PROP);
+                        Node value = node.getLastChild();
+                        node.removeChild(value);
+                        String name = binding.getString();
+                        node.addChildToBack(
+                                IRFactory.intrinsic(
+                                        Intrinsics.CHECK_INIT_ASSIGN,
+                                        value,
+                                        Node.newString(Token.NAME, name),
+                                        Node.newString(name)));
+                    }
+                    break;
+                }
+            case Token.INC:
+            case Token.DEC:
+                {
+                    Node operand = node.getFirstChild();
+                    if (operand.getType() == Token.NAME && isTdzChecked(operand)) {
+                        operand.removeProp(Node.TDZ_CHECK_PROP);
+                        return new Node(Token.COMMA, checkedRead(operand.getString()));
+                    }
+                    break;
+                }
+            case Token.DELPROP:
+                // Deleting a binding does not read it
+                for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
+                    child.removeProp(Node.TDZ_CHECK_PROP);
+                }
+                break;
+        }
+        return node;
+    }
+
+    private static boolean isTdzChecked(Node node) {
+        return node.getIntProp(Node.TDZ_CHECK_PROP, 0) != 0;
+    }
+
+    private static Node checkedRead(String name) {
+        return IRFactory.intrinsic(
+                Intrinsics.CHECK_INIT, Node.newString(Token.NAME, name), Node.newString(name));
     }
 
     /**

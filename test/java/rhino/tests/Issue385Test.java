@@ -45,7 +45,7 @@ public class Issue385Test {
 
     @org.junit.jupiter.api.Test
     public void objDestructSimple() {
-        Object result = cx.evaluateString(scope, "var {a: a = 10} = {}; a", "<eval>", 1, null);
+        Object result = cx.evaluateString(scope, "var {a: a = 10} = {}; a", "<eval>", 1);
         Assertions.assertTrue(result instanceof Double);
         Assertions.assertEquals(result, 10.0);
     }
@@ -63,21 +63,20 @@ public class Issue385Test {
                         //
                         // it's here for the completeness and in case we change method parsing
                         // before destructuring default values are supported
-                        cx.evaluateString(scope, "var {a = 10} = {}", "<eval>", 1, null));
+                        cx.evaluateString(scope, "var {a = 10} = {}", "<eval>", 1));
     }
 
     @org.junit.jupiter.api.Test
     @Disabled("complex-destructuring-not-supported")
     public void objDestructComplex() {
-        Object result =
-                cx.evaluateString(scope, "var {a: {b} = {b: 10}} = {}; a + b", "<eval>", 1, null);
+        Object result = cx.evaluateString(scope, "var {a: {b} = {b: 10}} = {}; a + b", "<eval>", 1);
         Assertions.assertTrue(result instanceof Double);
         Assertions.assertEquals(result, 20.0);
     }
 
     @org.junit.jupiter.api.Test
     public void arrDestructSimple() {
-        Object result = cx.evaluateString(scope, "var [a = 10] = []; a", "<eval>", 1, null);
+        Object result = cx.evaluateString(scope, "var [a = 10] = []; a", "<eval>", 1);
         Assertions.assertTrue(result instanceof Double);
         Assertions.assertEquals(result, 10.0);
     }
@@ -86,8 +85,7 @@ public class Issue385Test {
     @Disabled("complex-destructuring-not-supported")
     public void arrDestructComplex() {
         Object result =
-                cx.evaluateString(
-                        scope, "var [[a = [b] = [4]] = [2]] = []; a + b", "<eval>", 1, null);
+                cx.evaluateString(scope, "var [[a = [b] = [4]] = [2]] = []; a + b", "<eval>", 1);
         Assertions.assertTrue(result instanceof Double);
         Assertions.assertEquals(result, 10.0);
     }

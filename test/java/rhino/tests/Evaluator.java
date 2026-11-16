@@ -44,6 +44,6 @@ public class Evaluator {
                 scope.put(entry.getKey(), scope, object);
             }
         }
-        return cx.evaluateString(scope, source, "source", 1, null);
+        return cx.evaluateString(scope, source, "source", 1);
     }
 }

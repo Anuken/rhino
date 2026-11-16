@@ -18,7 +18,7 @@ class SuperTest {
         void superIsNotAKeywordUntilES6() {
             try (Context cx = Context.enter()) {
                 cx.setLanguageVersion(Context.VERSION_1_8);
-                Script test = cx.compileString("var super = 42;", "test", 1, null);
+                Script test = cx.compileString("var super = 42;", "test", 1);
                 assertNotNull(test);
             }
         }
@@ -407,8 +407,7 @@ class SuperTest {
                                         + "Object.setPrototypeOf(b, a);\n"
                                         + "b.f();";
                         Object result =
-                                cx.evaluateString(
-                                        cx.initStandardObjects(), script, "test", 1, null);
+                                cx.evaluateString(cx.initStandardObjects(), script, "test", 1);
                         assertEquals(Undefined.instance, result);
 
                         assertTrue(warningReported.get());
@@ -1313,10 +1312,10 @@ class SuperTest {
                 TopLevel scope = cx.initStandardObjects();
 
                 cx.setEvaluationMethod(EvaluationMethod.Interpreter);
-                cx.evaluateString(scope, script, "test", 1, null);
+                cx.evaluateString(scope, script, "test", 1);
 
                 cx.setEvaluationMethod(EvaluationMethod.Compiler);
-                Object res = cx.evaluateString(scope, script2, "test", 1, null);
+                Object res = cx.evaluateString(scope, script2, "test", 1);
                 assertEquals("object", res);
             }
         }
@@ -1324,8 +1323,7 @@ class SuperTest {
 
     /**
      * Test cases related to the special handling of REF in Rhino, which includes the special
-     * properties __proto__ and __parent__. It also includes XML stuff, but we do not support it for
-     * super.
+     * properties __proto__ and __parent__.
      */
     @Nested
     class Ref {

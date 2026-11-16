@@ -494,7 +494,7 @@ class InterpreterBytecodeDumpTest {
                 () -> {
                     try (Context cx = Context.enter()) {
                         cx.setInterpretedMode(true);
-                        cx.compileString(source, "test", 1, null);
+                        cx.compileString(source, "test", 1);
                     }
                 });
     }

@@ -52,29 +52,29 @@ public class Node implements Iterable<Node> {
             INCRDECR_PROP = 13, // pre or post type of increment/decrement
             CATCH_SCOPE_PROP = 14, // index of catch scope block in catch
             LABEL_ID_PROP = 15, // label id: code generation uses it
-            MEMBER_TYPE_PROP = 16, // type of element access operation
-            NAME_PROP = 17, // property name
-            CONTROL_BLOCK_PROP = 18, // flags a control block that can drop off
-            PARENTHESIZED_PROP = 19, // expression is parenthesized
-            GENERATOR_END_PROP = 20,
-            DESTRUCTURING_ARRAY_LENGTH = 21,
-            DESTRUCTURING_NAMES = 22,
-            DESTRUCTURING_PARAMS = 23,
-            JSDOC_PROP = 24,
-            EXPRESSION_CLOSURE_PROP = 25, // JS 1.8 expression closure pseudo-return
-            ARROW_FUNCTION_PROP = 26,
-            TEMPLATE_LITERAL_PROP = 27,
-            TRAILING_COMMA = 28,
-            OBJECT_LITERAL_DESTRUCTURING = 29,
-            OPTIONAL_CHAINING = 30,
-            SUPER_PROPERTY_ACCESS = 31,
-            NUMBER_OF_SPREAD = 32,
-            OBJECT_REST_PROP = 33, // marks a CALL node as object rest operation
-            CONST_IDS_PROP = 34, // boolean[] flagging which declarations or names are consts
-            INTRINSIC_PROP = 35, // Intrinsics id of an INTRINSIC node
-            INFERRED_NAME_PROP = 36, // name an anonymous function takes from its context
-            AWAIT_PROP = 37, // marks the yield an await compiles to
-            LAST_PROP = AWAIT_PROP,
+            NAME_PROP = 16, // property name
+            CONTROL_BLOCK_PROP = 17, // flags a control block that can drop off
+            PARENTHESIZED_PROP = 18, // expression is parenthesized
+            GENERATOR_END_PROP = 19,
+            DESTRUCTURING_ARRAY_LENGTH = 20,
+            DESTRUCTURING_NAMES = 21,
+            DESTRUCTURING_PARAMS = 22,
+            JSDOC_PROP = 23,
+            EXPRESSION_CLOSURE_PROP = 24, // JS 1.8 expression closure pseudo-return
+            ARROW_FUNCTION_PROP = 25,
+            TEMPLATE_LITERAL_PROP = 26,
+            TRAILING_COMMA = 27,
+            OBJECT_LITERAL_DESTRUCTURING = 28,
+            OPTIONAL_CHAINING = 29,
+            SUPER_PROPERTY_ACCESS = 30,
+            NUMBER_OF_SPREAD = 31,
+            OBJECT_REST_PROP = 32, // marks a CALL node as object rest operation
+            CONST_IDS_PROP = 33, // boolean[] flagging which declarations or names are consts
+            INTRINSIC_PROP = 34, // Intrinsics id of an INTRINSIC node
+            INFERRED_NAME_PROP = 35, // name an anonymous function takes from its context
+            AWAIT_PROP = 36, // marks the yield an await compiles to
+            TDZ_CHECK_PROP = 37, // a reference to a binding that may still be uninitialized
+            LAST_PROP = TDZ_CHECK_PROP,
             FIRST_PROP = FUNCTION_PROP;
 
     // values of ISNUMBER_PROP to specify
@@ -86,10 +86,6 @@ public class Node implements Iterable<Node> {
     public static final int // flags for INCRDECR_PROP
             DECR_FLAG = 0x1,
             POST_FLAG = 0x2;
-    public static final int // flags for MEMBER_TYPE_PROP
-            PROPERTY_FLAG = 0x1, // property access: element is valid name
-            ATTRIBUTE_FLAG = 0x2, // x.@y or x..@y
-            DESCENDANTS_FLAG = 0x4; // x..y or x..@i
 
     private static class PropListItem {
         PropListItem next;
@@ -427,8 +423,6 @@ public class Node implements Iterable<Node> {
                 return "catch_scope_prop";
             case LABEL_ID_PROP:
                 return "label_id_prop";
-            case MEMBER_TYPE_PROP:
-                return "member_type_prop";
             case NAME_PROP:
                 return "name_prop";
             case CONTROL_BLOCK_PROP:
@@ -471,6 +465,8 @@ public class Node implements Iterable<Node> {
                 return "inferred_name";
             case AWAIT_PROP:
                 return "await";
+            case TDZ_CHECK_PROP:
+                return "tdz_check";
 
             default:
                 Kit.codeBug();

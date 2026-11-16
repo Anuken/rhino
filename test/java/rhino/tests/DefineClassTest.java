@@ -78,7 +78,7 @@ public class DefineClassTest {
     }
 
     private Object evaluate(Context cx, String str) {
-        return cx.evaluateString(scope, str, "<testsrc>", 0, null);
+        return cx.evaluateString(scope, str, "<testsrc>", 0);
     }
 
     @BeforeEach

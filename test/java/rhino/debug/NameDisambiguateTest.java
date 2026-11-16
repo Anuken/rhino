@@ -25,7 +25,7 @@ class NameDisambiguateTest {
 
             var scope = cx.initStandardObjects();
 
-            Object value = cx.evaluateString(scope, SOURCE, "test", 1, null);
+            Object value = cx.evaluateString(scope, SOURCE, "test", 1);
             assertEquals("outer", value);
         }
     }

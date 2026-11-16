@@ -30,7 +30,7 @@ public class LambdaFunctionTest {
         cx.setLanguageVersion(Context.VERSION_ES6);
         root = cx.initStandardObjects();
         try (FileReader rdr = new FileReader(TestSource.resolve("testsrc/assert.js"))) {
-            cx.evaluateReader(root, rdr, "assert.js", 1, null);
+            cx.evaluateReader(root, rdr, "assert.js", 1);
         }
     }
 
@@ -40,7 +40,7 @@ public class LambdaFunctionTest {
     }
 
     private void eval(String source) {
-        Utils.runWithAllModes(ignored -> cx.evaluateString(root, source, "test.js", 1, null));
+        Utils.runWithAllModes(ignored -> cx.evaluateString(root, source, "test.js", 1));
     }
 
     @Test

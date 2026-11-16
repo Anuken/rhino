@@ -22,7 +22,7 @@ public class NativeArrayBufferTest {
         try (Context cx = Context.enter()) {
             cx.setLanguageVersion(Context.VERSION_ES6);
             TopLevel global = cx.initStandardObjects();
-            Object result = cx.evaluateString(global, "(new ArrayBuffer(5)).isView", "", 1, null);
+            Object result = cx.evaluateString(global, "(new ArrayBuffer(5)).isView", "", 1);
             Assertions.assertEquals(Undefined.instance, result);
         }
     }

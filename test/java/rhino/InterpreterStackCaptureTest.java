@@ -41,11 +41,11 @@ public class InterpreterStackCaptureTest {
         try (Context cx = new ContextFactory().enterContext()) {
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
             TopLevel scope = cx.initStandardObjects();
-            Scriptable caught = (Scriptable) cx.evaluateString(scope, SOURCE, "test.js", 1, null);
+            Scriptable caught = (Scriptable) cx.evaluateString(scope, SOURCE, "test.js", 1);
             Scriptable created = (Scriptable) scope.get("created", scope);
             String thrown;
             try {
-                cx.evaluateString(scope, "outer();", "throw.js", 1, null);
+                cx.evaluateString(scope, "outer();", "throw.js", 1);
                 throw new AssertionError();
             } catch (JavaScriptException e) {
                 assertEquals(javaStack, e.getStackTrace().length > 0);

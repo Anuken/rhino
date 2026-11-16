@@ -149,9 +149,7 @@ class BuiltinsSealingTest {
 
                     assertThrows(
                             EvaluatorException.class,
-                            () ->
-                                    cx.evaluateString(
-                                            scope, builtinName + ".a = 'a'", "test.js", 1, null));
+                            () -> cx.evaluateString(scope, builtinName + ".a = 'a'", "test.js", 1));
                     assertThrows(
                             EvaluatorException.class,
                             () ->
@@ -159,8 +157,7 @@ class BuiltinsSealingTest {
                                             scope,
                                             builtinName + ".prototype.a = 'a'",
                                             "test.js",
-                                            1,
-                                            null));
+                                            1));
                     return null;
                 });
     }
@@ -175,17 +172,11 @@ class BuiltinsSealingTest {
 
                     assertThrows(
                             EvaluatorException.class,
-                            () ->
-                                    cx.evaluateString(
-                                            scope, builtinName + ".a = 'a'", "test.js", 1, null));
+                            () -> cx.evaluateString(scope, builtinName + ".a = 'a'", "test.js", 1));
                     assertTrue(
                             Undefined.isUndefined(
                                     cx.evaluateString(
-                                            scope,
-                                            builtinName + ".prototype",
-                                            "test.js",
-                                            1,
-                                            null)));
+                                            scope, builtinName + ".prototype", "test.js", 1)));
                     return null;
                 });
     }

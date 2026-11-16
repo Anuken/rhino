@@ -22,6 +22,7 @@ public final class UniqueTag implements Serializable {
     private static final int ID_NOT_FOUND = 1;
     private static final int ID_NULL_VALUE = 2;
     private static final int ID_DOUBLE_MARK = 3;
+    private static final int ID_UNINITIALIZED = 4;
 
     /** Tag to mark non-existing values. */
     public static final UniqueTag NOT_FOUND = new UniqueTag(ID_NOT_FOUND);
@@ -33,6 +34,12 @@ public final class UniqueTag implements Serializable {
      * Tag to indicate that a object represents "double" with the real value stored somewhere else.
      */
     public static final UniqueTag DOUBLE_MARK = new UniqueTag(ID_DOUBLE_MARK);
+
+    /**
+     * Value of a let, const or class binding whose declaration has not run yet, where a reference
+     * may read it before then.
+     */
+    public static final UniqueTag UNINITIALIZED = new UniqueTag(ID_UNINITIALIZED);
 
     private final int tagId;
 
@@ -48,6 +55,8 @@ public final class UniqueTag implements Serializable {
                 return NULL_VALUE;
             case ID_DOUBLE_MARK:
                 return DOUBLE_MARK;
+            case ID_UNINITIALIZED:
+                return UNINITIALIZED;
         }
         throw new IllegalStateException(String.valueOf(tagId));
     }
@@ -65,6 +74,9 @@ public final class UniqueTag implements Serializable {
                 break;
             case ID_DOUBLE_MARK:
                 name = "DOUBLE_MARK";
+                break;
+            case ID_UNINITIALIZED:
+                name = "UNINITIALIZED";
                 break;
             default:
                 throw Kit.codeBug();

@@ -53,8 +53,6 @@ import rhino.ast.UpdateExpression;
 import rhino.ast.VariableDeclaration;
 import rhino.ast.VariableInitializer;
 import rhino.ast.WithStatement;
-import rhino.ast.XmlFragment;
-import rhino.ast.XmlLiteral;
 import rhino.testing.TestErrorReporter;
 
 public class ParserTest {
@@ -1243,13 +1241,12 @@ public class ParserTest {
     }
 
     @Test
-    public void parseMultibyteCharacter_XMLLiteral() {
-        AstRoot root = parse("<xml>\uD83C\uDF1F</xml>");
-        XmlLiteral first =
-                (XmlLiteral) ((ExpressionStatement) root.getFirstChild()).getExpression();
-        XmlFragment fragment = first.getFragments().get(0);
-        assertEquals(13, fragment.getLength());
-        assertEquals("<xml>🌟</xml>", fragment.toSource());
+    public void e4xSyntaxIsRejected() {
+        expectParseErrors("<xml/>;", "syntax error");
+        expectParseErrors("a..b;", "missing name after . operator");
+        expectParseErrors("a.(b);", "missing name after . operator");
+        expectParseErrors("a::b;", "syntax error");
+        expectParseErrors("default xml namespace = 'x';", "syntax error");
     }
 
     @Test

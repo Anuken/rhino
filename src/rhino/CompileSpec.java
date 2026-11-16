@@ -24,7 +24,6 @@ public abstract class CompileSpec<T extends ScriptOrFn<T>> {
     private final String source;
     private final String sourceName;
     private final int lineno;
-    private final Object securityDomain;
     private final Evaluator compiler;
     private final ErrorReporter compilationErrorReporter;
     private final CompilerEnvironsProcessor compilerEnvironsProcessor;
@@ -35,7 +34,6 @@ public abstract class CompileSpec<T extends ScriptOrFn<T>> {
         this.source = builder.source;
         this.sourceName = builder.sourceName;
         this.lineno = Math.max(builder.lineno, 0);
-        this.securityDomain = builder.securityDomain;
         this.compiler = builder.compiler;
         this.compilationErrorReporter = builder.compilationErrorReporter;
         this.compilerEnvironsProcessor = builder.compilerEnvironsProcessor;
@@ -57,10 +55,6 @@ public abstract class CompileSpec<T extends ScriptOrFn<T>> {
 
     public int getLineno() {
         return lineno;
-    }
-
-    public Object getSecurityDomain() {
-        return securityDomain;
     }
 
     public Evaluator getCompiler() {
@@ -97,7 +91,6 @@ public abstract class CompileSpec<T extends ScriptOrFn<T>> {
         protected final String source;
         protected String sourceName;
         protected int lineno = 0;
-        protected Object securityDomain;
         protected Evaluator compiler;
         protected ErrorReporter compilationErrorReporter;
         protected CompilerEnvironsProcessor compilerEnvironsProcessor;
@@ -115,11 +108,6 @@ public abstract class CompileSpec<T extends ScriptOrFn<T>> {
 
         public U lineno(int lineno) {
             this.lineno = lineno;
-            return getThis();
-        }
-
-        public U securityDomain(Object securityDomain) {
-            this.securityDomain = securityDomain;
             return getThis();
         }
 

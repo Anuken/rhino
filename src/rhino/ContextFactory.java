@@ -8,8 +8,6 @@
 
 package rhino;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import rhino.config.RhinoConfig;
 
 /**
@@ -208,7 +206,6 @@ public class ContextFactory {
      * {@link Context} without introducing additional subclasses.
      */
     protected boolean hasFeature(Context cx, int featureIndex) {
-        int version;
         switch (featureIndex) {
             case Context.FEATURE_MEMBER_EXPR_AS_FUNCTION_NAME:
                 return false;
@@ -218,10 +215,6 @@ public class ContextFactory {
 
             case Context.FEATURE_PARENT_PROTO_PROPERTIES:
                 return true;
-
-            case Context.FEATURE_E4X:
-                version = cx.getLanguageVersion();
-                return (version == Context.VERSION_DEFAULT || version >= Context.VERSION_1_6);
 
             case Context.FEATURE_DYNAMIC_SCOPE:
                 return false;
@@ -262,9 +255,6 @@ public class ContextFactory {
             case Context.FEATURE_LITTLE_ENDIAN:
                 return false;
 
-            case Context.FEATURE_ENABLE_XML_SECURE_PARSING:
-                return true;
-
             case Context.FEATURE_ENABLE_JAVA_MAP_ACCESS:
                 return false;
 
@@ -281,17 +271,10 @@ public class ContextFactory {
     /**
      * Create class loader for generated classes. This method creates an instance of the default
      * implementation of {@link GeneratedClassLoader}. Rhino uses this interface to load generated
-     * JVM classes when no {@link SecurityController} is installed. Application can override the
-     * method to provide custom class loading.
+     * JVM classes. Application can override the method to provide custom class loading.
      */
-    protected GeneratedClassLoader createClassLoader(final ClassLoader parent) {
-        return AccessController.doPrivileged(
-                new PrivilegedAction<DefiningClassLoader>() {
-                    @Override
-                    public DefiningClassLoader run() {
-                        return new DefiningClassLoader(parent);
-                    }
-                });
+    protected GeneratedClassLoader createClassLoader(ClassLoader parent) {
+        return new DefiningClassLoader(parent);
     }
 
     /**

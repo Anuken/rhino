@@ -147,7 +147,7 @@ public class ShellTimerTest {
     }
 
     private void runTest(String script) throws InterruptedException {
-        cx.evaluateString(global, script, "test.js", 1, null);
+        cx.evaluateString(global, script, "test.js", 1);
         timers.runAllTimers(cx, global);
         assertTrue(ScriptRuntime.toBoolean(global.get("TestsComplete", global)));
     }

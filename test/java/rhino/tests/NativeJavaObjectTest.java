@@ -25,7 +25,7 @@ public class NativeJavaObjectTest {
             TopLevel scope = cx.initStandardObjects();
             {
                 String source = "java.util.Collections.singletonList('123').get(0)";
-                Object result = cx.evaluateString(scope, source, "source", 1, null);
+                Object result = cx.evaluateString(scope, source, "source", 1);
                 assertTrue(result instanceof NativeJavaObject);
                 Object rawObj = ((NativeJavaObject) result).unwrap();
                 assertTrue(rawObj instanceof String);
@@ -34,7 +34,7 @@ public class NativeJavaObjectTest {
 
             {
                 String source = "java.util.Collections.singletonList(123).get(0)";
-                Object result = cx.evaluateString(scope, source, "source", 1, null);
+                Object result = cx.evaluateString(scope, source, "source", 1);
                 assertTrue(result instanceof NativeJavaObject);
                 Object rawObj = ((NativeJavaObject) result).unwrap();
                 assertTrue(rawObj instanceof Double);
@@ -43,7 +43,7 @@ public class NativeJavaObjectTest {
 
             {
                 String source = "java.util.Collections.singletonList(123n).get(0)";
-                Object result = cx.evaluateString(scope, source, "source", 1, null);
+                Object result = cx.evaluateString(scope, source, "source", 1);
                 assertTrue(result instanceof NativeJavaObject);
                 Object rawObj = ((NativeJavaObject) result).unwrap();
                 assertTrue(rawObj instanceof BigInteger);

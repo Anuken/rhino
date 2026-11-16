@@ -31,8 +31,7 @@ public class ScriptRuntimeEquivalentValuesTest {
                                     "var o = new EquivalentTesterObject();"
                                             + "'' + (o == undefined) + ' ' + (undefined == o)",
                                     "test",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("true true", result, "" + cx.isInterpretedMode());
 
                     return null;
@@ -55,8 +54,7 @@ public class ScriptRuntimeEquivalentValuesTest {
                                     "var o = new EquivalentTesterObject();"
                                             + "'' + (o == null) + ' ' + (null == o)",
                                     "test",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("true true", result, "" + cx.isInterpretedMode());
 
                     return null;

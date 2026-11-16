@@ -224,7 +224,7 @@ final class CallFrame extends ACallFrame<CallFrame, InterpreterData<?>> implemen
         if (other instanceof CallFrame) {
             // If the call is not within a Context with a top call, we force
             // one. It is required as some objects within fully initialized
-            // global scopes (notably, XMLLibImpl) need to have a top scope
+            // global scopes need to have a top scope
             // in order to evaluate their attributes.
             try (Context cx = Context.enter()) {
                 if (ScriptRuntime.hasTopCall(cx)) {

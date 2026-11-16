@@ -81,12 +81,11 @@ public final class NativeCall extends DeclarationScope {
                 String name = function.getParamOrVarName(i);
                 if (!super.has(name, this)) {
                     if (function.getParamOrVarConst(i)) {
+                        boolean es6 = cx.getLanguageVersion() >= Context.VERSION_ES6;
                         initProperty(
                                 name,
-                                Undefined.instance,
-                                cx.getLanguageVersion() >= Context.VERSION_ES6
-                                        ? CONST
-                                        : LEGACY_CONST);
+                                es6 ? UniqueTag.UNINITIALIZED : Undefined.instance,
+                                es6 ? CONST : LEGACY_CONST);
                     } else if (function.getDescriptor().hasNoFunctionStatementNamed(name)) {
                         // Properties for FUNCTION_STATEMENTs are created in
                         // Interpreter.CallFrame.initializeArgs().

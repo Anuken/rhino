@@ -40,8 +40,7 @@ public class CharacterAssignmentTest {
                                             + "x1.primitiveCharacter = 65;"
                                             + "x2.bigCharacter = src.primitiveCharacter;",
                                     "myScript.js",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals('A', x1.bigCharacter);
                     assertEquals('A', x1.primitiveCharacter);
                     assertEquals('X', x2.bigCharacter);

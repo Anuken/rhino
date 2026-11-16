@@ -34,8 +34,7 @@ public class LambdaAccessorSlotTest {
                                     scope,
                                     "s = new StatusHolder('InProgress'); s.status",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("InProgress", getterResult);
                     return null;
                 });
@@ -78,14 +77,12 @@ public class LambdaAccessorSlotTest {
                                     scope,
                                     "s = new StatusHolder('InProgress'); s.status",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("InProgress", getterResult);
 
-                    Object setResult =
-                            cx.evaluateString(scope, "s.status = 'DONE';", "source", 1, null);
+                    Object setResult = cx.evaluateString(scope, "s.status = 'DONE';", "source", 1);
 
-                    Object newStatus = cx.evaluateString(scope, "s.status", "source", 1, null);
+                    Object newStatus = cx.evaluateString(scope, "s.status", "source", 1);
                     assertEquals("NewStatus: DONE", newStatus);
                     return null;
                 });
@@ -101,17 +98,12 @@ public class LambdaAccessorSlotTest {
                                     cx, "status", (thisObj) -> self(thisObj).getStatus(), DONTENUM);
 
                     Object getterResult =
-                            cx.evaluateString(
-                                    scope, "new StatusHolder('OK').status", "source", 1, null);
+                            cx.evaluateString(scope, "new StatusHolder('OK').status", "source", 1);
                     assertEquals("OK", getterResult);
 
                     Object hiddenFieldResult =
                             cx.evaluateString(
-                                    scope,
-                                    "new StatusHolder('OK').hiddenStatus",
-                                    "source",
-                                    1,
-                                    null);
+                                    scope, "new StatusHolder('OK').hiddenStatus", "source", 1);
                     assertEquals(
                             Undefined.instance,
                             hiddenFieldResult,
@@ -164,8 +156,7 @@ public class LambdaAccessorSlotTest {
                                     scope,
                                     "s = new StatusHolder('Constant'); s.status",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("Constant", getterResult);
 
                     var error =
@@ -176,8 +167,7 @@ public class LambdaAccessorSlotTest {
                                                     scope,
                                                     "\"use strict\"; s.status = 'DONE'; s.status",
                                                     "source",
-                                                    1,
-                                                    null));
+                                                    1));
                     String expectedError =
                             ScriptRuntime.getMessageById(
                                     "msg.set.prop.no.setter", "[StatusHolder].status", "DONE");
@@ -200,16 +190,14 @@ public class LambdaAccessorSlotTest {
                                     scope,
                                     "s = new StatusHolder('Constant'); s.status",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("Constant", getterResult);
 
                     Object setResult =
-                            cx.evaluateString(
-                                    scope, "s.status = 'DONE'; s.status", "source", 1, null);
+                            cx.evaluateString(scope, "s.status = 'DONE'; s.status", "source", 1);
                     assertEquals("Constant", setResult, "status won't be changed");
 
-                    Object shObj = cx.evaluateString(scope, "s", "source", 1, null);
+                    Object shObj = cx.evaluateString(scope, "s", "source", 1);
                     var statusHolder = (StatusHolder) shObj;
                     assertEquals("Constant", statusHolder.getStatus());
                     return null;
@@ -228,13 +216,13 @@ public class LambdaAccessorSlotTest {
                                     null,
                                     (thisObj, value) -> self(thisObj).setStatus(value),
                                     DONTENUM);
-                    cx.evaluateString(scope, "s = new StatusHolder('Constant')", "source", 1, null);
+                    cx.evaluateString(scope, "s = new StatusHolder('Constant')", "source", 1);
 
-                    cx.evaluateString(scope, "s.status = 'DONE'; s.status", "source", 1, null);
+                    cx.evaluateString(scope, "s.status = 'DONE'; s.status", "source", 1);
 
-                    Object newStatus = cx.evaluateString(scope, "s.status", "source", 1, null);
+                    Object newStatus = cx.evaluateString(scope, "s.status", "source", 1);
                     assertEquals(null, newStatus);
-                    Object shObj = cx.evaluateString(scope, "s", "source", 1, null);
+                    Object shObj = cx.evaluateString(scope, "s", "source", 1);
                     var statusHolder = (StatusHolder) shObj;
                     assertEquals("NewStatus: DONE", statusHolder.getStatus());
                     return null;
@@ -259,8 +247,7 @@ public class LambdaAccessorSlotTest {
                                             + "f = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(s), 'status');"
                                             + "f.get.call(s)",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("InProgress", result);
                     return null;
                 });
@@ -287,8 +274,7 @@ public class LambdaAccessorSlotTest {
                                             + "f.set.call(s, 'DONE');"
                                             + "s",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     var statusHolder = (StatusHolder) shObj;
                     assertEquals("NewStatus: DONE", statusHolder.getStatus());
                     return null;
@@ -316,8 +302,7 @@ public class LambdaAccessorSlotTest {
                                             + "f.set.call(s);"
                                             + "s",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     var statusHolder = (StatusHolder) shObj;
                     assertEquals("NewStatus: undefined", statusHolder.getStatus());
                     return null;
@@ -345,8 +330,7 @@ public class LambdaAccessorSlotTest {
                                             + "f.set.call(s, 'DONE');"
                                             + "s.status",
                                     "source",
-                                    1,
-                                    null);
+                                    1);
                     assertEquals("NewStatus: DONE", result, "Status with prefix");
                     return null;
                 });
@@ -375,8 +359,7 @@ public class LambdaAccessorSlotTest {
                                                             + "var f = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(s), 'status');"
                                                             + "f.get.call(s)",
                                                     "source",
-                                                    1,
-                                                    null));
+                                                    1));
                     assertTrue(
                             error.toString().contains("Cannot call method \"call\" of undefined"));
                     return null;
@@ -482,8 +465,7 @@ public class LambdaAccessorSlotTest {
                                                             + "var f = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(s), 'status');"
                                                             + "f.get.call(s)",
                                                     "source",
-                                                    1,
-                                                    null));
+                                                    1));
                     assertTrue(
                             error.toString().contains("Cannot call method \"call\" of undefined"));
                     return null;
@@ -510,8 +492,7 @@ public class LambdaAccessorSlotTest {
                                                             + "f.set.call(s, 'DONE');"
                                                             + "s.status",
                                                     "source",
-                                                    1,
-                                                    null));
+                                                    1));
                     assertTrue(
                             error.toString().contains("Cannot call method \"call\" of undefined"));
                     return null;
@@ -539,8 +520,7 @@ public class LambdaAccessorSlotTest {
                                                             + "f.set.call(s, 'DONE');"
                                                             + "s.status",
                                                     "source",
-                                                    1,
-                                                    null));
+                                                    1));
                     assertTrue(
                             error.toString().contains("Cannot call method \"call\" of undefined"));
                     return null;

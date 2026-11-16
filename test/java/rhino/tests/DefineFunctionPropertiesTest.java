@@ -48,7 +48,7 @@ public class DefineFunctionPropertiesTest {
     @Test
     public void simpleFunction() {
         try (Context cx = Context.enter()) {
-            Object result = cx.evaluateString(global, "f(7) + 1", "test source", 1, null);
+            Object result = cx.evaluateString(global, "f(7) + 1", "test source", 1);
             assertEquals(15, result);
         }
     }
@@ -73,7 +73,7 @@ public class DefineFunctionPropertiesTest {
     public void privateData() {
         try (Context cx = Context.enter()) {
             global.getGlobalThis().associateValue(key, "bar");
-            Object result = cx.evaluateString(global, "g('foo');", "test source", 1, null);
+            Object result = cx.evaluateString(global, "g('foo');", "test source", 1);
             assertEquals("foobar", result);
         }
     }

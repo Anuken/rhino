@@ -65,8 +65,24 @@ public class ClassFileSplittingTest {
                 .append(outerCount - 1)
                 .append("();\n");
 
-        Object result = cx.evaluateString(scope, src.toString(), "big.js", 1, null);
+        Object result = cx.evaluateString(scope, src.toString(), "big.js", 1);
 
         assertEquals("literal_0_0|literal_1_0|literal_" + (outerCount - 1) + "_0", result);
+    }
+
+    @Test
+    public void manyGeneratorsDispatchThroughSeveralMethods() {
+        // more bodies than one execute or resume method dispatches to
+        cx.setLanguageVersion(Context.VERSION_ES6);
+        StringBuilder src = new StringBuilder();
+        for (int i = 0; i != 450; ++i) {
+            src.append("function* g").append(i).append("() { yield ").append(i).append("; }\n");
+        }
+        src.append("g0().next().value + g199().next().value + g200().next().value");
+        src.append(" + g449().next().value");
+
+        Object result = cx.evaluateString(scope, src.toString(), "gens.js", 1);
+
+        assertEquals(848, ((Number) result).intValue());
     }
 }

@@ -83,8 +83,7 @@ public class TypeOfTest {
                     scope.put("myObj", scope, obj);
 
                     String res =
-                            Context.toString(
-                                    cx.evaluateString(scope, script, "test script", 1, null));
+                            Context.toString(cx.evaluateString(scope, script, "test script", 1));
                     assertEquals(expected, res);
 
                     return null;

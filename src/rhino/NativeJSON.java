@@ -20,7 +20,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import rhino.json.JsonParser;
-import rhino.xml.XMLObject;
 
 /**
  * This class implements the JSON native object. See ECMA 15.12.
@@ -320,8 +319,6 @@ public final class NativeJSON extends ScriptableObject {
                 // Don't unwrap Java objects to be processed by jo() or ja()
                 unwrappedJavaValue = null;
             }
-        } else if (value instanceof XMLObject) {
-            value = value.toString();
         }
 
         if (value == null) return "null";

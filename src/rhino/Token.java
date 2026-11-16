@@ -124,16 +124,7 @@ public class Token {
             STRING_CONCAT =
                     STRICT_SETNAME + 1, // string concatenation with toString first semantics
             EXP = STRING_CONCAT + 1, // Exponentiation Operator
-
-            // For XML support:
-            DEFAULTNAMESPACE = EXP + 1, // default xml namespace =
-            ESCXMLATTR = DEFAULTNAMESPACE + 1,
-            ESCXMLTEXT = ESCXMLATTR + 1,
-            REF_MEMBER = ESCXMLTEXT + 1, // Reference for x.@y, x..y etc.
-            REF_NS_MEMBER = REF_MEMBER + 1, // Reference for x.ns::y, x..ns::y etc.
-            REF_NAME = REF_NS_MEMBER + 1, // Reference for @y, @[y] etc.
-            REF_NS_NAME = REF_NAME + 1, // Reference for ns::y, @ns::y@[y] etc.
-            BIGINT = REF_NS_NAME + 1, // ES2020 BigInt
+            BIGINT = EXP + 1, // ES2020 BigInt
             NEW_TARGET = BIGINT + 1; // new.target meta-property
 
     // End of interpreter bytecodes
@@ -214,16 +205,8 @@ public class Token {
             SCOPE_BLOCK = LOCAL_BLOCK + 1,
             SET_REF_OP = SCOPE_BLOCK + 1, // *reference op= something
 
-            // For XML support:
-            DOTDOT = SET_REF_OP + 1, // member operator (..)
-            COLONCOLON = DOTDOT + 1, // namespace::name
-            XML = COLONCOLON + 1, // XML type
-            DOTQUERY = XML + 1, // .() -- e.g., x.emps.emp.(name == "terry")
-            XMLATTR = DOTQUERY + 1, // @
-            XMLEND = XMLATTR + 1,
-
             // Optimizer-only-tokens
-            TO_OBJECT = XMLEND + 1,
+            TO_OBJECT = SET_REF_OP + 1,
             TO_DOUBLE = TO_OBJECT + 1,
             GET = TO_DOUBLE + 1, // JS 1.5 get pseudo keyword
             SET = GET + 1, // JS 1.5 set pseudo keyword
@@ -254,7 +237,8 @@ public class Token {
             // always stores, so a declaration reached more than once (a loop body) re-binds.
             INITCONSTVAR = OBJECT_REST + 1,
             // Restores a flattened block-scoped slot to its state on block entry: undefined,
-            // and uninitialized again if the slot holds a const.
+            // and uninitialized again if the slot holds a const. With TDZ_CHECK_PROP the slot
+            // holds UniqueTag.UNINITIALIZED instead of undefined.
             RESETVAR = INITCONSTVAR + 1,
             // Marks the point in a loop at which a new iteration, and so a new lexical
             // environment for the loop's own bindings, begins. The environment carries the
@@ -276,7 +260,10 @@ public class Token {
             // Call to a runtime helper from Intrinsics, identified by Node.INTRINSIC_PROP. Its
             // children are the arguments.
             INTRINSIC = PRIVATE_NAME + 1,
-            LAST_TOKEN = INTRINSIC + 1;
+            // Evaluates its first child and, should that complete abruptly, closes the
+            // DestructuringIterator its second child evaluates to before rethrowing.
+            ITERATOR_GUARD = INTRINSIC + 1,
+            LAST_TOKEN = ITERATOR_GUARD + 1;
 
     /**
      * Returns a name for the token. If Rhino is compiled with certain hardcoded debugging flags in
@@ -463,20 +450,6 @@ public class Token {
                 return "REF_CALL";
             case REF_SPECIAL:
                 return "REF_SPECIAL";
-            case DEFAULTNAMESPACE:
-                return "DEFAULTNAMESPACE";
-            case ESCXMLTEXT:
-                return "ESCXMLTEXT";
-            case ESCXMLATTR:
-                return "ESCXMLATTR";
-            case REF_MEMBER:
-                return "REF_MEMBER";
-            case REF_NS_MEMBER:
-                return "REF_NS_MEMBER";
-            case REF_NAME:
-                return "REF_NAME";
-            case REF_NS_NAME:
-                return "REF_NS_NAME";
             case TRY:
                 return "TRY";
             case SEMI:
@@ -615,18 +588,6 @@ public class Token {
                 return "SCOPE_BLOCK";
             case SET_REF_OP:
                 return "SET_REF_OP";
-            case DOTDOT:
-                return "DOTDOT";
-            case COLONCOLON:
-                return "COLONCOLON";
-            case XML:
-                return "XML";
-            case DOTQUERY:
-                return "DOTQUERY";
-            case XMLATTR:
-                return "XMLATTR";
-            case XMLEND:
-                return "XMLEND";
             case TO_OBJECT:
                 return "TO_OBJECT";
             case TO_DOUBLE:
@@ -667,6 +628,8 @@ public class Token {
                 return "PRIVATE_NAME";
             case INTRINSIC:
                 return "INTRINSIC";
+            case ITERATOR_GUARD:
+                return "ITERATOR_GUARD";
             case ARRAYCOMP:
                 return "ARRAYCOMP";
             case WITHEXPR:

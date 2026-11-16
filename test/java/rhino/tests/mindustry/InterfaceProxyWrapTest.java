@@ -36,8 +36,7 @@ class InterfaceProxyWrapTest {
                                 scope,
                                 "var seen = []; var fn = function(){ seen.push(this); };" + run,
                                 "test.js",
-                                1,
-                                null);
+                                1);
                         cx.setWrapFactory(
                                 new WrapFactory() {
                                     @Override
@@ -49,7 +48,7 @@ class InterfaceProxyWrapTest {
                                         return new Marked(scope, javaObject, staticType);
                                     }
                                 });
-                        cx.evaluateString(scope, run, "test.js", 1, null);
+                        cx.evaluateString(scope, run, "test.js", 1);
 
                         NativeArray seen = (NativeArray) scope.get("seen", scope);
                         assertEquals(4, seen.size());

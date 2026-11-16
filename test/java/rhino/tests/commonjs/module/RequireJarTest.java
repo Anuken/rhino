@@ -78,7 +78,7 @@ public class RequireJarTest extends RequireTest {
             TopLevel scope = cx.initStandardObjects();
             final Require require = getSandboxedRequire(cx, scope, false);
             require.install(scope);
-            cx.evaluateReader(scope, getReader("testRelativeId.js"), "testRelativeId.js", 1, null);
+            cx.evaluateReader(scope, getReader("testRelativeId.js"), "testRelativeId.js", 1);
         }
     }
 
@@ -93,8 +93,7 @@ public class RequireJarTest extends RequireTest {
                     scope,
                     getReader("testSetMainForAlreadyLoadedModule.js"),
                     "testSetMainForAlreadyLoadedModule.js",
-                    1,
-                    null);
+                    1);
             try {
                 require.requireMain(cx, "assert");
                 fail();

@@ -43,7 +43,7 @@ public class StackTraceExtensionV8Test {
             try (FileReader rdr =
                     new FileReader(
                             TestSource.resolve("testsrc/jstests/extensions/stack-traces-v8.js"))) {
-                cx.evaluateReader(root, rdr, "stack-traces-v8.js", 1, null);
+                cx.evaluateReader(root, rdr, "stack-traces-v8.js", 1);
             }
         } catch (IOException ioe) {
             assertFalse(true, "I/O Error: " + ioe);

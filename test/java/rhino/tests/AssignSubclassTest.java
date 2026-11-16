@@ -30,8 +30,7 @@ public class AssignSubclassTest {
                                             + "o[1] = 'frooby';\n"
                                             + "o;\n",
                                     "test",
-                                    1,
-                                    null);
+                                    1);
                     assertInstanceOf(Scriptable.class, result);
                     Scriptable o = (Scriptable) result;
                     assertEquals("bar", o.get("foo", o));
@@ -66,8 +65,7 @@ public class AssignSubclassTest {
                                             + "Object.assign(o, s);\n"
                                             + "o;\n",
                                     "test",
-                                    1,
-                                    null);
+                                    1);
                     assertInstanceOf(Scriptable.class, result);
                     Scriptable o = (Scriptable) result;
                     assertEquals("bar", o.get("foo", o));

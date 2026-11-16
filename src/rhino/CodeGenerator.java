@@ -355,7 +355,12 @@ class CodeGenerator<T extends ScriptOrFn<T>> {
             case Token.RESETVAR:
                 {
                     if (builder.requiresActivationFrame) Kit.codeBug();
-                    addVarOp(Token.RESETVAR, scriptOrFn.getIndexForNameNode(child));
+                    int varIndex = scriptOrFn.getIndexForNameNode(child);
+                    if (node.getIntProp(Node.TDZ_CHECK_PROP, 0) != 0) {
+                        addIndexOp(Icode.RESETVAR_UNINITIALIZED, varIndex);
+                    } else {
+                        addVarOp(Token.RESETVAR, varIndex);
+                    }
                 }
                 break;
 
@@ -666,6 +671,39 @@ class CodeGenerator<T extends ScriptOrFn<T>> {
                     }
                     // Preserve tail context flag if any
                     visitExpression(child, contextFlags & ECF_TAIL);
+                }
+                break;
+
+            case Token.ITERATOR_GUARD:
+                {
+                    int exceptionLocal = allocLocal();
+                    int scopeLocal = allocLocal();
+                    addIndexOp(Icode.SCOPE_SAVE, scopeLocal);
+                    int guardStart = iCodeTop;
+                    visitExpression(child, 0);
+                    int afterHandlerJump = iCodeTop;
+                    addGotoOp(Token.GOTO);
+                    int handlerStart = iCodeTop;
+                    // The handler starts with an empty stack and always rethrows
+                    visitExpression(child.getNext(), 0);
+                    addIndexOp(Token.LOCAL_LOAD, exceptionLocal);
+                    stackChange(1);
+                    addIcode(Icode.INTRINSIC);
+                    addUint8(Intrinsics.DSTR_ABRUPT);
+                    stackChange(-1);
+                    addIcode(Icode.POP);
+                    stackChange(-1);
+                    addIndexOp(Token.RETHROW, exceptionLocal);
+                    resolveForwardGoto(afterHandlerJump);
+                    addExceptionHandler(
+                            guardStart,
+                            handlerStart,
+                            handlerStart,
+                            true,
+                            exceptionLocal,
+                            scopeLocal);
+                    releaseLocal(scopeLocal);
+                    releaseLocal(exceptionLocal);
                 }
                 break;
 
@@ -1212,44 +1250,6 @@ class CodeGenerator<T extends ScriptOrFn<T>> {
                 } else {
                     addStringOp(type, (String) node.getProp(Node.NAME_PROP));
                 }
-                break;
-
-            case Token.REF_MEMBER:
-            case Token.REF_NS_MEMBER:
-            case Token.REF_NAME:
-            case Token.REF_NS_NAME:
-                {
-                    int memberTypeFlags = node.getIntProp(Node.MEMBER_TYPE_PROP, 0);
-                    // generate possible target, possible namespace and member
-                    int childCount = 0;
-                    do {
-                        visitExpression(child, 0);
-                        ++childCount;
-                        child = child.getNext();
-                    } while (child != null);
-                    addIndexOp(type, memberTypeFlags);
-                    stackChange(1 - childCount);
-                }
-                break;
-
-            case Token.DOTQUERY:
-                {
-                    int queryPC;
-                    updateLineNumber(node);
-                    visitExpression(child, 0);
-                    addIcode(Icode.ENTERDQ);
-                    stackChange(-1);
-                    queryPC = iCodeTop;
-                    visitExpression(child.getNext(), 0);
-                    addBackwardGoto(Icode.LEAVEDQ, queryPC);
-                }
-                break;
-
-            case Token.DEFAULTNAMESPACE:
-            case Token.ESCXMLATTR:
-            case Token.ESCXMLTEXT:
-                visitExpression(child, 0);
-                addToken(type);
                 break;
 
             case Token.YIELD:

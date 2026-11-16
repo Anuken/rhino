@@ -20,7 +20,7 @@ class NestedFunctionStrictFlagTest {
                     TopLevel topLevel = new TopLevel();
                     cx.initStandardObjects(topLevel);
 
-                    Object res = cx.evaluateString(topLevel, script, "test", 1, null);
+                    Object res = cx.evaluateString(topLevel, script, "test", 1);
                     JSFunction function = assertInstanceOf(JSFunction.class, res);
                     assertTrue(
                             function.isStrict(),

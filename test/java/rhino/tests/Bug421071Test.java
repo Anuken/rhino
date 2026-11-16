@@ -50,7 +50,7 @@ public class Bug421071Test {
                         + "searchwkday.value = myDate.get(Calendar.DAY_OF_WEEK);";
         Script script;
         try (Context context = factory.enterContext()) {
-            script = context.compileString(scriptSource, "testScript", 1, null);
+            script = context.compileString(scriptSource, "testScript", 1);
             return script;
         }
     }

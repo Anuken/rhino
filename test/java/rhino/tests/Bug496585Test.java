@@ -31,16 +31,14 @@ public class Bug496585Test {
                                             cx.initStandardObjects(),
                                             "new Packages.rhino.tests.Bug496585Test().method('one', 'two', 'three')",
                                             "<test>",
-                                            1,
-                                            null));
+                                            1));
                             Assertions.assertEquals(
                                     "string+function",
                                     cx.evaluateString(
                                             cx.initStandardObjects(),
                                             "new Packages.rhino.tests.Bug496585Test().method('one', function() {})",
                                             "<test>",
-                                            1,
-                                            null));
+                                            1));
                             return null;
                         });
     }

@@ -50,7 +50,7 @@ public class ArrayDestructuringTest {
                                     + "f([[7, 8, 9]]);\n"
                                     + "assert.sameValue(callCount, 1, 'arrow function invoked exactly once');";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -72,7 +72,7 @@ public class ArrayDestructuringTest {
                                     + "};\n"
                                     + "f([]);\n";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -93,7 +93,7 @@ public class ArrayDestructuringTest {
                                     + "};\n"
                                     + "f([{x: 7, y: 8}]);\n";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -116,7 +116,7 @@ public class ArrayDestructuringTest {
                                     + "};\n"
                                     + "f([[10, 20], [30, 40]]);\n";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -141,7 +141,7 @@ public class ArrayDestructuringTest {
                                     + "const [[,] = g()] = [[]];\n"
                                     + "if (callCount !== 0) throw new Error('Expected callCount to be 0, got ' + callCount);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -168,7 +168,7 @@ public class ArrayDestructuringTest {
                                     + "}\n"
                                     + "if (!errorThrown) throw new Error('Expected TypeError to be thrown');";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -192,7 +192,7 @@ public class ArrayDestructuringTest {
                                     + "var result = f();\n"
                                     + "if (result !== 7) throw new Error('Expected 7, got ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -222,7 +222,7 @@ public class ArrayDestructuringTest {
                                     + "}\n"
                                     + "if (!errorThrown) throw new Error('Expected Test262Error to be thrown');";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -244,7 +244,7 @@ public class ArrayDestructuringTest {
                                     + "})();\n"
                                     + "if (result !== 3) throw new Error('Expected 3, got ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -280,7 +280,7 @@ public class ArrayDestructuringTest {
                                     + "f(iter);\n"
                                     + "if (doneCallCount !== 0) throw new Error('Expected doneCallCount to be 0, got ' + doneCallCount);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -301,7 +301,7 @@ public class ArrayDestructuringTest {
                                     + "var [x, y, z] = ['x', , 'z'];\n"
                                     + "if (y !== 'y') throw new Error('Expected y=\\'y\\' from prototype, got ' + y);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -328,7 +328,7 @@ public class ArrayDestructuringTest {
                                     + "if (rest[1] !== 40) throw new Error('Expected rest[1]=40, got ' + rest[1]);\n"
                                     + "if (rest[2] !== 50) throw new Error('Expected rest[2]=50, got ' + rest[2]);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -349,7 +349,7 @@ public class ArrayDestructuringTest {
                                     + "var f = ([x, y]) => x + y;\n"
                                     + "if (f([1, 2]) !== 3) throw new Error('Expected 3');";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -381,7 +381,7 @@ public class ArrayDestructuringTest {
                                     + "var result = f(iterable);\n"
                                     + "if (result !== 60) throw new Error('Expected 60, got ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -402,7 +402,7 @@ public class ArrayDestructuringTest {
                                     + "var result = f([1, 2, 3]);\n"
                                     + "if (result !== 6) throw new Error('Expected 6, got ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -426,7 +426,7 @@ public class ArrayDestructuringTest {
                                     + "var result = f(arr);\n"
                                     + "if (result !== '10,20') throw new Error('Expected 10,20, got ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -445,7 +445,7 @@ public class ArrayDestructuringTest {
                                     + "if (f([1]) !== 11) throw new Error('Test 2 failed');\n"
                                     + "if (f([]) !== 15) throw new Error('Test 3 failed');";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
     }
@@ -482,8 +482,55 @@ public class ArrayDestructuringTest {
                                     + "// In ES6, should use iterator protocol\n"
                                     + "if (result !== 'iter0,iter1') throw new Error('ES6 should use iterator, got: ' + result);";
 
-                    cx.evaluateString(scope, script, "test", 1, null);
+                    cx.evaluateString(scope, script, "test", 1);
                     return null;
                 });
+    }
+
+    /** An array pattern that completes abruptly closes its iterator, swallowing close errors. */
+    @Test
+    public void iteratorClosedOnAbruptCompletion() {
+        Utils.assertWithAllModes_ES6(
+                "return,boom|next,return,boom|next,return,boom|next,return,boom|return,boom"
+                        + "|return,boom|next,return,7|next,return,thrown|next,return,retErr",
+                Utils.lines(
+                        "var log = [], out = [];",
+                        "function mk(retThrows) {",
+                        "  var it = { next() { log.push('next'); return { done: false } },",
+                        "    return() { log.push('return'); if (retThrows) throw 'retErr'; return {} } };",
+                        "  return { [Symbol.iterator]() { return it } };",
+                        "}",
+                        "function thrower() { throw 'boom' }",
+                        "function run(f) {",
+                        "  try { log.push(f()) } catch (e) { log.push(e) }",
+                        "  out.push(log.join()); log = [];",
+                        "}",
+                        "var o = {}, a;",
+                        "run(() => { [ o[thrower()] ] = mk() });",
+                        "run(() => { [a = thrower()] = mk(true) });",
+                        "run(() => { [[a] = thrower()] = mk() });",
+                        "run(() => { let [x = thrower()] = mk() });",
+                        "run(() => { [...o[thrower()]] = mk() });",
+                        "run(() => { [[o[thrower()]]] = [mk()] });",
+                        "function* g(retThrows) { [ {} = yield ] = mk(retThrows); log.push('unreachable') }",
+                        "run(() => { var it = g(); it.next(); return it.return(7).value });",
+                        "run(() => { var it = g(); it.next(); it.throw('thrown') });",
+                        "run(() => { var it = g(true); it.next(); it.return(7) });",
+                        "out.join('|')"));
+    }
+
+    @Test
+    public void objectRestOnProxyReadsDescriptorsOfIncludedKeys() {
+        Utils.assertWithAllModes_ES6(
+                "b,0,1|1,b",
+                Utils.lines(
+                        "var s = Symbol('s'), seen = [];",
+                        "var p = new Proxy({}, {",
+                        "  ownKeys() { return ['a', 'b', '0', '1', s] },",
+                        "  getOwnPropertyDescriptor(t, k) {",
+                        "    seen.push(String(k)); return { value: 1, enumerable: k !== '0', configurable: true } },",
+                        "  get(t, k) { return k } });",
+                        "var { a, [s]: x, ...rest } = p;",
+                        "seen.join() + '|' + Object.keys(rest)"));
     }
 }

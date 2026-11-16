@@ -39,7 +39,6 @@ import rhino.Context;
 public class ModuleSource implements Serializable {
     @Serial private static final long serialVersionUID = 7183957145984428890L;
     private final Reader reader;
-    private final Object securityDomain;
     private final URI uri;
     private final URI base;
     private final Object validator;
@@ -48,15 +47,12 @@ public class ModuleSource implements Serializable {
      * Creates a new module source.
      *
      * @param reader the reader returning the source text of the module.
-     * @param securityDomain the object representing the security domain for the module's source
-     *     (passed to Rhino script compiler).
      * @param uri the URI of the module's source text
      * @param validator a validator that can be used for subsequent cache validation of the source
      *     text.
      */
-    public ModuleSource(Reader reader, Object securityDomain, URI uri, URI base, Object validator) {
+    public ModuleSource(Reader reader, URI uri, URI base, Object validator) {
         this.reader = reader;
-        this.securityDomain = securityDomain;
         this.uri = uri;
         this.base = base;
         this.validator = validator;
@@ -70,15 +66,6 @@ public class ModuleSource implements Serializable {
      */
     public Reader getReader() {
         return reader;
-    }
-
-    /**
-     * Returns the object representing the security domain for the module's source.
-     *
-     * @return the object representing the security domain for the module's source.
-     */
-    public Object getSecurityDomain() {
-        return securityDomain;
     }
 
     /**

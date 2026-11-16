@@ -37,11 +37,9 @@ import rhino.RhinoException;
 import rhino.Script;
 import rhino.Scriptable;
 import rhino.ScriptableObject;
-import rhino.SecurityController;
 import rhino.VarScope;
 import rhino.module.ModuleScope;
 import rhino.module.Require;
-import rhino.config.RhinoConfig;
 import rhino.tools.Console;
 import rhino.tools.SourceReader;
 import rhino.tools.ToolErrorReporter;
@@ -69,7 +67,6 @@ public class Main {
     static boolean sandboxed = false;
     static boolean useRequire = false;
     static Require require;
-    private static SecurityProxy securityImpl;
     private static final ScriptCache scriptCache = new ScriptCache(32);
 
     static {
@@ -135,14 +132,6 @@ public class Main {
      * scripts.
      */
     public static void main(String[] args) {
-        try {
-            if (RhinoConfig.get("rhino.use_java_policy_security", false)) {
-                initJavaPolicySecuritySupport();
-            }
-        } catch (SecurityException ex) {
-            ex.printStackTrace(System.err);
-        }
-
         int result;
         try {
             result = exec(args);
@@ -207,7 +196,7 @@ public class Main {
 
     static void evalInlineScript(Context cx, String scriptText) {
         try {
-            Script script = cx.compileString(scriptText, "<command>", 1, null);
+            Script script = cx.compileString(scriptText, "<command>", 1);
             if (script != null) {
                 VarScope scope = getShellScope();
                 script.exec(cx, scope, ScriptableObject.getTopLevelScope(scope).getGlobalThis());
@@ -415,24 +404,6 @@ public class Main {
         return null;
     }
 
-    private static void initJavaPolicySecuritySupport() {
-        Throwable exObj;
-        try {
-            Class<?> cl = Class.forName("rhino.tools.shell.JavaPolicySecurity");
-            securityImpl = (SecurityProxy) cl.getDeclaredConstructor().newInstance();
-            SecurityController.initGlobal(securityImpl);
-            return;
-        } catch (ClassNotFoundException
-                | IllegalAccessException
-                | InstantiationException
-                | LinkageError
-                | NoSuchMethodException
-                | InvocationTargetException ex) {
-            exObj = ex;
-        }
-        throw new IllegalStateException("Can not load security support: " + exObj, exObj);
-    }
-
     /**
      * Evaluate JavaScript source.
      *
@@ -487,7 +458,7 @@ public class Main {
                 }
                 try {
                     String finalSource = source.toString();
-                    Script script = cx.compileString(finalSource, "<stdin>", lineno, null);
+                    Script script = cx.compileString(finalSource, "<stdin>", lineno);
                     if (script != null) {
                         Object result =
                                 script.exec(
@@ -549,16 +520,7 @@ public class Main {
         }
     }
 
-    public static void processFile(Context cx, VarScope scope, String filename) throws IOException {
-        if (securityImpl == null) {
-            processFileSecure(cx, (VarScope) scope, filename, null);
-        } else {
-            securityImpl.callProcessFileSecure(cx, scope, filename);
-        }
-    }
-
-    static void processFileSecure(Context cx, VarScope scope, String path, Object securityDomain)
-            throws IOException {
+    public static void processFile(Context cx, VarScope scope, String path) throws IOException {
 
         boolean isClass = path.endsWith(".class");
         Object source = readFileOrUrl(path, !isClass);
@@ -570,7 +532,7 @@ public class Main {
 
         if (script == null) {
             if (isClass) {
-                script = loadCompiledScript(cx, path, (byte[]) source, securityDomain);
+                script = loadCompiledScript(cx, path, (byte[]) source);
             } else {
                 String strSrc = (String) source;
                 // Support the executable script #! syntax:  If
@@ -585,7 +547,7 @@ public class Main {
                         }
                     }
                 }
-                script = cx.compileString(strSrc, path, 1, securityDomain);
+                script = cx.compileString(strSrc, path, 1);
             }
             scriptCache.put(key, digest, script);
         }
@@ -617,8 +579,7 @@ public class Main {
         return digest;
     }
 
-    private static Script loadCompiledScript(
-            Context cx, String path, byte[] data, Object securityDomain)
+    private static Script loadCompiledScript(Context cx, String path, byte[] data)
             throws FileNotFoundException {
         if (data == null) {
             throw new FileNotFoundException(path);
@@ -639,8 +600,7 @@ public class Main {
         }
         String name = path.substring(nameStart, nameEnd);
         try {
-            GeneratedClassLoader loader =
-                    SecurityController.createLoader(cx.getApplicationClassLoader(), securityDomain);
+            GeneratedClassLoader loader = cx.createClassLoader(cx.getApplicationClassLoader());
             Class<?> clazz = loader.defineClass(name, data);
             loader.linkClass(clazz);
             if (!Script.class.isAssignableFrom(clazz)) {

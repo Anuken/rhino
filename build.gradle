@@ -83,6 +83,13 @@ tasks.register('fetchTest262', Exec){
     commandLine 'sh', '-c', "rm -rf '${dir}' && git init -q '${dir}' && cd '${dir}' && git remote add origin https://github.com/tc39/test262.git && git fetch -q --depth 1 origin \$(cat ../test262.revision) && git checkout -q FETCH_HEAD"
 }
 
+tasks.register('fetchSourceMapTests', Exec){
+    description = 'Downloads the tc39/source-map-tests suite at the revision the excludelist was generated for.'
+    def dir = file('test/source-map-tests')
+    onlyIf{ !new File(dir, 'source-map-spec-tests.json').exists() }
+    commandLine 'sh', '-c', "rm -rf '${dir}' && git init -q '${dir}' && cd '${dir}' && git remote add origin https://github.com/tc39/source-map-tests.git && git fetch -q --depth 1 origin \$(cat ../source-map-tests.revision) && git checkout -q FETCH_HEAD"
+}
+
 tasks.withType(Test).configureEach{
     useJUnitPlatform()
     maxHeapSize = '2g'
@@ -98,6 +105,9 @@ tasks.withType(Test).configureEach{
     systemProperty 'test262properties', System.getProperty('test262properties')
     if(System.getProperty('updateTest262properties') != null){
         systemProperty 'updateTest262properties', System.getProperty('updateTest262properties')
+    }
+    if(System.getProperty('updateSourceMapTestsExcludelist') != null){
+        systemProperty 'updateSourceMapTestsExcludelist', System.getProperty('updateSourceMapTestsExcludelist')
     }
     System.properties.each{ k, v ->
         if(k.startsWith('rhino.')) systemProperty k, v

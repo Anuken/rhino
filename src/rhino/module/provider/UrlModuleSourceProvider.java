@@ -38,13 +38,11 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
     @Serial private static final long serialVersionUID = 6253848745572187376L;
     private final Iterable<URI> privilegedUris;
     private final Iterable<URI> fallbackUris;
-    private final UrlConnectionSecurityDomainProvider urlConnectionSecurityDomainProvider;
     private final UrlConnectionExpiryCalculator urlConnectionExpiryCalculator;
 
     /**
      * Creates a new module script provider that loads modules against a set of privileged and
-     * fallback URIs. It will use a fixed default cache expiry of 60 seconds, and provide no
-     * security domain objects for the resource.
+     * fallback URIs. It will use a fixed default cache expiry of 60 seconds.
      *
      * @param privilegedUris an iterable providing the privileged URIs. Can be null if no privileged
      *     URIs are used.
@@ -52,13 +50,12 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
      *     are used.
      */
     public UrlModuleSourceProvider(Iterable<URI> privilegedUris, Iterable<URI> fallbackUris) {
-        this(privilegedUris, fallbackUris, new DefaultUrlConnectionExpiryCalculator(), null);
+        this(privilegedUris, fallbackUris, new DefaultUrlConnectionExpiryCalculator());
     }
 
     /**
      * Creates a new module script provider that loads modules against a set of privileged and
-     * fallback URIs. It will use the specified heuristic cache expiry calculator and security
-     * domain provider.
+     * fallback URIs. It will use the specified heuristic cache expiry calculator.
      *
      * @param privilegedUris an iterable providing the privileged URIs. Can be null if no privileged
      *     URIs are used.
@@ -67,19 +64,14 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
      * @param urlConnectionExpiryCalculator the calculator object for heuristic calculation of the
      *     resource expiry, used when no expiry is provided by the server of the resource. Can be
      *     null, in which case the maximum age of cached entries without validation will be zero.
-     * @param urlConnectionSecurityDomainProvider object that provides security domain objects for
-     *     the loaded sources. Can be null, in which case the loaded sources will have no security
-     *     domain associated with them.
      */
     public UrlModuleSourceProvider(
             Iterable<URI> privilegedUris,
             Iterable<URI> fallbackUris,
-            UrlConnectionExpiryCalculator urlConnectionExpiryCalculator,
-            UrlConnectionSecurityDomainProvider urlConnectionSecurityDomainProvider) {
+            UrlConnectionExpiryCalculator urlConnectionExpiryCalculator) {
         this.privilegedUris = privilegedUris;
         this.fallbackUris = fallbackUris;
         this.urlConnectionExpiryCalculator = urlConnectionExpiryCalculator;
-        this.urlConnectionSecurityDomainProvider = urlConnectionSecurityDomainProvider;
     }
 
     @Override
@@ -145,7 +137,6 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
 
             return new ModuleSource(
                     getReader(urlConnection),
-                    getSecurityDomain(urlConnection),
                     uri,
                     base,
                     new URLValidator(
@@ -174,12 +165,6 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase {
             return "8859_1";
         }
         return "utf-8";
-    }
-
-    private Object getSecurityDomain(URLConnection urlConnection) {
-        return urlConnectionSecurityDomainProvider == null
-                ? null
-                : urlConnectionSecurityDomainProvider.getSecurityDomain(urlConnection);
     }
 
     private void close(URLConnection urlConnection) {

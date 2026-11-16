@@ -22,7 +22,7 @@ public interface ModuleSourceProvider {
      * #loadSource(URI, URI, Object)} that signifies that the cached representation is still valid
      * according to the passed validator.
      */
-    public static final ModuleSource NOT_MODIFIED = new ModuleSource(null, null, null, null, null);
+    public static final ModuleSource NOT_MODIFIED = new ModuleSource(null, null, null, null);
 
     /**
      * Returns the script source of the requested module. More specifically, it resolves the module

@@ -42,6 +42,12 @@ public class Symbol {
     // For VAR (and pre-ES6 CONST/FUNCTION) symbols, the lexical scope in which
     // the declaration actually appears, before hoisting to containingTable.
     private Scope declaredScope;
+    // Source position from which a let, const or class binding is initialized, or -1
+    private int initPosition = -1;
+    // For a binding declared in a case clause, the end of that clause, or -1
+    private int caseEnd = -1;
+    // Whether a reference may read the binding before it is initialized
+    private boolean tdzChecked;
 
     public Symbol() {}
 
@@ -126,6 +132,36 @@ public class Symbol {
 
     public boolean isDeclTypeLexical() {
         return declType == Type.FUNCTION_LET || declType == Type.LET || declType == Type.CONST;
+    }
+
+    /** Returns the source position from which the binding is initialized, or -1 if unknown. */
+    public int getInitPosition() {
+        return initPosition;
+    }
+
+    public void setInitPosition(int initPosition) {
+        this.initPosition = initPosition;
+    }
+
+    /** Returns the end of the case clause declaring the binding, or -1. */
+    public int getCaseEnd() {
+        return caseEnd;
+    }
+
+    public void setCaseEnd(int caseEnd) {
+        this.caseEnd = caseEnd;
+    }
+
+    /**
+     * Returns whether some reference may read the binding before its declaration runs, so it must
+     * hold {@code UniqueTag.UNINITIALIZED} until then.
+     */
+    public boolean isTdzChecked() {
+        return tdzChecked;
+    }
+
+    public void setTdzChecked(boolean tdzChecked) {
+        this.tdzChecked = tdzChecked;
     }
 
     public static boolean isDeclTypeLexical(Type declType) {

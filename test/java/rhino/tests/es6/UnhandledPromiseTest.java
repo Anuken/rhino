@@ -175,6 +175,6 @@ public class UnhandledPromiseTest {
     }
 
     private void exec(String script) {
-        cx.evaluateString(scope, "load('./testsrc/assert.js'); " + script, "test.js", 0, null);
+        cx.evaluateString(scope, "load('./testsrc/assert.js'); " + script, "test.js", 0);
     }
 }

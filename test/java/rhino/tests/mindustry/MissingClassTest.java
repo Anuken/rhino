@@ -13,7 +13,8 @@ import rhino.testutils.Utils;
 
 /**
  * Classes whose signatures use types that are missing at runtime (stripped by RoboVM, absent on
- * Android, or optional mod dependencies) are still usable: only the affected members are lost.
+ * Android, or optional mod dependencies) are still usable: only members whose erased types are
+ * missing are lost, while members missing only a generic type argument fall back to erased types.
  */
 class MissingClassTest {
     /** Defines {@link MissingFixtures} itself, so it links against it, and hides the missing types. */
@@ -48,7 +49,7 @@ class MissingClassTest {
     }
 
     @Test
-    void membersWithMissingTypesAreSkipped() throws Exception {
+    void membersWithMissingTypes() throws Exception {
         HidingLoader loader = new HidingLoader();
         Class<?> usesMissing = loader.loadClass(MissingFixtures.UsesMissing.class.getName());
         Class<?> usesGeneric = loader.loadClass(MissingFixtures.UsesMissingGeneric.class.getName());
@@ -68,19 +69,18 @@ class MissingClassTest {
                             Context.toString(
                                     cx.evaluateString(
                                             scope,
-                                            "typeof a.hashCode == 'function' && String(a) != ''",
+                                            "typeof a.hashCode == 'function' && String(a) != ''"
+                                                    + " && typeof a.bad == 'undefined'",
                                             "test.js",
-                                            1,
-                                            null)));
+                                            1)));
                     assertEquals(
-                            "42,undefined,undefined",
+                            "42,null,null",
                             Context.toString(
                                     cx.evaluateString(
                                             scope,
-                                            "b.ok() + ',' + typeof b.generic + ',' + typeof b.list",
+                                            "b.ok() + ',' + b.generic() + ',' + b.list",
                                             "test.js",
-                                            1,
-                                            null)));
+                                            1)));
                     return null;
                 });
     }

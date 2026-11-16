@@ -25,3 +25,4 @@ test262
 bin/
 .settings/
 test/test262
+test/source-map-tests

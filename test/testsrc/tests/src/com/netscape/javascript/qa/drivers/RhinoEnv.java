@@ -132,10 +132,12 @@ public class RhinoEnv implements TestEnvironment {
             // Here we evalute the entire contents of the file as
             // as script. Text is printed only if the print() function
             // is called.
-            //  cx.evaluateReader((Scriptable) global, in, args[i], 1, null);
+            //  cx.evaluateReader((Scriptable) global, in, args[i], 1);
 
-            result = ((Scriptable) (((Context) cx).evaluateReader(
-                (Scriptable) global, (Reader) in, s, 1, null)));
+            result =
+                    ((Scriptable)
+                            (((Context) cx)
+                                    .evaluateReader((Scriptable) global, (Reader) in, s, 1)));
 
         }   catch (WrappedException we) {
             driver.p("Wrapped Exception:  "+

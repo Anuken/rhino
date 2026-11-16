@@ -32,8 +32,7 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     if (!_cx.isInterpretedMode()) {
                         Assertions.assertTrue(script instanceof JSScript, "Expected JSScript");
                         Assertions.assertTrue(
@@ -50,12 +49,9 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     Assertions.assertTrue(
-                            script.getClass()
-                                    .getName()
-                                    .startsWith("rhino.JSScript"),
+                            script.getClass().getName().startsWith("rhino.JSScript"),
                             script.getClass().getName());
                     return null;
                 });
@@ -67,12 +63,9 @@ public class CodegenTest {
                                 _cx.compileReader(
                                         new StringReader(scriptSource.toString()),
                                         "test-source",
-                                        1,
-                                        null);
+                                        1);
                         Assertions.assertTrue(
-                                script.getClass()
-                                        .getName()
-                                        .startsWith("rhino.JSScript"),
+                                script.getClass().getName().startsWith("rhino.JSScript"),
                                 script.getClass().getName());
                         Assertions.assertTrue(
                                 script.getDescriptor().getSource().length() > 1000,
@@ -101,7 +94,7 @@ public class CodegenTest {
                             1000d,
                             (double)
                                     _cx.evaluateString(
-                                            scope, scriptSource.toString(), "myScript.js", 1, null),
+                                            scope, scriptSource.toString(), "myScript.js", 1),
                             0.001);
                     return null;
                 });
@@ -118,8 +111,7 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     if (!_cx.isInterpretedMode()) {
                         Assertions.assertTrue(script instanceof JSScript, "Expected JSScript");
                         Assertions.assertTrue(
@@ -136,12 +128,9 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     Assertions.assertTrue(
-                            script.getClass()
-                                    .getName()
-                                    .startsWith("rhino.JSScript"),
+                            script.getClass().getName().startsWith("rhino.JSScript"),
                             script.getClass().getName());
                     Assertions.assertTrue(
                             script.getDescriptor().getSource().length() > 1000,
@@ -156,12 +145,9 @@ public class CodegenTest {
                                 _cx.compileReader(
                                         new StringReader(scriptSource.toString()),
                                         "test-source",
-                                        1,
-                                        null);
+                                        1);
                         Assertions.assertTrue(
-                                script.getClass()
-                                        .getName()
-                                        .startsWith("rhino.JSScript"),
+                                script.getClass().getName().startsWith("rhino.JSScript"),
                                 script.getClass().getName());
                         Assertions.assertTrue(
                                 script.getDescriptor().getSource().length() > 1000,
@@ -186,8 +172,7 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     if (!_cx.isInterpretedMode()) {
                         Assertions.assertTrue(script instanceof JSScript, "Expected JSScript");
                         Assertions.assertTrue(
@@ -207,12 +192,9 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     Assertions.assertTrue(
-                            script.getClass()
-                                    .getName()
-                                    .startsWith("rhino.JSScript"),
+                            script.getClass().getName().startsWith("rhino.JSScript"),
                             script.getClass().getName());
                     Assertions.assertTrue(
                             script.getDescriptor().getSource().length() > 1000,
@@ -227,12 +209,9 @@ public class CodegenTest {
                                 _cx.compileReader(
                                         new StringReader(scriptSource.toString()),
                                         "test-source",
-                                        1,
-                                        null);
+                                        1);
                         Assertions.assertTrue(
-                                script.getClass()
-                                        .getName()
-                                        .startsWith("rhino.JSScript"),
+                                script.getClass().getName().startsWith("rhino.JSScript"),
                                 script.getClass().getName());
                         Assertions.assertTrue(
                                 script.getDescriptor().getSource().length() > 1000,
@@ -256,8 +235,7 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     if (!_cx.isInterpretedMode()) {
                         Assertions.assertTrue(script instanceof JSScript, "Expected JSScript");
                         Assertions.assertTrue(
@@ -274,12 +252,9 @@ public class CodegenTest {
 
         Utils.runWithAllModes(
                 _cx -> {
-                    Script script =
-                            _cx.compileString(scriptSource.toString(), "test-source", 1, null);
+                    Script script = _cx.compileString(scriptSource.toString(), "test-source", 1);
                     Assertions.assertTrue(
-                            script.getClass()
-                                    .getName()
-                                    .startsWith("rhino.JSScript"),
+                            script.getClass().getName().startsWith("rhino.JSScript"),
                             script.getClass().getName());
                     Assertions.assertTrue(
                             script.getDescriptor().getSource().length() > 1000,
@@ -294,12 +269,9 @@ public class CodegenTest {
                                 _cx.compileReader(
                                         new StringReader(scriptSource.toString()),
                                         "test-source",
-                                        1,
-                                        null);
+                                        1);
                         Assertions.assertTrue(
-                                script.getClass()
-                                        .getName()
-                                        .startsWith("rhino.JSScript"),
+                                script.getClass().getName().startsWith("rhino.JSScript"),
                                 script.getClass().getName());
                         Assertions.assertTrue(
                                 script.getDescriptor().getSource().length() > 1000,

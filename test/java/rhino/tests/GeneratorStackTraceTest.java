@@ -25,7 +25,7 @@ public class GeneratorStackTraceTest {
                 cx -> {
                     TopLevel scope = cx.initStandardObjects();
                     try {
-                        cx.evaluateString(scope, _source, "test.js", 0, null);
+                        cx.evaluateString(scope, _source, "test.js", 0);
                     } catch (final JavaScriptException e) {
                         assertEquals(expected, e.getScriptStackTrace());
                         return null;
@@ -55,7 +55,7 @@ public class GeneratorStackTraceTest {
                 context -> {
                     try {
                         TopLevel scope = context.initStandardObjects();
-                        context.evaluateString(scope, jsCode, "nestedGeneratorTest.js", 1, null);
+                        context.evaluateString(scope, jsCode, "nestedGeneratorTest.js", 1);
                         Assertions.fail("Expected exception from nested generator not thrown.");
                     } catch (JavaScriptException e) {
                         String stack = e.getScriptStackTrace();
@@ -99,7 +99,7 @@ public class GeneratorStackTraceTest {
                                 try {
                                     TopLevel scope = context.initStandardObjects();
                                     context.evaluateString(
-                                            scope, jsCode, "nestedGeneratorTest.js", 1, null);
+                                            scope, jsCode, "nestedGeneratorTest.js", 1);
                                     Assertions.fail(
                                             "Expected exception from nested generator not thrown.");
                                 } catch (JavaScriptException e) {
@@ -155,7 +155,7 @@ public class GeneratorStackTraceTest {
                                     "g.next();"; // This should throw
 
                     try {
-                        context.evaluateString(scope, jsCode, "javaCallbackTest.js", 1, null);
+                        context.evaluateString(scope, jsCode, "javaCallbackTest.js", 1);
                         Assertions.fail("Expected Java exception not thrown.");
                     } catch (RuntimeException e) {
                         // Rhino should surface the Java exception directly

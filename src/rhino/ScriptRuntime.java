@@ -31,8 +31,6 @@ import rhino.typedarrays.NativeUint32Array;
 import rhino.typedarrays.NativeUint8Array;
 import rhino.typedarrays.NativeUint8ClampedArray;
 import rhino.v8dtoa.DoubleConversion;
-import rhino.xml.XMLLib;
-import rhino.xml.XMLObject;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -987,7 +985,24 @@ public class ScriptRuntime {
             }
         }
 
-        if (sourceObj instanceof ScriptableObject) {
+        if (sourceObj instanceof NativeProxy) {
+            // CopyDataProperties: every own key, its descriptor read only if it is not excluded
+            NativeProxy proxy = (NativeProxy) sourceObj;
+            Object[] allIds;
+            try (var map = proxy.startCompoundOp(false)) {
+                allIds = proxy.getIds(map, true, true);
+            }
+            for (Object id : allIds) {
+                if (shouldExcludeProperty(id, excludeStrings, excludeIntegers, excludeSymbols)) {
+                    continue;
+                }
+                ScriptableObject.DescriptorInfo desc = proxy.getOwnPropertyDescriptor(cx, id);
+                if (desc != null && desc.isEnumerable(true)) {
+                    Object key = id instanceof String ? getIndexObject((String) id) : id;
+                    copyProperty(sourceObj, result, key, cx, scope);
+                }
+            }
+        } else if (sourceObj instanceof ScriptableObject) {
             ScriptableObject so = (ScriptableObject) sourceObj;
             try (var map = so.startCompoundOp(false)) {
                 // Get all enumerable properties (regular + symbols) in one call
@@ -1629,58 +1644,6 @@ public class ScriptRuntime {
         return index + Character.charCount(cp);
     }
 
-    // XXX: this is until setDefaultNamespace will learn how to store NS
-    // properly and separates namespace form Scriptable.get etc.
-    private static final String DEFAULT_NS_TAG = "__default_namespace__";
-
-    public static Object setDefaultNamespace(Object namespace, Context cx) {
-        VarScope scope = cx.currentActivationCall;
-        if (scope == null) {
-            scope = getTopCallScope(cx);
-        }
-
-        XMLLib xmlLib = currentXMLLib(cx);
-        Object ns = xmlLib.toDefaultXmlNamespace(cx, namespace);
-
-        // XXX : this should be in separated namesapce from Scriptable.get/put
-        if (!scope.has(DEFAULT_NS_TAG, scope)) {
-            // XXX: this is racy of cause
-            ScriptableObject.defineProperty(
-                    scope,
-                    DEFAULT_NS_TAG,
-                    ns,
-                    ScriptableObject.PERMANENT | ScriptableObject.DONTENUM);
-        } else {
-            scope.put(DEFAULT_NS_TAG, scope, ns);
-        }
-
-        return Undefined.instance;
-    }
-
-    public static Object searchDefaultNamespace(Context cx) {
-        VarScope scope = cx.currentActivationCall;
-        if (scope == null) {
-            scope = getTopCallScope(cx);
-        }
-        Object nsObject;
-        for (; ; ) {
-            VarScope parent = scope.getParentScope();
-            if (parent == null) {
-                nsObject = ScriptableObject.getProperty(scope, DEFAULT_NS_TAG);
-                if (nsObject == Scriptable.NOT_FOUND) {
-                    return null;
-                }
-                break;
-            }
-            nsObject = scope.get(DEFAULT_NS_TAG, scope);
-            if (nsObject != Scriptable.NOT_FOUND) {
-                break;
-            }
-            scope = parent;
-        }
-        return nsObject;
-    }
-
     public static Object getTopLevelProp(VarScope scope, String id) {
         scope = ScriptableObject.getTopLevelScope(scope);
         return ScriptableObject.getProperty(scope, id);
@@ -1897,9 +1860,7 @@ public class ScriptRuntime {
     public static Object getObjectElem(Scriptable obj, Object elem, Context cx) {
         Object result;
 
-        if (obj instanceof XMLObject) {
-            result = ((XMLObject) obj).get(cx, elem);
-        } else if (isSymbol(elem)) {
+        if (isSymbol(elem)) {
             result = ScriptableObject.getProperty(obj, (Symbol) elem);
         } else if (elem instanceof String) {
             String s = (String) elem;
@@ -1937,7 +1898,6 @@ public class ScriptRuntime {
     public static Object getSuperElem(
             Object elem, Scriptable superScriptable, Scriptable thisScriptable) {
         Object result;
-        // No XML support for super
         if (isSymbol(elem)) {
             result =
                     ScriptableObject.getSuperProperty(
@@ -2137,9 +2097,7 @@ public class ScriptRuntime {
     }
 
     public static Object setObjectElem(Scriptable obj, Object elem, Object value, Context cx) {
-        if (obj instanceof XMLObject) {
-            ((XMLObject) obj).put(cx, elem, value);
-        } else if (isSymbol(elem)) {
+        if (isSymbol(elem)) {
             ScriptableObject.putProperty(obj, (Symbol) elem, value);
         } else if (elem instanceof String) {
             String s = (String) elem;
@@ -2184,7 +2142,6 @@ public class ScriptRuntime {
             Object elem,
             Object value,
             Context cx) {
-        // No XML support for super
         if (isSymbol(elem)) {
             ScriptableObject.putSuperProperty(
                     superScriptable, thisScriptable, (Symbol) elem, value);
@@ -2445,10 +2402,11 @@ public class ScriptRuntime {
             if (result == Scriptable.NOT_FOUND) {
                 throw notFoundError(scope, name);
             }
-            return result;
+            return checkInitialized(result, name);
         }
 
-        return nameOrFunction(cx, scope, parent, name, false, false);
+        // Unchecked reads cannot reach a binding before its declaration, but eval code can
+        return checkInitialized(nameOrFunction(cx, scope, parent, name, false, false), name);
     }
 
     private static Object nameOrFunction(
@@ -2462,28 +2420,14 @@ public class ScriptRuntime {
         Scriptable thisObj =
                 Undefined.SCRIPTABLE_UNDEFINED; // It is used only if asFunctionCall==true.
 
-        XMLObject firstXMLObject = null;
         for (; ; ) {
             if (scope instanceof WithScope) {
                 Scriptable withObj = ((WithScope) scope).getObject();
-                if (withObj instanceof XMLObject) {
-                    XMLObject xmlObj = (XMLObject) withObj;
-                    if (xmlObj.has(name, xmlObj)) {
-                        // function this should be the target object of with
-                        thisObj = xmlObj;
-                        result = xmlObj.get(name, xmlObj);
-                        break;
-                    }
-                    if (firstXMLObject == null) {
-                        firstXMLObject = xmlObj;
-                    }
-                } else {
-                    result = ScriptableObject.getProperty(withObj, name);
-                    if (result != Scriptable.NOT_FOUND) {
-                        // function this should be the target object of with
-                        thisObj = withObj;
-                        break;
-                    }
+                result = ScriptableObject.getProperty(withObj, name);
+                if (result != Scriptable.NOT_FOUND) {
+                    // function this should be the target object of with
+                    thisObj = withObj;
+                    break;
                 }
             } else if (scope instanceof CatchScope || scope instanceof NativeCall) {
                 // Scopes do not have a prototype chain and Scriptable.get
@@ -2505,14 +2449,7 @@ public class ScriptRuntime {
             if (parentScope == null) {
                 result = topScopeName(cx, scope, name);
                 if (result == Scriptable.NOT_FOUND) {
-                    if (firstXMLObject == null || asFunctionCall) {
-                        throw notFoundError(scope, name);
-                    }
-                    // The name was not found, but we did find an XML
-                    // object in the scope chain and we are looking for name,
-                    // not function. The result should be an empty XMLList
-                    // in name context.
-                    result = firstXMLObject.get(name, firstXMLObject);
+                    throw notFoundError(scope, name);
                 }
                 // For top scope thisObj for functions is always the
                 // globalThis on that top level scope.
@@ -2537,7 +2474,7 @@ public class ScriptRuntime {
         return result;
     }
 
-    private static LookupResult nameOrFunction(
+    private static Object nameOrFunction(
             Context cx,
             VarScope scope,
             VarScope parentScope,
@@ -2546,28 +2483,14 @@ public class ScriptRuntime {
         Object result;
         Scriptable thisObj = Undefined.SCRIPTABLE_UNDEFINED;
 
-        XMLObject firstXMLObject = null;
         for (; ; ) {
             if (scope instanceof WithScope) {
                 Scriptable withObj = ((WithScope) scope).getObject();
-                if (withObj instanceof XMLObject) {
-                    XMLObject xmlObj = (XMLObject) withObj;
-                    if (xmlObj.has(name, xmlObj)) {
-                        // function this should be the target object of with
-                        thisObj = xmlObj;
-                        result = xmlObj.get(name, xmlObj);
-                        break;
-                    }
-                    if (firstXMLObject == null) {
-                        firstXMLObject = xmlObj;
-                    }
-                } else {
-                    result = ScriptableObject.getProperty(withObj, name);
-                    if (result != Scriptable.NOT_FOUND) {
-                        // function this should be the target object of with
-                        thisObj = withObj;
-                        break;
-                    }
+                result = ScriptableObject.getProperty(withObj, name);
+                if (result != Scriptable.NOT_FOUND) {
+                    // function this should be the target object of with
+                    thisObj = withObj;
+                    break;
                 }
             } else if (scope instanceof CatchScope || scope instanceof NativeCall) {
                 // NativeCall does not prototype chain and Scriptable.get
@@ -2605,7 +2528,8 @@ public class ScriptRuntime {
                 return null;
             }
         }
-        return new LookupResult(result, thisObj, name);
+        cx.lookupThis = thisObj;
+        return result;
     }
 
     private static Object topScopeName(Context cx, VarScope scope, String name) {
@@ -2627,7 +2551,6 @@ public class ScriptRuntime {
      * <p>See ECMA 10.1.4
      */
     public static VarScope bind(Context cx, VarScope scope, String id) {
-        VarScope firstXMLScope = null;
         VarScope parent = scope.getParentScope();
         childScopesChecks:
         if (parent != null) {
@@ -2635,18 +2558,8 @@ public class ScriptRuntime {
             while (scope.isNestedScope()) {
                 if (scope instanceof WithScope) {
                     Scriptable withObj = ((WithScope) scope).getObject();
-                    if (withObj instanceof XMLObject) {
-                        XMLObject xmlObject = (XMLObject) withObj;
-                        if (xmlObject.has(cx, id)) {
-                            return new WithScope(scope.getParentScope(), xmlObject);
-                        }
-                        if (firstXMLScope == null) {
-                            firstXMLScope = scope;
-                        }
-                    } else {
-                        if (ScriptableObject.hasProperty(withObj, id)) {
-                            return scope;
-                        }
+                    if (ScriptableObject.hasProperty(withObj, id)) {
+                        return scope;
                     }
                 } else {
                     if (scope.has(id, scope)) {
@@ -2677,16 +2590,12 @@ public class ScriptRuntime {
         if (ScriptableObject.hasProperty(scope, id)) {
             return scope;
         }
-        // Nothing was found, but since XML objects always bind
-        // return one if found
-        return firstXMLScope;
+        return null;
     }
 
     public static Object setName(
             VarScope bound, Object value, Context cx, VarScope scope, String id) {
         if (bound != null) {
-            // TODO: we used to special-case XMLObject here, but putProperty
-            // seems to work for E4X and it's better to optimize  the common case
             ScriptableObject.putProperty(bound, id, value);
         } else {
             // "newname = 7;", where 'newname' has not yet
@@ -2715,8 +2624,6 @@ public class ScriptRuntime {
             // {[[Put]]:undefined}, nor to a non-existent property of an
             // object whose [[Extensible]] internal property has the value
             // false. In these cases a TypeError exception is thrown (11.13.1).
-            // TODO: we used to special-case XMLObject here, but putProperty
-            // seems to work for E4X and we should optimize  the common case
             ScriptableObject.putProperty(bound, id, value);
             return value;
         }
@@ -3150,6 +3057,20 @@ public class ScriptRuntime {
 
     private static LookupResult getNameAndThisInner(
             String name, Context cx, VarScope scope, boolean isOptionalChainingCall) {
+        Object result = getNameAndThisValue(name, cx, scope, isOptionalChainingCall);
+        if (result == null && isOptionalChainingCall) {
+            return null;
+        }
+        return new LookupResult(result, takeLookupThis(cx), name);
+    }
+
+    /**
+     * Like {@link #getNameAndThis}, but without allocating: returns the value to call and leaves
+     * the this object in the context for {@link #takeLookupThis}. For an optional call, null means
+     * the call is skipped.
+     */
+    static Object getNameAndThisValue(
+            String name, Context cx, VarScope scope, boolean isOptionalChainingCall) {
         VarScope parent = scope.getParentScope();
         if (parent == null) {
             Object result = topScopeName(cx, scope, name);
@@ -3170,16 +3091,87 @@ public class ScriptRuntime {
             // If the scope is a wtih scope then `this` will be its
             // object, otherwise the callee will resolve `globalThis`
             // in its realm.
-            return new LookupResult(
-                    result,
+            cx.lookupThis =
                     scope instanceof WithScope
                             ? ((WithScope) scope).getObject()
-                            : Undefined.SCRIPTABLE_UNDEFINED,
-                    name);
+                            : Undefined.SCRIPTABLE_UNDEFINED;
+            return result;
         }
 
-        // name will call storeScriptable(cx, thisObj);
         return nameOrFunction(cx, scope, parent, name, isOptionalChainingCall);
+    }
+
+    /**
+     * Returns and clears the this object left by the last of the get*CallTarget methods, which
+     * must be called right after it, before any other lookup.
+     */
+    public static Object takeLookupThis(Context cx) {
+        Object thisObj = cx.lookupThis;
+        cx.lookupThis = null;
+        return thisObj;
+    }
+
+    /*
+     * The get*CallTarget methods prepare a call like the get*AndThis methods, but without
+     * allocating for the usual case: they return the function, leaving the this object for
+     * takeLookupThis. A value that can't be called is returned as a LookupResult, for which
+     * toCallable throws the error naming it. For an optional call that is skipped, they return
+     * null.
+     */
+
+    public static Object getNameCallTarget(
+            String name, Context cx, VarScope scope, boolean isOptionalChainingCall) {
+        Object value = getNameAndThisValue(name, cx, scope, isOptionalChainingCall);
+        if (value == null && isOptionalChainingCall) {
+            return null;
+        }
+        return value instanceof Callable ? value : new LookupResult(value, cx.lookupThis, name);
+    }
+
+    public static Object getPropCallTarget(
+            Object obj,
+            String property,
+            Context cx,
+            VarScope scope,
+            boolean isOptionalChainingCall) {
+        Object value = getPropAndThisValue(obj, property, cx, scope, isOptionalChainingCall);
+        if (value == null && isOptionalChainingCall) {
+            return null;
+        }
+        return value instanceof Callable
+                ? value
+                : new LookupResult(value, cx.lookupThis, property);
+    }
+
+    public static Object getElemCallTarget(
+            Object obj, Object elem, Context cx, VarScope scope, boolean isOptionalChainingCall) {
+        return callTargetOf(
+                cx, getElemAndThisInner(obj, elem, cx, scope, isOptionalChainingCall));
+    }
+
+    public static Object getValueCallTarget(
+            Object value, Context cx, boolean isOptionalChainingCall) {
+        if (value instanceof Callable) {
+            cx.lookupThis = Undefined.SCRIPTABLE_UNDEFINED;
+            return value;
+        }
+        return callTargetOf(cx, getValueAndThisInner(value, cx, isOptionalChainingCall));
+    }
+
+    private static Object callTargetOf(Context cx, LookupResult result) {
+        if (result == null) {
+            return null;
+        }
+        cx.lookupThis = result.getThis();
+        Object value = result.getResult();
+        return value instanceof Callable ? value : result;
+    }
+
+    /** Returns the function of a call target, throwing if it is a value that can't be called. */
+    public static Callable toCallable(Object target) {
+        return target instanceof Callable
+                ? (Callable) target
+                : ((LookupResult) target).getCallable();
     }
 
     /**
@@ -3418,12 +3410,65 @@ public class ScriptRuntime {
             Context cx,
             VarScope scope,
             boolean isOptionalChainingCall) {
-        Scriptable thisObj =
-                obj instanceof ScriptableObject ? (Scriptable) obj : toObjectOrNull(cx, obj, scope);
+        Object value = getPropAndThisValue(obj, property, cx, scope, isOptionalChainingCall);
+        if (value == null && isOptionalChainingCall) {
+            return null;
+        }
+        return new LookupResult(value, takeLookupThis(cx), property);
+    }
+
+    /**
+     * Like {@link #getPropAndThis}, but without allocating: returns the value to call and leaves
+     * the this object in the context for {@link #takeLookupThis}. For an optional call, null means
+     * the call is skipped.
+     */
+    static Object getPropAndThisValue(
+            Object obj,
+            String property,
+            Context cx,
+            VarScope scope,
+            boolean isOptionalChainingCall) {
+        if (obj instanceof ScriptableObject) {
+            return getPropAndThisHelper(
+                    obj, property, cx, (Scriptable) obj, isOptionalChainingCall);
+        }
+        if (obj instanceof CharSequence) {
+            Object method = getStringMethod(property, scope);
+            if (method != null) {
+                cx.lookupThis = obj;
+                return method;
+            }
+        }
+        Scriptable thisObj = toObjectOrNull(cx, obj, scope);
         return getPropAndThisHelper(obj, property, cx, thisObj, isOptionalChainingCall);
     }
 
-    private static LookupResult getPropAndThisHelper(
+    /**
+     * Returns the function that a method call on a primitive string would find as a plain data
+     * property of String.prototype, or null if the lookup needs a String object (as for getters,
+     * which receive one). The function is then called with the primitive string as "this",
+     * without allocating a wrapper.
+     */
+    private static Object getStringMethod(String property, VarScope scope) {
+        if ("length".equals(property)) {
+            return null;
+        }
+        Scriptable proto =
+                TopLevel.getBuiltinPrototype(
+                        ScriptableObject.getTopLevelScope(scope), TopLevel.Builtins.String);
+        if (!(proto instanceof NativeString)) {
+            return null;
+        }
+        Slot<?> slot = ((NativeString) proto).getMap().query(property, 0);
+        if (slot == null
+                || (slot.getClass() != StandardSlot.class && slot.getClass() != LazyLoadSlot.class)) {
+            return null;
+        }
+        Object value = slot.value;
+        return value instanceof JSFunction ? value : null;
+    }
+
+    private static Object getPropAndThisHelper(
             Object obj,
             String property,
             Context cx,
@@ -3455,7 +3500,8 @@ public class ScriptRuntime {
                         || Undefined.isUndefined(value))) {
             return null;
         }
-        return new LookupResult(value, thisObj, property);
+        cx.lookupThis = thisObj;
+        return value;
     }
 
     /**
@@ -3584,7 +3630,7 @@ public class ScriptRuntime {
     public static Object callSpecial(
             Context cx,
             Callable fun,
-            Scriptable thisObj,
+            Object thisObj,
             Object[] args,
             VarScope scope,
             Object callerThis,
@@ -3597,7 +3643,9 @@ public class ScriptRuntime {
         }
 
         if (callType == Node.SPECIALCALL_EVAL) {
-            if (thisObj.getParentScope() == null && NativeGlobal.isEvalFunction(fun)) {
+            if (thisObj instanceof Scriptable
+                    && ((Scriptable) thisObj).getParentScope() == null
+                    && NativeGlobal.isEvalFunction(fun)) {
                 return evalSpecial(
                         cx, scope, callerThis, args, filename, lineNumber, cx.isStrictMode());
             }
@@ -3791,7 +3839,6 @@ public class ScriptRuntime {
                         reporter,
                         sourceName,
                         1,
-                        null,
                         compilerEnvironsProcessor);
         Scriptable thisObject =
                 thisArg == Undefined.instance
@@ -3826,7 +3873,7 @@ public class ScriptRuntime {
     public static String typeofName(Context cx, VarScope scope, String id) {
         VarScope val = bind(cx, scope, id);
         if (val == null) return "undefined";
-        return typeof(getObjectProp(val, id, cx));
+        return typeof(checkInitialized(getObjectProp(val, id, cx), id));
     }
 
     public static boolean isObject(Object value) {
@@ -3872,21 +3919,6 @@ public class ScriptRuntime {
                 && !(rval instanceof BigInteger)) {
             return wrapNumber(((Number) lval).doubleValue() + ((Number) rval).doubleValue());
         }
-
-        // e4x extension start
-        if (lval instanceof XMLObject) {
-            Object test = ((XMLObject) lval).addValues(cx, true, rval);
-            if (test != Scriptable.NOT_FOUND) {
-                return test;
-            }
-        }
-        if (rval instanceof XMLObject) {
-            Object test = ((XMLObject) rval).addValues(cx, false, lval);
-            if (test != Scriptable.NOT_FOUND) {
-                return test;
-            }
-        }
-        // e4x extension end
 
         // spec starts here for abstract operation ApplyStringOrNumericBinaryOperator
         // where opText is "+".
@@ -4182,14 +4214,11 @@ public class ScriptRuntime {
                     scopeChain = checkDynamicScope(cx.topCallScope, scopeChain);
                 }
                 target = scopeChain;
-                if (!(target instanceof WithScope
-                        && ((WithScope) target).getObject() instanceof XMLObject)) {
-                    value = target.get(id, scopeChain);
-                    if (value != Scriptable.NOT_FOUND) {
-                        break search;
-                    }
-                    target = null;
+                value = target.get(id, scopeChain);
+                if (value != Scriptable.NOT_FOUND) {
+                    break search;
                 }
+                target = null;
                 scopeChain = scopeChain.getParentScope();
             } while (scopeChain != null);
             throw notFoundError(null, id);
@@ -5012,8 +5041,6 @@ public class ScriptRuntime {
             result = f.doTopCall(callable, cx, scope, thisObj, args);
         } finally {
             cx.topCallScope = null;
-            // Cleanup cached references
-            cx.cachedXMLLib = null;
             cx.setIsStrictMode(previousStrictness);
             // Function should always call exitActivationFunction
             // if it creates activation record
@@ -5037,8 +5064,6 @@ public class ScriptRuntime {
             result = f.doTopCall(script, cx, scope, thisObj);
         } finally {
             cx.topCallScope = null;
-            // Cleanup cached references
-            cx.cachedXMLLib = null;
             cx.setIsStrictMode(previousStrictness);
             // Function should always call exitActivationFunction
             // if it creates activation record
@@ -5406,10 +5431,6 @@ public class ScriptRuntime {
         if (sobj == null) {
             throw typeErrorById("msg.undef.with", toString(obj));
         }
-        if (sobj instanceof XMLObject) {
-            XMLObject xmlObject = (XMLObject) sobj;
-            return xmlObject.enterWith(scope);
-        }
         return new WithScope(scope, sobj);
     }
 
@@ -5432,25 +5453,6 @@ public class ScriptRuntime {
      */
     public static VarScope replaceScope(VarScope scope) {
         return scope.copyScope();
-    }
-
-    public static VarScope enterDotQuery(Object value, VarScope scope) {
-        if (!(value instanceof XMLObject)) {
-            throw notXmlError(value);
-        }
-        XMLObject object = (XMLObject) value;
-        return object.enterDotQuery(scope);
-    }
-
-    public static Object updateDotQuery(boolean value, VarScope scope) {
-        // Return null to continue looping
-        WithScope nw = (WithScope) scope;
-        return nw.updateDotQuery(value);
-    }
-
-    public static VarScope leaveDotQuery(VarScope scope) {
-        WithScope nw = (WithScope) scope;
-        return nw.getParentScope();
     }
 
     /**
@@ -6072,10 +6074,6 @@ public class ScriptRuntime {
         return typeErrorById("msg.isnt.function.in", propertyName, objString, typeof(value));
     }
 
-    private static RuntimeException notXmlError(Object value) {
-        throw typeErrorById("msg.isnt.xml.object", toString(value));
-    }
-
     public static EcmaError syntaxError(String message) {
         return constructError("SyntaxError", message);
     }
@@ -6083,6 +6081,18 @@ public class ScriptRuntime {
     public static EcmaError syntaxErrorById(String messageId, Object... args) {
         String msg = getMessageById(messageId, args);
         return syntaxError(msg);
+    }
+
+    /** Returns the value of a binding, throwing if its declaration has not run yet. */
+    public static Object checkInitialized(Object value, String name) {
+        if (value == UniqueTag.UNINITIALIZED) {
+            throw uninitializedError(name);
+        }
+        return value;
+    }
+
+    private static EcmaError uninitializedError(String name) {
+        return constructError("ReferenceError", getMessageById("msg.uninitialized", name));
     }
 
     public static EcmaError referenceError(String message) {
@@ -6155,70 +6165,6 @@ public class ScriptRuntime {
         strings[index] = siteObj;
 
         return siteObj;
-    }
-
-    private static XMLLib currentXMLLib(Context cx) {
-        // Scripts should be running to access this
-        if (cx.topCallScope == null) throw new IllegalStateException();
-
-        XMLLib xmlLib = cx.cachedXMLLib;
-        if (xmlLib == null) {
-            xmlLib = XMLLib.extractFromScope(cx.topCallScope);
-            if (xmlLib == null) throw new IllegalStateException();
-            cx.cachedXMLLib = xmlLib;
-        }
-
-        return xmlLib;
-    }
-
-    /**
-     * Escapes the reserved characters in a value of an attribute
-     *
-     * @param value Unescaped text
-     * @return The escaped text
-     */
-    public static String escapeAttributeValue(Object value, Context cx) {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.escapeAttributeValue(value);
-    }
-
-    /**
-     * Escapes the reserved characters in a value of a text node
-     *
-     * @param value Unescaped text
-     * @return The escaped text
-     */
-    public static String escapeTextValue(Object value, Context cx) {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.escapeTextValue(value);
-    }
-
-    public static Ref memberRef(Object obj, Object elem, Context cx, int memberTypeFlags) {
-        if (!(obj instanceof XMLObject)) {
-            throw notXmlError(obj);
-        }
-        XMLObject xmlObject = (XMLObject) obj;
-        return xmlObject.memberRef(cx, elem, memberTypeFlags);
-    }
-
-    public static Ref memberRef(
-            Object obj, Object namespace, Object elem, Context cx, int memberTypeFlags) {
-        if (!(obj instanceof XMLObject)) {
-            throw notXmlError(obj);
-        }
-        XMLObject xmlObject = (XMLObject) obj;
-        return xmlObject.memberRef(cx, namespace, elem, memberTypeFlags);
-    }
-
-    public static Ref nameRef(Object name, Context cx, VarScope scope, int memberTypeFlags) {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.nameRef(cx, name, scope, memberTypeFlags);
-    }
-
-    public static Ref nameRef(
-            Object namespace, Object name, Context cx, VarScope scope, int memberTypeFlags) {
-        XMLLib xmlLib = currentXMLLib(cx);
-        return xmlLib.nameRef(cx, namespace, name, scope, memberTypeFlags);
     }
 
     public static void storeUint32Result(Context cx, long value) {
@@ -6374,10 +6320,10 @@ public class ScriptRuntime {
         private static final long serialVersionUID = 8491017987326545970L;
 
         private final Object result;
-        private final Scriptable thisObj;
+        private final Object thisObj;
         private final Object name;
 
-        LookupResult(Object result, Scriptable thisObj, Object name) {
+        LookupResult(Object result, Object thisObj, Object name) {
             this.result = result;
             this.thisObj = thisObj;
             this.name = name;
@@ -6387,7 +6333,7 @@ public class ScriptRuntime {
             return result;
         }
 
-        public Scriptable getThis() {
+        public Object getThis() {
             return thisObj;
         }
 

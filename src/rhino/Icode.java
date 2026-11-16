@@ -114,11 +114,7 @@ abstract class Icode {
             UNDEF = SETVAR1 - 1,
             ZERO = UNDEF - 1,
             ONE = ZERO - 1,
-
-            // entrance and exit from .()
-            ENTERDQ = ONE - 1,
-            LEAVEDQ = ENTERDQ - 1,
-            TAIL_CALL = LEAVEDQ - 1,
+            TAIL_CALL = ONE - 1,
 
             // Clear local to allow GC its context
             LOCAL_CLEAR = TAIL_CALL - 1,
@@ -191,8 +187,11 @@ abstract class Icode {
             // Call an Intrinsics helper; operand is the intrinsic id byte
             INTRINSIC = DUP_X2 - 1,
 
+            // RESETVAR to UniqueTag.UNINITIALIZED, for a binding with temporal dead zone checks
+            RESETVAR_UNINITIALIZED = INTRINSIC - 1,
+
             // Last icode
-            MIN_ICODE = INTRINSIC;
+            MIN_ICODE = RESETVAR_UNINITIALIZED;
 
     static String bytecodeName(int bytecode) {
         if (!validBytecode(bytecode)) {
@@ -334,10 +333,6 @@ abstract class Icode {
                 return "ZERO";
             case ONE:
                 return "ONE";
-            case ENTERDQ:
-                return "ENTERDQ";
-            case LEAVEDQ:
-                return "LEAVEDQ";
             case TAIL_CALL:
                 return "TAIL_CALL";
             case LOCAL_CLEAR:
@@ -356,6 +351,8 @@ abstract class Icode {
                 return "INITCONSTVAR";
             case RESETVAR:
                 return "RESETVAR";
+            case RESETVAR_UNINITIALIZED:
+                return "RESETVAR_UNINITIALIZED";
             case SCOPE_REPLACE:
                 return "SCOPE_REPLACE";
             case GENERATOR:

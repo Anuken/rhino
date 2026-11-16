@@ -43,6 +43,6 @@ public class DefineClassMapInheritance {
     }
 
     private static Object evaluate(Context cx, VarScope scope, String source) {
-        return cx.evaluateString(scope, source, "<eval>", 1, null);
+        return cx.evaluateString(scope, source, "<eval>", 1);
     }
 }

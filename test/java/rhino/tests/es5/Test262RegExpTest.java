@@ -39,7 +39,7 @@ public class Test262RegExpTest {
         String source = "/\\b(\\w+) \\2\\b/.test('do you listen the the band');";
         String sourceName =
                 "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.9_AtomEscape/S15.10.2.9_A1_T4.js";
-        cx.evaluateString(scope, source, sourceName, 0, null);
+        cx.evaluateString(scope, source, sourceName, 0);
     }
 
     @Test
@@ -59,7 +59,7 @@ public class Test262RegExpTest {
         String sourceName =
                 "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.11_DecimalEscape/S15.10.2.11_A1_T2.js";
         for (String source : sources) {
-            cx.evaluateString(scope, source, sourceName, 0, null);
+            cx.evaluateString(scope, source, sourceName, 0);
         }
     }
 
@@ -68,7 +68,7 @@ public class Test262RegExpTest {
         String source = "/(?:A)\\2/.exec('AA');";
         String sourceName =
                 "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.11_DecimalEscape/S15.10.2.11_A1_T3.js";
-        cx.evaluateString(scope, source, sourceName, 0, null);
+        cx.evaluateString(scope, source, sourceName, 0);
     }
 
     @Test
@@ -79,7 +79,7 @@ public class Test262RegExpTest {
                     String source = "(new RegExp('[\\\\Db-G]').exec('a'))";
                     String sourceName =
                             "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.15_NonemptyClassRanges/S15.10.2.15_A1_T4.js";
-                    cx.evaluateString(scope, source, sourceName, 0, null);
+                    cx.evaluateString(scope, source, sourceName, 0);
                 });
     }
 
@@ -91,7 +91,7 @@ public class Test262RegExpTest {
                     String source = "(new RegExp('[\\\\sb-G]').exec('a'))";
                     String sourceName =
                             "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.15_NonemptyClassRanges/S15.10.2.15_A1_T5.js";
-                    cx.evaluateString(scope, source, sourceName, 0, null);
+                    cx.evaluateString(scope, source, sourceName, 0);
                 });
     }
 
@@ -103,7 +103,7 @@ public class Test262RegExpTest {
                     String source = "(new RegExp('[\\\\Sb-G]').exec('a'))";
                     String sourceName =
                             "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.15_NonemptyClassRanges/S15.10.2.15_A1_T6.js";
-                    cx.evaluateString(scope, source, sourceName, 0, null);
+                    cx.evaluateString(scope, source, sourceName, 0);
                 });
     }
 
@@ -115,7 +115,7 @@ public class Test262RegExpTest {
                     String source = "(new RegExp('[\\\\wb-G]').exec('a'))";
                     String sourceName =
                             "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.15_NonemptyClassRanges/S15.10.2.15_A1_T7.js";
-                    cx.evaluateString(scope, source, sourceName, 0, null);
+                    cx.evaluateString(scope, source, sourceName, 0);
                 });
     }
 
@@ -127,7 +127,7 @@ public class Test262RegExpTest {
                     String source = "(new RegExp('[\\\\Wb-G]').exec('a'))";
                     String sourceName =
                             "Conformance/15_Native/15.10_RegExp_Objects/15.10.2_Pattern_Semantics/15.10.2.15_NonemptyClassRanges/S15.10.2.15_A1_T8.js";
-                    cx.evaluateString(scope, source, sourceName, 0, null);
+                    cx.evaluateString(scope, source, sourceName, 0);
                 });
     }
 
@@ -136,7 +136,7 @@ public class Test262RegExpTest {
         String source = "new RegExp().test('AA');";
         String sourceName =
                 "Conformance/15_Native/15.10_RegExp_Objects/15.10.4_Pattern_Semantics/15.10.2.11_DecimalEscape/S15.10.2.11_A1_T3.js";
-        assertTrue((Boolean) cx.evaluateString(scope, source, sourceName, 0, null));
+        assertTrue((Boolean) cx.evaluateString(scope, source, sourceName, 0));
     }
 
     @Test
@@ -144,6 +144,6 @@ public class Test262RegExpTest {
         String source = "new RegExp(undefined).test('AA');";
         String sourceName =
                 "Conformance/15_Native/15.10_RegExp_Objects/15.10.4_Pattern_Semantics/15.10.2.11_DecimalEscape/S15.10.2.11_A1_T3.js";
-        assertTrue((Boolean) cx.evaluateString(scope, source, sourceName, 0, null));
+        assertTrue((Boolean) cx.evaluateString(scope, source, sourceName, 0));
     }
 }

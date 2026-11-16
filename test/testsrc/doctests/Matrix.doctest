@@ -3,7 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 Test of Matrix example.
-js> defineClass("Matrix")
+js> defineClass("rhino.tests.examples.Matrix")
 js> var m = new Matrix(2); // A constructor call, see "Matrix(int dimension)"
 js> m                      // Object.toString will call "Matrix.getClassName()"
 [object Matrix]                     

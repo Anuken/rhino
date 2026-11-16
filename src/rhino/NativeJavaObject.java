@@ -743,6 +743,25 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
         // Callable has no storage for it. Weak references can
         // address it but for now use this restriction.
 
+        if (so instanceof BaseFunction) {
+            // functions are usually converted to a single interface, often one per call of the
+            // function that created them, so the first one is cached without a hash map
+            BaseFunction f = (BaseFunction) so;
+            BaseFunction.InterfaceProxy cached = f.interfaceProxy;
+            if (cached == null) {
+                Object glue = InterfaceAdapter.create(Context.getContext(), type, so);
+                synchronized (f) {
+                    cached = f.interfaceProxy;
+                    if (cached == null) {
+                        f.interfaceProxy = new BaseFunction.InterfaceProxy(type, glue);
+                        return glue;
+                    }
+                }
+            }
+            if (cached.type == type) {
+                return cached.proxy;
+            }
+        }
         Object key = Kit.makeHashKeyFromPair(COERCED_INTERFACE_KEY, type);
         Object old = so.getAssociatedValue(key);
         if (old != null) {

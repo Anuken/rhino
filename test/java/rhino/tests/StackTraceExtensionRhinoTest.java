@@ -34,7 +34,7 @@ public class StackTraceExtensionRhinoTest {
                     new FileReader(
                             TestSource.resolve(
                                     "testsrc/jstests/extensions/stack-traces-rhino.js"))) {
-                cx.evaluateReader(root, rdr, "stack-traces-rhino.js", 1, null);
+                cx.evaluateReader(root, rdr, "stack-traces-rhino.js", 1);
             }
         } catch (IOException ioe) {
             assertFalse(true, "I/O Error: " + ioe);

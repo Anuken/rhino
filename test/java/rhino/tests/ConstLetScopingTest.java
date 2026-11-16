@@ -272,9 +272,9 @@ class ConstLetScopingTest {
     @Test
     void constDeclaredInSwitchCaseIsResetOnReentry() {
         // The declaration only runs for case 0, so on the next iteration the binding must be
-        // undefined again rather than holding the value from the first pass
+        // uninitialized again rather than holding the value from the first pass
         Utils.assertWithAllModes_ES6(
-                "7,undefined,d",
+                "7,ReferenceError,d",
                 """
                 function f(n) {
                     var o = [];
@@ -285,7 +285,7 @@ class ConstLetScopingTest {
                                 o.push(x);
                                 break;
                             case 1:
-                                o.push(String(x));
+                                try { o.push(String(x)); } catch (e) { o.push(e.name); }
                                 break;
                             default:
                                 o.push('d');
@@ -564,15 +564,18 @@ class ConstLetScopingTest {
     @Test
     void forOfHeadBindingIsVisibleToTheIteratedExpression() {
         // The loop's own scope shadows the outer binding of the same name while the iterated
-        // expression is evaluated. A spec-compliant engine throws a ReferenceError here, since
-        // the binding is in its temporal dead zone; Rhino has no TDZ and reads undefined
+        // expression is evaluated, in its temporal dead zone
         Utils.assertWithAllModes_ES6(
-                "undefined,outside",
+                "ReferenceError,outside",
                 """
                 let x = 'outside';
                 var seen;
-                for (const x of [x]) {
-                    seen = String(x);
+                try {
+                    for (const x of [x]) {
+                        seen = String(x);
+                    }
+                } catch (e) {
+                    seen = e.name;
                 }
                 [seen, x].join();
                 """);

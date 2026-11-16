@@ -78,7 +78,7 @@ public class ObserveInstructionCountTest {
                     assertTrue(cx instanceof MyContext);
                     try {
                         TopLevel globalScope = cx.initStandardObjects();
-                        cx.evaluateString(globalScope, source, "test source", 1, null);
+                        cx.evaluateString(globalScope, source, "test source", 1);
                         fail();
                     } catch (QuotaExceededException e) {
                         // expected
@@ -137,7 +137,7 @@ public class ObserveInstructionCountTest {
                     try {
                         TopLevel globalScope = cx.initStandardObjects();
                         cx.evaluateString(
-                                globalScope, "/(.*)ab/.test(\"1234\");", "test source", 1, null);
+                                globalScope, "/(.*)ab/.test(\"1234\");", "test source", 1);
                         assertFalse(((MyContext) cx).wasObserved());
                     } catch (RuntimeException e) {
                         fail(e.toString());

@@ -47,13 +47,13 @@ public class NativeWrappedArrayTest {
     @Test
     public void nativeArray() throws IOException {
         final String setFunc = "function makeTestArray() { return makeNativeArray(); }";
-        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+        cx.evaluateString(global, setFunc, "setfunc.js", 1);
 
         try (InputStreamReader rdr =
                 new InputStreamReader(
                         new FileInputStream(
                                 TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
-            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1);
             assertEquals("success", ret);
         } catch (RhinoException re) {
             fail(re.getMessage() + '\n' + re.getScriptStackTrace());
@@ -63,13 +63,13 @@ public class NativeWrappedArrayTest {
     @Test
     public void arrayLikeArray() throws IOException {
         final String setFunc = "function makeTestArray() { return makeArrayLikeArray(); }";
-        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+        cx.evaluateString(global, setFunc, "setfunc.js", 1);
 
         try (InputStreamReader rdr =
                 new InputStreamReader(
                         new FileInputStream(
                                 TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
-            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1);
             assertEquals("success", ret);
         } catch (RhinoException re) {
             fail(re.getMessage() + '\n' + re.getScriptStackTrace());
@@ -79,13 +79,13 @@ public class NativeWrappedArrayTest {
     @Test
     public void javaArray() throws IOException {
         final String setFunc = "function makeTestArray() { return makeJavaArray(); }";
-        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+        cx.evaluateString(global, setFunc, "setfunc.js", 1);
 
         try (InputStreamReader rdr =
                 new InputStreamReader(
                         new FileInputStream(
                                 TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
-            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1);
             assertEquals("success", ret);
         } catch (RhinoException re) {
             fail(re.getMessage() + '\n' + re.getScriptStackTrace());
@@ -99,13 +99,13 @@ public class NativeWrappedArrayTest {
                         global, new String[] {"makeCustomArray"}, NativeWrappedArrayTest.class, 0);
 
         final String setFunc = "function makeTestArray() { return makeCustomArray(); }";
-        cx.evaluateString(global, setFunc, "setfunc.js", 1, null);
+        cx.evaluateString(global, setFunc, "setfunc.js", 1);
 
         try (InputStreamReader rdr =
                 new InputStreamReader(
                         new FileInputStream(
                                 TestSource.resolve("testsrc/jstests/wrapped-arrays.js")))) {
-            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1, null);
+            Object ret = cx.evaluateReader(global, rdr, "wrapped-arrays.js", 1);
             assertEquals("success", ret);
         } catch (RhinoException re) {
             fail(re.getMessage() + '\n' + re.getScriptStackTrace());

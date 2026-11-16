@@ -109,7 +109,7 @@ public class DebuggerTest {
             cx.setGeneratingSource(true);
             cx.setGeneratingDebug(true);
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
-            Script script = cx.compileString(TEST_SCRIPT, "this-klass", 0, null);
+            Script script = cx.compileString(TEST_SCRIPT, "this-klass", 0);
             Object res = script.exec(cx, scope, scope.getGlobalThis());
             Assertions.assertNotNull(res);
             System.err.println(res.toString());
@@ -152,7 +152,7 @@ public class DebuggerTest {
             cx.setGeneratingSource(true);
             cx.setGeneratingDebug(true);
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
-            Script script = cx.compileString(GENERATOR_SCRIPT, "this-klass", 0, null);
+            Script script = cx.compileString(GENERATOR_SCRIPT, "this-klass", 0);
             script.exec(cx, scope, scope.getGlobalThis());
             Assertions.assertEquals(10, frame.events.size());
             Assertions.assertEquals("Enter", frame.events.get(0).substring(0, 5));

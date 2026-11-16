@@ -21,7 +21,7 @@ public class NativeRegExpTest {
         Utils.runWithAllModes(
                 _cx -> {
                     TopLevel scope = _cx.initStandardObjects();
-                    final Object result = _cx.evaluateString(scope, script, "test script", 0, null);
+                    final Object result = _cx.evaluateString(scope, script, "test script", 0);
                     assertEquals(script, Context.toString(result));
                     return null;
                 });
@@ -609,7 +609,7 @@ public class NativeRegExpTest {
         Utils.runWithAllModes(
                 _cx -> {
                     TopLevel scope = _cx.initStandardObjects();
-                    final Object result = _cx.evaluateString(scope, regexp, "test script", 0, null);
+                    final Object result = _cx.evaluateString(scope, regexp, "test script", 0);
                     assertTrue(result instanceof NativeRegExp);
 
                     NativeRegExp nr = (NativeRegExp) result;

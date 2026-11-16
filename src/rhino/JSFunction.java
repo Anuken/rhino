@@ -27,13 +27,14 @@ public class JSFunction extends BaseFunction implements ScriptOrFn<JSFunction> {
             Object lexicalThis,
             Object lexicalNewTarget,
             Scriptable homeObject) {
-        super(scope);
+        super(cx, scope, descriptor.hasPrototype());
         this.descriptor = descriptor;
         this.lexicalThis = lexicalThis;
         this.lexicalNewTarget = lexicalNewTarget;
         this.homeObject = homeObject;
-        ScriptRuntime.setFunctionProtoAndParent(
-                this, cx, scope, descriptor.isES6Generator() && !descriptor.isAsync());
+        if (descriptor.isES6Generator() && !descriptor.isAsync()) {
+            setPrototype(ScriptableObject.getGeneratorFunctionPrototype(scope));
+        }
         if (descriptor.hasPrototype()) {
             setupLazyDefaultPrototype();
         }
@@ -187,7 +188,10 @@ public class JSFunction extends BaseFunction implements ScriptOrFn<JSFunction> {
         if (descriptor.hasLexicalThis()) {
             return lexicalThis;
         } else if (!descriptor.isStrict()) {
-            if (thisObj == null || Undefined.isUndefined(thisObj)) {
+            if (thisObj instanceof ScriptableObject) {
+                // the common case, as a class check is cheaper than the interface check below
+                return thisObj;
+            } else if (thisObj == null || Undefined.isUndefined(thisObj)) {
                 return getTopLevel().getGlobalThis();
             } else {
                 return ScriptRuntime.toObject(getDeclarationScope(), thisObj);
@@ -309,21 +313,14 @@ public class JSFunction extends BaseFunction implements ScriptOrFn<JSFunction> {
     }
 
     /** Create script from compiled bytecode. */
-    public static JSScript createScript(
-            JSDescriptor<JSScript> desc, Scriptable homeObject, Object staticSecurityDomain) {
-        assert (desc.getSecurityDomain() == staticSecurityDomain);
+    public static JSScript createScript(JSDescriptor<JSScript> desc, Scriptable homeObject) {
         assert desc.isScript();
         return new JSScript(desc, homeObject);
     }
 
     /** Create function compiled from Function(...) constructor. */
     public static JSFunction createFunction(
-            Context cx,
-            VarScope scope,
-            JSDescriptor<JSFunction> desc,
-            Scriptable homeObject,
-            Object staticSecurityDomain) {
-        assert (desc.getSecurityDomain() == staticSecurityDomain);
+            Context cx, VarScope scope, JSDescriptor<JSFunction> desc, Scriptable homeObject) {
         JSFunction f = new JSFunction(cx, scope, desc, null, Undefined.instance, homeObject);
         return f;
     }

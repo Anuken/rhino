@@ -41,14 +41,14 @@ interface Signatures {
                     + ")Ljava/lang/Object;";
 
     /**
-     * PROP:GETWITHTHIS:{name}: Looks up an object property like PROP:GET, and sets "this" in the
-     * "last stored scriptable." Falls back to ScriptRuntime.getPropFunctionAndThis.
+     * PROP:GETWITHTHIS:{name}: Looks up the target of a method call, see
+     * ScriptRuntime.getPropCallTarget.
      */
     String PROP_GET_THIS =
             "(Ljava/lang/Object;"
                     + "Lrhino/Context;"
                     + "Lrhino/VarScope;"
-                    + ")Lrhino/ScriptRuntime$LookupResult;";
+                    + ")Ljava/lang/Object;";
 
     /**
      * PROP:GETINDEX: Get a property from an object based on a numeric index. Falls back to
@@ -154,16 +154,15 @@ interface Signatures {
                     + ")Ljava/lang/Object;";
 
     /**
-     * NAME:GETWITHTHIS:{name}: Looks up a name in the scope like NAME:GET, and sets "this" in the
-     * "last stored scriptable." Falls back to ScriptRuntime.getNameFunctionAndThis. Also, this
-     * version of the signature makes the scope the first argument, as described above. Also,
-     * NAME:GETWITHTHISOPTIONAL:{name} has different semantics for an optional function call, but it
-     * uses this same signature.
+     * NAME:GETWITHTHIS:{name}: Looks up the target of a call by name, see
+     * ScriptRuntime.getNameCallTarget. Also, this version of the signature makes the scope the
+     * first argument, as described above. Also, NAME:GETWITHTHISOPTIONAL:{name} has different
+     * semantics for an optional function call, but it uses this same signature.
      */
     String NAME_GET_THIS =
             "(Lrhino/VarScope;"
                     + "Lrhino/Context;"
-                    + ")Lrhino/ScriptRuntime$LookupResult;";
+                    + ")Ljava/lang/Object;";
 
     /** NAME:SET:{name}: Sets the named value in the scope. Falls back to ScriptRuntime.setName. */
     String NAME_SET =

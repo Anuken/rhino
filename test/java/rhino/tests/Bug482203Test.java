@@ -23,7 +23,7 @@ public class Bug482203Test {
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
             InputStreamReader in =
                     new InputStreamReader(Bug482203Test.class.getResourceAsStream("Bug482203.js"));
-            Script script = cx.compileReader(in, "", 1, null);
+            Script script = cx.compileReader(in, "", 1);
             TopLevel scope = cx.initStandardObjects();
             script.exec(cx, scope, scope.getGlobalThis());
             int counter = 0;
@@ -46,7 +46,7 @@ public class Bug482203Test {
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
             InputStreamReader in =
                     new InputStreamReader(Bug482203Test.class.getResourceAsStream("Bug482203.js"));
-            Script script = cx.compileReader(in, "", 1, null);
+            Script script = cx.compileReader(in, "", 1);
             TopLevel scope = cx.initStandardObjects();
             cx.executeScriptWithContinuations(script, scope);
             int counter = 0;

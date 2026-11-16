@@ -18,7 +18,6 @@ public class CompilerEnvirons {
         generateDebugInfo = true;
         reservedKeywordAsIdentifier = true;
         allowMemberExprAsFunctionName = false;
-        xmlAvailable = true;
         evaluationMethod = EvaluationMethod.Compiler;
         generatingSource = true;
         strictMode = false;
@@ -35,7 +34,6 @@ public class CompilerEnvirons {
         allowMemberExprAsFunctionName = cx.hasFeature(Context.FEATURE_MEMBER_EXPR_AS_FUNCTION_NAME);
         strictMode = cx.hasFeature(Context.FEATURE_STRICT_MODE);
         warningAsError = cx.hasFeature(Context.FEATURE_WARNING_AS_ERROR);
-        xmlAvailable = cx.hasFeature(Context.FEATURE_E4X);
 
         evaluationMethod = cx.getEvaluationMethod();
 
@@ -44,7 +42,6 @@ public class CompilerEnvirons {
 
         // Observer code generation in compiled code :
         generateObserverCount = cx.isGenerateObserverCount();
-        securityController = cx.getSecurityController();
     }
 
     public final ErrorReporter getErrorReporter() {
@@ -107,14 +104,6 @@ public class CompilerEnvirons {
 
     public void setAllowMemberExprAsFunctionName(boolean flag) {
         allowMemberExprAsFunctionName = flag;
-    }
-
-    public final boolean isXmlAvailable() {
-        return xmlAvailable;
-    }
-
-    public void setXmlAvailable(boolean flag) {
-        xmlAvailable = flag;
     }
 
     /**
@@ -286,18 +275,6 @@ public class CompilerEnvirons {
         return homeObjecgt;
     }
 
-    public void setSecurityDomain(Object domain) {
-        this.securityDomain = domain;
-    }
-
-    public SecurityController securityController() {
-        return securityController;
-    }
-
-    public Object securityDomain() {
-        return securityDomain;
-    }
-
     /**
      * Returns a {@code CompilerEnvirons} suitable for using Rhino in an IDE environment. Most
      * features are enabled by default. The {@link ErrorReporter} is set to an {@link
@@ -324,7 +301,6 @@ public class CompilerEnvirons {
     private boolean generateDebugInfo;
     private boolean reservedKeywordAsIdentifier;
     private boolean allowMemberExprAsFunctionName;
-    private boolean xmlAvailable;
     private EvaluationMethod evaluationMethod;
     private boolean generatingSource;
     private boolean strictMode;
@@ -340,6 +316,4 @@ public class CompilerEnvirons {
     Set<String> activationNames;
     private boolean inEval;
     private Scriptable homeObjecgt;
-    private SecurityController securityController;
-    private Object securityDomain;
 }

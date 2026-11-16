@@ -97,7 +97,7 @@ public class ToNumberConversionsTest {
 
     @SuppressWarnings("ConstantConditions")
     private boolean execute(Context cx, VarScope scope, String script) {
-        return (Boolean) cx.evaluateString(scope, script, "inline", 1, null);
+        return (Boolean) cx.evaluateString(scope, script, "inline", 1);
     }
 
     @MethodSource("data")

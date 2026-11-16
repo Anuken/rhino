@@ -200,7 +200,7 @@ public abstract class RhinoException extends RuntimeException {
 
     static String formatStackTrace(ScriptStackElement[] stack, String message) {
         StringBuilder buffer = new StringBuilder();
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.lineSeparator();
 
         if ((stackStyle == StackStyle.V8) && !"null".equals(message)) {
             // V8 Actually puts the error message at the top of "stack."

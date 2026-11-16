@@ -96,7 +96,7 @@ public class ContinuationsApiTest {
         try (Context cx = factory.enterContext()) {
             try {
                 cx.setEvaluationMethod(EvaluationMethod.Interpreter); // must use interpreter mode
-                Script script = cx.compileString("myObject.f(3) + 1;", "test source", 1, null);
+                Script script = cx.compileString("myObject.f(3) + 1;", "test source", 1);
                 cx.executeScriptWithContinuations(script, globalScope);
                 fail("Should throw ContinuationPending");
             } catch (ContinuationPending pending) {
@@ -116,8 +116,7 @@ public class ContinuationsApiTest {
             try {
                 cx.setEvaluationMethod(EvaluationMethod.Interpreter); // must use interpreter mode
                 Script script =
-                        cx.compileString(
-                                "myObject.f(3) + myObject.g(3) + 2;", "test source", 1, null);
+                        cx.compileString("myObject.f(3) + myObject.g(3) + 2;", "test source", 1);
                 cx.executeScriptWithContinuations(script, globalScope);
                 fail("Should throw ContinuationPending");
             } catch (ContinuationPending pending) {
@@ -146,8 +145,7 @@ public class ContinuationsApiTest {
             try {
                 cx.setEvaluationMethod(EvaluationMethod.Interpreter);
                 Script script =
-                        cx.compileString(
-                                "myObject.g( myObject.f(1) ) + 2;", "test source", 1, null);
+                        cx.compileString("myObject.g( myObject.f(1) ) + 2;", "test source", 1);
                 cx.executeScriptWithContinuations(script, globalScope);
                 fail("Should throw ContinuationPending");
             } catch (ContinuationPending pending) {
@@ -179,8 +177,7 @@ public class ContinuationsApiTest {
                         globalScope,
                         "function f(a) { return myObject.f(a); }",
                         "function test source",
-                        1,
-                        null);
+                        1);
                 Function f = (Function) globalScope.get("f", globalScope);
                 Object[] args = {7};
                 cx.callFunctionWithContinuations(f, globalScope, args);
@@ -205,7 +202,7 @@ public class ContinuationsApiTest {
     public void errorOnEvalCall() {
         try (Context cx = factory.enterContext()) {
             cx.setEvaluationMethod(EvaluationMethod.Interpreter); // must use interpreter mode
-            Script script = cx.compileString("eval('myObject.f(3);');", "test source", 1, null);
+            Script script = cx.compileString("eval('myObject.f(3);');", "test source", 1);
             cx.executeScriptWithContinuations(script, globalScope);
             fail("Should throw IllegalStateException");
         } catch (WrappedException we) {
@@ -237,7 +234,7 @@ public class ContinuationsApiTest {
 
         try (Context cx = factory.enterContext()) {
             cx.setEvaluationMethod(EvaluationMethod.Interpreter);
-            Script script = cx.compileString(jsSource, "test source", 1, null);
+            Script script = cx.compileString(jsSource, "test source", 1);
             cx.executeScriptWithContinuations(script, globalScope);
         } catch (ContinuationPending e) {
             e.getContinuation();

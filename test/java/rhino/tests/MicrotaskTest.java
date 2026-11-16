@@ -43,8 +43,7 @@ public class MicrotaskTest {
                                         "p.then((v) => { o.resolvedAgain = true; });",
                                         "o"),
                                 "test.js",
-                                1,
-                                null);
+                                1);
         // At this point promise should be resolved
         assertNotNull(o);
         assertEquals(true, o.get("resolved", o));
@@ -64,13 +63,12 @@ public class MicrotaskTest {
                                         "o.resolve();",
                                         "o"),
                                 "test.js",
-                                1,
-                                null);
+                                1);
         // At this point promise should be resolved
         assertNotNull(o);
         assertEquals(true, o.get("resolved", o));
         // Promise should still be resolved now
-        cx.evaluateString(scope, "p.then((v) => { o.resolvedAgain = true; });", "test.js", 1, null);
+        cx.evaluateString(scope, "p.then((v) => { o.resolvedAgain = true; });", "test.js", 1);
         assertEquals(true, o.get("resolvedAgain", o));
     }
 
@@ -88,13 +86,12 @@ public class MicrotaskTest {
                                         "o.resolve();",
                                         "o"),
                                 "test.js",
-                                1,
-                                null);
+                                1);
         // Promise should not be resolved yet because microtasks didn't run
         assertNotNull(o);
         assertFalse(o.has("resolved", o));
         // Promise should still not be resolved
-        cx.evaluateString(scope, "p.then((v) => { o.resolvedAgain = true; });", "test.js", 1, null);
+        cx.evaluateString(scope, "p.then((v) => { o.resolvedAgain = true; });", "test.js", 1);
         assertFalse(o.has("resolvedAgain", o));
         // Wake up microtasks and resolve both functions
         cx.resumeMicrotaskProcessing();

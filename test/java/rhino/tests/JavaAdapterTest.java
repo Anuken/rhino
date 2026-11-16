@@ -25,7 +25,7 @@ public class JavaAdapterTest {
     }
 
     private Object eval(String script) {
-        return cx.evaluateString(topScope, script, "JavaAdapterTest", 0, null);
+        return cx.evaluateString(topScope, script, "JavaAdapterTest", 0);
     }
 
     interface C {

@@ -24,7 +24,7 @@ public class NativeJsonTest {
 
         try (Context cx = Context.enter()) {
             TopLevel jsScope = cx.initStandardObjects();
-            Object result = cx.evaluateString(jsScope, jsScript, "myscript.js", 1, null);
+            Object result = cx.evaluateString(jsScope, jsScript, "myscript.js", 1);
             assertEquals("{\"property1\":\"hello\",\"array1\":[{\"subobject\":1}]}", result);
             assertEquals("java.lang.String", result.getClass().getName());
         }

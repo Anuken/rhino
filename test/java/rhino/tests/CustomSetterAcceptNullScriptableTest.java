@@ -60,7 +60,7 @@ public class CustomSetterAcceptNullScriptableTest {
 
             ScriptableObject.defineClass(topScope, Foo2.class);
 
-            cx.evaluateString(topScope, scriptCode, "myScript", 1, null);
+            cx.evaluateString(topScope, scriptCode, "myScript", 1);
         }
     }
 }

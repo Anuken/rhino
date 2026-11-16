@@ -331,7 +331,7 @@ public abstract class AInterpreter<T extends ACallFrame<T, U>, U extends ACompil
     public String getPatchedStack(RhinoException ex, String nativeStackTrace) {
         String tag = "rhino.Interpreter.interpretLoop";
         StringBuilder sb = new StringBuilder(nativeStackTrace.length() + 1000);
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.lineSeparator();
 
         ACallFrame<?, ?> calleeFrame = null;
         ACallFrame<?, ?> frame = ex.interpreterStackInfo;
@@ -393,7 +393,7 @@ public abstract class AInterpreter<T extends ACallFrame<T, U>, U extends ACompil
     public List<String> getScriptStack(RhinoException ex) {
         ScriptStackElement[][] stack = getScriptStackElements(ex);
         List<String> list = new ArrayList<>(stack.length);
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.lineSeparator();
         for (ScriptStackElement[] group : stack) {
             StringBuilder sb = new StringBuilder();
             for (ScriptStackElement elem : group) {

@@ -22,7 +22,7 @@ public class Issue176Test {
         try {
             InputStreamReader in =
                     new InputStreamReader(Issue176Test.class.getResourceAsStream("Issue176.js"));
-            Script script = cx.compileReader(in, "Issue176.js", 1, null);
+            Script script = cx.compileReader(in, "Issue176.js", 1);
             scope = cx.initStandardObjects();
             scope.put("host", scope, this);
             script.exec(cx, scope, scope.getGlobalThis()); // calls our methods

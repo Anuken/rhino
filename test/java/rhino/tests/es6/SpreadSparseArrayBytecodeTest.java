@@ -112,8 +112,7 @@ public class SpreadSparseArrayBytecodeTest {
                     "var a = [...[1], , 2];\n" // line 1 (Icode.SPREAD here)
                             + "undefinedVar;\n", // line 2 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(
@@ -139,8 +138,7 @@ public class SpreadSparseArrayBytecodeTest {
                             + "var c = a[0] + '/' + b[0];\n" // line 4
                             + "undefinedVar;\n", // line 5 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(
@@ -165,8 +163,7 @@ public class SpreadSparseArrayBytecodeTest {
                             + "var merged = {...obj, y:2};\n" // line 4 (object Icode.SPREAD)
                             + "undefinedVar;\n", // line 5 ← must be reported
                     "test",
-                    1,
-                    null);
+                    1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(
@@ -209,7 +206,7 @@ public class SpreadSparseArrayBytecodeTest {
         Context cx = Context.enter();
         try {
             cx.setLanguageVersion(Context.VERSION_ES6);
-            cx.evaluateString(cx.initStandardObjects(), sb.toString(), "test", 1, null);
+            cx.evaluateString(cx.initStandardObjects(), sb.toString(), "test", 1);
             fail("Expected ReferenceError");
         } catch (EcmaError e) {
             assertEquals(

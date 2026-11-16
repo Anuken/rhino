@@ -119,7 +119,7 @@ public class ErrorPropertiesTest {
                 cx -> {
                     try {
                         TopLevel scope = cx.initStandardObjects();
-                        final Object o = cx.evaluateString(scope, script, "myScript.js", 1, null);
+                        final Object o = cx.evaluateString(scope, script, "myScript.js", 1);
                         Assertions.assertEquals(expected, o);
                         return o;
                     } catch (final RuntimeException e) {

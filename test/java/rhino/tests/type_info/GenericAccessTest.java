@@ -210,7 +210,7 @@ public class GenericAccessTest {
                     var scope = cx.initStandardObjects();
                     bindings.forEach((name, value) -> scope.put(name, scope, value));
 
-                    Object o = cx.evaluateString(scope, script, "GenericAccessTest.js", 1, null);
+                    Object o = cx.evaluateString(scope, script, "GenericAccessTest.js", 1);
                     Assertions.assertEquals(expected, ScriptRuntime.toString(o));
 
                     return null;

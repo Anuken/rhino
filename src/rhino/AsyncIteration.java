@@ -7,24 +7,24 @@
 package rhino;
 
 /**
- * The iterator a {@code for await} loop steps through. IRFactory lowers the loop onto intrinsics
- * that call these methods, and awaits the promises they return in the async function or generator
- * the loop is in.
+ * An async iterator record, as stepped by a {@code for await} loop or the {@code yield*} of an
+ * async generator. IRFactory lowers the loop onto intrinsics that call these methods, and awaits
+ * what they return in the async function or generator the loop is in. A sync iterator is wrapped as
+ * in CreateAsyncFromSyncIterator: its methods then return promises and never throw.
  */
 final class AsyncIteration {
     // What return() resolves to for an iterator without a return method
-    private static final Object NO_RETURN = new Object();
+    static final Object NO_RETURN = new Object();
+    // What throw() returns for an iterator without a throw method
+    static final Object NO_THROW = new Object();
 
     private final Scriptable iterator;
-    private final Callable next;
-    // set for a sync iterator, whose values are awaited, as in CreateAsyncFromSyncIterator
+    private final Object next;
     private final boolean fromSync;
     private boolean done;
     private Object value = Undefined.instance;
-    private boolean threw;
-    private Object exception;
 
-    private AsyncIteration(Scriptable iterator, Callable next, boolean fromSync) {
+    private AsyncIteration(Scriptable iterator, Object next, boolean fromSync) {
         this.iterator = iterator;
         this.next = next;
         this.fromSync = fromSync;
@@ -42,41 +42,57 @@ final class AsyncIteration {
         }
         Object iterator =
                 ((Callable) method)
-                        .call(cx, scope, ScriptRuntime.toObject(cx, scope, value), ScriptRuntime.emptyArgs);
+                        .call(
+                                cx,
+                                scope,
+                                ScriptRuntime.toObject(cx, scope, value),
+                                ScriptRuntime.emptyArgs);
         if (!(iterator instanceof Scriptable) || Undefined.isUndefined(iterator)) {
             throw ScriptRuntime.typeErrorById(
                     "msg.iterator.result.primitive", ScriptRuntime.toString(iterator));
         }
         Object next =
                 ScriptRuntime.getObjectPropNoWarn(iterator, ES6Iterator.NEXT_METHOD, cx, scope);
-        return new AsyncIteration(
-                (Scriptable) iterator, next instanceof Callable ? (Callable) next : null, fromSync);
+        return new AsyncIteration((Scriptable) iterator, next, fromSync);
     }
 
-    private static Object getMethod(Context cx, VarScope scope, Object value, SymbolKey key) {
+    private static Object getMethod(Context cx, VarScope scope, Object value, Object key) {
         Scriptable obj = ScriptRuntime.toObject(cx, scope, value);
-        Object method = ScriptableObject.getProperty(obj, key);
-        return method == Scriptable.NOT_FOUND || method == null || Undefined.isUndefined(method)
-                ? null
-                : method;
+        Object method =
+                key instanceof Symbol
+                        ? ScriptableObject.getProperty(obj, (Symbol) key)
+                        : ScriptableObject.getProperty(obj, (String) key);
+        if (method == Scriptable.NOT_FOUND || method == null || Undefined.isUndefined(method)) {
+            return null;
+        }
+        if (!(method instanceof Callable)) {
+            throw ScriptRuntime.notFunctionError(method, key.toString());
+        }
+        return method;
     }
+
+    private static boolean isObject(Object value) {
+        return value instanceof Scriptable && !Undefined.isUndefined(value);
+    }
+
+    private static RhinoException notObject(Object value) {
+        return ScriptRuntime.typeErrorById(
+                "msg.iterator.result.primitive", ScriptRuntime.toString(value));
+    }
+
+    // for await
 
     /** Calls next(), returning what the loop awaits. */
     Object next(Context cx, VarScope scope) {
         // Should next() throw, the loop does not close the iterator
         done = true;
-        if (next == null) {
-            throw ScriptRuntime.notFunctionError(iterator, ES6Iterator.NEXT_METHOD);
-        }
-        Object result = next.call(cx, scope, iterator, ScriptRuntime.emptyArgs);
-        return fromSync ? awaitSyncResult(cx, scope, result) : result;
+        return callNext(cx, scope, ScriptRuntime.emptyArgs);
     }
 
     /** Takes the awaited result of next(), returning whether it holds a value. */
     boolean step(Context cx, VarScope scope, Object result) {
-        if (!(result instanceof Scriptable) || Undefined.isUndefined(result)) {
-            throw ScriptRuntime.typeErrorById(
-                    "msg.iterator.result.primitive", ScriptRuntime.toString(result));
+        if (!isObject(result)) {
+            throw notObject(result);
         }
         if (ScriptRuntime.isIteratorDone(cx, result)) {
             done = true;
@@ -92,30 +108,20 @@ final class AsyncIteration {
     }
 
     /** Returns whether the loop must close the iterator as it exits. */
-    boolean isOpen() {
-        return !done;
+    static boolean isOpen(Object iteration) {
+        return iteration instanceof AsyncIteration && !((AsyncIteration) iteration).done;
     }
 
-    /** Calls return(), returning what the loop awaits before {@link #checkReturn}. */
+    /** Calls return() for a loop left early, returning what the loop awaits before checkReturn. */
     Object callReturn(Context cx, VarScope scope) {
         done = true;
-        Object method =
-                ScriptRuntime.getObjectPropNoWarn(iterator, ES6Iterator.RETURN_METHOD, cx, scope);
-        if (method == null || Undefined.isUndefined(method)) {
-            return NO_RETURN;
-        }
-        if (!(method instanceof Callable)) {
-            throw ScriptRuntime.notFunctionError(method, ES6Iterator.RETURN_METHOD);
-        }
-        Object result = ((Callable) method).call(cx, scope, iterator, ScriptRuntime.emptyArgs);
-        return fromSync ? awaitSyncResult(cx, scope, result) : result;
+        return callReturn(cx, scope, null);
     }
 
-    /** Checks the awaited result of return(), for a loop left by break or return. */
+    /** Checks the awaited result of return(), for a loop left by break, continue or return. */
     static void checkReturn(Object result) {
-        if (result != NO_RETURN && (!(result instanceof Scriptable) || Undefined.isUndefined(result))) {
-            throw ScriptRuntime.typeErrorById(
-                    "msg.iterator.result.primitive", ScriptRuntime.toString(result));
+        if (result != NO_RETURN && !isObject(result)) {
+            throw notObject(result);
         }
     }
 
@@ -137,46 +143,180 @@ final class AsyncIteration {
         return settled;
     }
 
-    /**
-     * Calls return() for a loop left by a return statement or a jump out of an enclosing loop,
-     * which cannot await it.
-     */
-    void callReturnWithoutAwaiting(Context cx, VarScope scope) {
-        callReturn(cx, scope);
-    }
+    // The async iterator methods, as yield* calls them
 
-    /** Records the exception that left the loop, which is thrown once the iterator is closed. */
-    void caught(Object exception) {
-        threw = true;
-        this.exception = exception;
-    }
-
-    boolean threw() {
-        return threw;
-    }
-
-    Object exception() {
-        return exception;
-    }
-
-    /** Awaits the value of a sync iterator result, as in AsyncFromSyncIteratorContinuation. */
-    private Object awaitSyncResult(Context cx, VarScope frameScope, Object result) {
-        VarScope scope = ScriptableObject.getTopLevelScope(frameScope);
-        if (!(result instanceof Scriptable) || Undefined.isUndefined(result)) {
-            throw ScriptRuntime.typeErrorById(
-                    "msg.iterator.result.primitive", ScriptRuntime.toString(result));
+    /** Calls next, returning the result to await. */
+    Object callNext(Context cx, VarScope scope, Object[] args) {
+        if (fromSync) {
+            return syncNext(cx, ScriptableObject.getTopLevelScope(scope), args);
         }
-        boolean resultDone = ScriptRuntime.isIteratorDone(cx, result);
-        Object resultValue =
-                ScriptRuntime.getObjectPropNoWarn(result, ES6Iterator.VALUE_PROPERTY, cx, scope);
-        NativePromise awaited = NativePromise.create(scope);
-        NativePromise valuePromise = AsyncFunctionCode.promiseResolve(cx, scope, resultValue);
-        valuePromise.onFulfill(
+        if (!(next instanceof Callable)) {
+            throw ScriptRuntime.notFunctionError(next, ES6Iterator.NEXT_METHOD);
+        }
+        return ((Callable) next).call(cx, scope, iterator, args);
+    }
+
+    /** Calls throw, returning the result to await, or {@link #NO_THROW} if there is none. */
+    Object callThrow(Context cx, VarScope scope, Object value) {
+        if (fromSync) {
+            // The wrapper of a sync iterator always has a throw method
+            return syncThrow(cx, ScriptableObject.getTopLevelScope(scope), value);
+        }
+        Object method = getMethod(cx, scope, iterator, "throw");
+        if (method == null) {
+            return NO_THROW;
+        }
+        return ((Callable) method).call(cx, scope, iterator, new Object[] {value});
+    }
+
+    /**
+     * Calls return, returning the result to await, or {@link #NO_RETURN} if there is none.
+     *
+     * @param args the arguments, or null to pass none
+     */
+    Object callReturn(Context cx, VarScope scope, Object[] args) {
+        if (fromSync) {
+            return syncReturn(cx, ScriptableObject.getTopLevelScope(scope), args);
+        }
+        Object method = getMethod(cx, scope, iterator, ES6Iterator.RETURN_METHOD);
+        if (method == null) {
+            return NO_RETURN;
+        }
+        return ((Callable) method)
+                .call(cx, scope, iterator, args == null ? ScriptRuntime.emptyArgs : args);
+    }
+
+    // %AsyncFromSyncIteratorPrototype%
+
+    private NativePromise syncNext(Context cx, VarScope scope, Object[] args) {
+        NativePromise promise = NativePromise.create(scope);
+        Object result;
+        try {
+            if (!(next instanceof Callable)) {
+                throw ScriptRuntime.notFunctionError(next, ES6Iterator.NEXT_METHOD);
+            }
+            result = ((Callable) next).call(cx, scope, iterator, args);
+            if (!isObject(result)) {
+                throw notObject(result);
+            }
+        } catch (RhinoException e) {
+            promise.reject(cx, scope, NativePromise.getErrorObject(cx, scope, e));
+            return promise;
+        }
+        continuation(cx, scope, result, promise, true);
+        return promise;
+    }
+
+    private Object syncReturn(Context cx, VarScope scope, Object[] args) {
+        NativePromise promise = NativePromise.create(scope);
+        Object result;
+        try {
+            Object method = getMethod(cx, scope, iterator, ES6Iterator.RETURN_METHOD);
+            if (method == null) {
+                Object value = args == null || args.length == 0 ? Undefined.instance : args[0];
+                promise.resolve(cx, scope, ES6Iterator.makeIteratorResult(cx, scope, true, value));
+                return promise;
+            }
+            result =
+                    ((Callable) method)
+                            .call(
+                                    cx,
+                                    scope,
+                                    iterator,
+                                    args == null ? ScriptRuntime.emptyArgs : args);
+            if (!isObject(result)) {
+                throw notObject(result);
+            }
+        } catch (RhinoException e) {
+            promise.reject(cx, scope, NativePromise.getErrorObject(cx, scope, e));
+            return promise;
+        }
+        continuation(cx, scope, result, promise, false);
+        return promise;
+    }
+
+    private NativePromise syncThrow(Context cx, VarScope scope, Object value) {
+        NativePromise promise = NativePromise.create(scope);
+        Object result;
+        try {
+            Object method = getMethod(cx, scope, iterator, "throw");
+            if (method == null) {
+                // Close the iterator, as the delegating yield* expects a throw method
+                Object close = getMethod(cx, scope, iterator, ES6Iterator.RETURN_METHOD);
+                if (close != null) {
+                    Object closed =
+                            ((Callable) close).call(cx, scope, iterator, ScriptRuntime.emptyArgs);
+                    if (!isObject(closed)) {
+                        throw notObject(closed);
+                    }
+                }
+                throw ScriptRuntime.typeErrorById("msg.yield.star.no.throw");
+            }
+            result = ((Callable) method).call(cx, scope, iterator, new Object[] {value});
+            if (!isObject(result)) {
+                throw notObject(result);
+            }
+        } catch (RhinoException e) {
+            promise.reject(cx, scope, NativePromise.getErrorObject(cx, scope, e));
+            return promise;
+        }
+        continuation(cx, scope, result, promise, true);
+        return promise;
+    }
+
+    /** AsyncFromSyncIteratorContinuation: settles the promise with the awaited result. */
+    private void continuation(
+            Context cx,
+            VarScope scope,
+            Object result,
+            NativePromise promise,
+            boolean closeOnRejection) {
+        boolean resultDone;
+        NativePromise valueWrapper;
+        try {
+            resultDone = ScriptRuntime.isIteratorDone(cx, result);
+            Object resultValue =
+                    ScriptRuntime.getObjectPropNoWarn(
+                            result, ES6Iterator.VALUE_PROPERTY, cx, scope);
+            try {
+                valueWrapper = AsyncFunctionCode.promiseResolve(cx, scope, resultValue);
+            } catch (RhinoException e) {
+                if (!resultDone && closeOnRejection) {
+                    closeQuietly(cx, scope);
+                }
+                throw e;
+            }
+        } catch (RhinoException e) {
+            promise.reject(cx, scope, NativePromise.getErrorObject(cx, scope, e));
+            return;
+        }
+        boolean close = !resultDone && closeOnRejection;
+        valueWrapper.onFulfill(
                 cx,
                 v ->
-                        awaited.resolve(
-                                cx, scope, ES6Iterator.makeIteratorResult(cx, scope, resultDone, v)));
-        valuePromise.onReject(cx, r -> awaited.reject(cx, scope, r));
-        return awaited;
+                        promise.resolve(
+                                cx,
+                                scope,
+                                ES6Iterator.makeIteratorResult(cx, scope, resultDone, v)));
+        valueWrapper.onReject(
+                cx,
+                r -> {
+                    if (close) {
+                        closeQuietly(Context.getCurrentContext(), scope);
+                    }
+                    promise.reject(cx, scope, r);
+                });
+    }
+
+    /** IteratorClose for a throw completion: calls return, ignoring what it does. */
+    private void closeQuietly(Context cx, VarScope scope) {
+        try {
+            Object method = getMethod(cx, scope, iterator, ES6Iterator.RETURN_METHOD);
+            if (method != null) {
+                ((Callable) method).call(cx, scope, iterator, ScriptRuntime.emptyArgs);
+            }
+        } catch (RhinoException e) {
+            // the original rejection wins
+        }
     }
 }
