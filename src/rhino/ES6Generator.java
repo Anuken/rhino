@@ -25,7 +25,6 @@ public final class ES6Generator extends ScriptableObject {
                         .withMethod(CTOR, "next", 1, ES6Generator::js_next)
                         .withMethod(CTOR, "return", 1, ES6Generator::js_return)
                         .withMethod(CTOR, "throw", 1, ES6Generator::js_throw)
-                        .withMethod(CTOR, SymbolKey.ITERATOR, 0, ES6Generator::js_iterator)
                         .withProp(
                                 CTOR,
                                 SymbolKey.TO_STRING_TAG,
@@ -43,10 +42,11 @@ public final class ES6Generator extends ScriptableObject {
     static ScriptableObject init(Context cx, TopLevel scope, boolean sealed) {
 
         NativeObject prototype = new NativeObject();
-        DESCRIPTOR.populateGlobal(cx, scope, prototype, sealed);
-
-        var iterCtor = (JSFunction) scope.get("Iterator", scope);
-        prototype.setPrototype((Scriptable) iterCtor.getPrototypeProperty());
+        DESCRIPTOR.populateGlobal(cx, scope, prototype, false);
+        prototype.setPrototype(NativeIterator.getIteratorPrototype(scope));
+        if (sealed) {
+            prototype.sealObject();
+        }
 
         // Need to access Generator prototype when constructing
         // Generator instances, but don't have a generator constructor
@@ -120,11 +120,6 @@ public final class ES6Generator extends ScriptableObject {
             return generator.resumeAbruptLocal(cx, s, NativeGenerator.GENERATOR_THROW, value);
         }
         return generator.resumeDelegeeThrow(cx, s, value);
-    }
-
-    private static Object js_iterator(
-            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
-        return thisObj;
     }
 
     private Scriptable resumeDelegee(Context cx, VarScope scope, Object value) {

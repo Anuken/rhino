@@ -8,8 +8,10 @@ package rhino.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
@@ -203,6 +205,19 @@ public class NativeJavaMapTest {
             assertEquals(o, e2.get(0));
             assertEquals(o, e2.get(1));
         }
+
+        // Java iterators inherit the iterator helpers
+        assertEquals(
+                "a=b,123=234",
+                runScriptES6(
+                        "value[Symbol.iterator]().take(2).map(([k, v]) => k + '=' + v)"
+                                + ".toArray().join()",
+                        map));
+        assertEquals(
+                "2,3",
+                runScriptES6(
+                        "Iterator.from(value).filter(x => x > 1).toArray().join()",
+                        new LinkedHashSet<>(Arrays.asList(1, 2, 3))));
     }
 
     private int runScriptAsInt(String scriptSourceText, Object value, boolean enableJavaMapAccess) {

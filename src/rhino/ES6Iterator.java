@@ -27,7 +27,6 @@ public abstract class ES6Iterator extends ScriptableObject {
         // can bodge it for now.
         return new ClassDescriptor.Builder(name)
                 .withMethod(CTOR, "next", 0, ES6Iterator::js_next)
-                .withMethod(CTOR, SymbolKey.ITERATOR, 1, ES6Iterator::js_iterator)
                 .withProp(CTOR, SymbolKey.TO_STRING_TAG, value(tag, DONTENUM | READONLY))
                 .build();
     }
@@ -39,7 +38,11 @@ public abstract class ES6Iterator extends ScriptableObject {
             ScriptableObject obj,
             boolean sealed,
             String name) {
-        var global = desc.populateGlobal(cx, scope, obj, sealed);
+        var global = desc.populateGlobal(cx, scope, obj, false);
+        global.setPrototype(NativeIterator.getIteratorPrototype(scope));
+        if (sealed) {
+            global.sealObject();
+        }
         scope.associateValue(name, global);
     }
 
@@ -67,11 +70,6 @@ public abstract class ES6Iterator extends ScriptableObject {
             Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
         ES6Iterator iterator = realThis(thisObj);
         return iterator.next(cx, s);
-    }
-
-    private static Object js_iterator(
-            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
-        return thisObj;
     }
 
     protected abstract boolean isDone(Context cx, VarScope scope);

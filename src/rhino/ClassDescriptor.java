@@ -196,25 +196,35 @@ public class ClassDescriptor {
         global.setPrototype(objProto);
         ScriptableObject.defineProperty(
                 scope, ctorDesc.name.toString(), global, ctorDesc.attributes);
+        return populateObject(cx, scope, global, sealed);
+    }
+
+    /**
+     * Adds this descriptor's constructor methods and properties to an existing object, such as an
+     * intrinsic prototype that has no constructor or global binding, without changing its
+     * prototype.
+     */
+    public ScriptableObject populateObject(
+            Context cx, VarScope scope, ScriptableObject obj, boolean sealed) {
         for (var e : ctorDescs) {
             var f = new JSFunction(scope, e.funcDesc, null, Undefined.instance, null);
             f.setStandardPropertyAttributes(e.stdAttrs);
             if (e.name instanceof String) {
-                global.put((String) e.name, global, f);
-                global.setAttributes((String) e.name, e.attributes);
+                obj.put((String) e.name, obj, f);
+                obj.setAttributes((String) e.name, e.attributes);
             } else {
-                global.put((SymbolKey) e.name, global, f); // , e.attributes);
-                global.setAttributes((SymbolKey) e.name, e.attributes);
+                obj.put((SymbolKey) e.name, obj, f); // , e.attributes);
+                obj.setAttributes((SymbolKey) e.name, e.attributes);
             }
         }
 
         for (var p : ctorProps) {
-            p.makeProp(cx, scope, global);
+            p.makeProp(cx, scope, obj);
         }
         if (sealed) {
-            global.sealObject();
+            obj.sealObject();
         }
-        return global;
+        return obj;
     }
 
     /**

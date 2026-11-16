@@ -185,6 +185,7 @@ public class NativeRegExp extends ScriptableObject {
                         .withMethod(PROTO, SymbolKey.SEARCH, 1, NativeRegExp::js_search)
                         .withMethod(PROTO, SymbolKey.REPLACE, 2, NativeRegExp::js_replace)
                         .withMethod(PROTO, SymbolKey.SPLIT, 2, NativeRegExp::js_split)
+                        .withMethod(CTOR, "escape", 1, NativeRegExp::js_escape)
                         .withProp(CTOR, SymbolKey.SPECIES, ScriptRuntimeES6::symbolSpecies)
                         .withProp(
                                 PROTO,
@@ -4318,6 +4319,65 @@ public class NativeRegExp extends ScriptableObject {
             throw ScriptRuntime.typeErrorById("msg.modify.readonly", "lastIndex");
         }
         lastIndex = value;
+    }
+
+    private static Object js_escape(
+            Context cx, JSFunction f, Object nt, VarScope s, Object thisObj, Object[] args) {
+        Object arg = args.length > 0 ? args[0] : Undefined.instance;
+        if (!(arg instanceof CharSequence)) {
+            throw ScriptRuntime.typeErrorById("msg.not.a.string");
+        }
+        String str = arg.toString();
+        StringBuilder escaped = new StringBuilder(str.length() + 16);
+        for (int i = 0; i < str.length(); ) {
+            int c = str.codePointAt(i);
+            i += Character.charCount(c);
+            if (escaped.length() == 0
+                    && ((c >= '0' && c <= '9')
+                            || (c >= 'a' && c <= 'z')
+                            || (c >= 'A' && c <= 'Z'))) {
+                appendHexEscape(escaped, c);
+            } else {
+                encodeForRegExpEscape(escaped, c);
+            }
+        }
+        return escaped.toString();
+    }
+
+    private static void encodeForRegExpEscape(StringBuilder out, int c) {
+        if ("^$\\.*+?()[]{}|/".indexOf(c) >= 0) {
+            out.append('\\').append((char) c);
+            return;
+        }
+        int control = "\t\n\u000B\f\r".indexOf(c);
+        if (control >= 0) {
+            out.append('\\').append("tnvfr".charAt(control));
+            return;
+        }
+        if (",-=<>#&!%:;@~'`\"".indexOf(c) >= 0
+                || ScriptRuntime.isJSWhitespaceOrLineTerminator(c)
+                || (c >= Character.MIN_SURROGATE && c <= Character.MAX_SURROGATE)) {
+            if (c <= 0xFF) {
+                appendHexEscape(out, c);
+            } else {
+                for (char unit : Character.toChars(c)) {
+                    out.append("\\u");
+                    String hex = Integer.toHexString(unit);
+                    for (int pad = hex.length(); pad < 4; pad++) {
+                        out.append('0');
+                    }
+                    out.append(hex);
+                }
+            }
+            return;
+        }
+        out.appendCodePoint(c);
+    }
+
+    private static void appendHexEscape(StringBuilder out, int c) {
+        out.append("\\x")
+                .append(Character.forDigit(c >> 4, 16))
+                .append(Character.forDigit(c & 0xF, 16));
     }
 
     private static Object js_compile(
